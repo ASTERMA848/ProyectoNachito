@@ -1,0 +1,274 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+// ---------------------------------------------------------
+// SEGURIDAD Y CONFIGURACIÓN
+// ---------------------------------------------------------
+
+model User {
+  id               String            @id @default(uuid())
+  username         String            @unique
+  passwordHash     String
+  role             String            @default("OPERATOR") // AUDITOR | ADMIN | OPERATOR
+  theme            String            @default("SYSTEM") // SYSTEM | LIGHT | DARK
+  profilePicture   String?
+  isActive         Boolean           @default(true)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  deletedAt        DateTime?
+
+  sessions         Session[]
+  auditLogs        AuditLog[]        @relation("UserAuditLogs")
+  comments         InternalComment[]
+}
+
+model Session {
+  id           String   @id @default(uuid())
+  userId       String
+  sessionToken String   @unique
+  expiresAt    DateTime
+  user         User     @relation(fields: [userId], references: [id])
+}
+
+model Settings {
+  id                      String   @id @default(uuid())
+  mainCurrencyId          String?
+  accountingBlockDate     DateTime?
+  numberingFormat         String   @default("OP-{000000}")
+  maxDecimals             Int      @default(2)
+  maxAttachmentSizeMB     Int      @default(5)
+  allowEditCompletedOps   Boolean  @default(false)
+  updatedAt               DateTime @updatedAt
+}
+
+// ---------------------------------------------------------
+// AUDITORÍA
+// ---------------------------------------------------------
+
+model AuditLog {
+  id           String   @id @default(uuid())
+  userId       String?
+  action       String   // CREATE, UPDATE, DELETE, LOGIN, REPORT, SQL_QUERY
+  entity       String?  
+  entityId     String?  
+  oldValues    String?  // JSON string
+  newValues    String?  // JSON string
+  query        String?  
+  ipAddress    String?
+  createdAt    DateTime @default(now())
+
+  user         User?    @relation("UserAuditLogs", fields: [userId], references: [id])
+}
+
+// ---------------------------------------------------------
+// CONTACTOS
+// ---------------------------------------------------------
+
+model Contact {
+  id              String       @id @default(uuid())
+  isClient        Boolean      @default(false)
+  isProvider      Boolean      @default(false)
+  name            String
+  lastname        String?
+  document        String?
+  cuitCuil        String?
+  phone           String?
+  email           String?
+  address         String?
+  observations    String?
+  isActive        Boolean      @default(true)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  deletedAt       DateTime?
+
+  tags            ContactTag[]
+  clientOps       Operation[]  @relation("ClientOperations")
+  providerOps     Operation[]  @relation("ProviderOperations")
+  accounts        Account[]
+  settlements     Settlement[]
+}
+
+model Tag {
+  id          String       @id @default(uuid())
+  name        String       @unique
+  color       String?
+  contacts    ContactTag[]
+}
+
+model ContactTag {
+  contactId   String
+  tagId       String
+  contact     Contact @relation(fields: [contactId], references: [id])
+  tag         Tag     @relation(fields: [tagId], references: [id])
+
+  @@id([contactId, tagId])
+}
+
+// ---------------------------------------------------------
+// MONEDAS
+// ---------------------------------------------------------
+
+model Currency {
+  id          String       @id @default(uuid())
+  code        String       @unique // e.g. USD, ARS
+  name        String
+  symbol      String
+  decimals    Int          @default(2)
+  isActive    Boolean      @default(true)
+  color       String?      @default("#3b82f6") // Label color for UI
+
+  originOps   Operation[]  @relation("OriginCurrency")
+  destOps     Operation[]  @relation("DestCurrency")
+  accounts    Account[]
+  treasuries  TreasuryAccount[]
+}
+
+// ---------------------------------------------------------
+// OPERACIONES
+// ---------------------------------------------------------
+
+model Operation {
+  id               String       @id @default(uuid())
+  operationNumber  String       @unique 
+  
+  clientId         String
+  providerId       String
+  client           Contact      @relation("ClientOperations", fields: [clientId], references: [id])
+  provider         Contact      @relation("ProviderOperations", fields: [providerId], references: [id])
+
+  originCurrencyId String
+  destCurrencyId   String
+  originCurrency   Currency     @relation("OriginCurrency", fields: [originCurrencyId], references: [id])
+  destCurrency     Currency     @relation("DestCurrency", fields: [destCurrencyId], references: [id])
+
+  originAmount     Float
+  destAmount       Float
+  exchangeRate     Float
+  operationDate    DateTime
+
+  observations     String?
+  state            String       @default("PENDING") // PENDING, PROCESSING, COMPLETED, CANCELED
+
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  deletedAt        DateTime?
+
+  stateHistory     OperationStateHistory[]
+  attachments      Attachment[]
+  comments         InternalComment[]
+  settlements      Settlement[]
+}
+
+model OperationStateHistory {
+  id          String    @id @default(uuid())
+  operationId String
+  oldState    String?
+  newState    String
+  changedBy   String?   
+  changedAt   DateTime  @default(now())
+  operation   Operation @relation(fields: [operationId], references: [id])
+}
+
+model Attachment {
+  id          String    @id @default(uuid())
+  operationId String
+  fileName    String
+  fileUrl     String
+  fileType    String    
+  uploadedAt  DateTime  @default(now())
+  operation   Operation @relation(fields: [operationId], references: [id])
+}
+
+model InternalComment {
+  id          String    @id @default(uuid())
+  operationId String
+  userId      String
+  comment     String
+  createdAt   DateTime  @default(now())
+  
+  operation   Operation @relation(fields: [operationId], references: [id])
+  user        User      @relation(fields: [userId], references: [id])
+}
+
+// ---------------------------------------------------------
+// CUENTAS CORRIENTES
+// ---------------------------------------------------------
+
+model Account {
+  id          String       @id @default(uuid())
+  contactId   String
+  currencyId  String
+  balance     Float        @default(0.0) 
+  
+  contact     Contact      @relation(fields: [contactId], references: [id])
+  currency    Currency     @relation(fields: [currencyId], references: [id])
+  transactions Transaction[]
+
+  @@unique([contactId, currencyId])
+}
+
+model Transaction {
+  id          String    @id @default(uuid())
+  accountId   String
+  date        DateTime  @default(now())
+  concept     String
+  debit       Float     @default(0.0)
+  credit      Float     @default(0.0)
+  balance     Float     
+  observations String?
+  
+  account     Account   @relation(fields: [accountId], references: [id])
+}
+
+// ---------------------------------------------------------
+// TESORERÍA
+// ---------------------------------------------------------
+
+model TreasuryAccount {
+  id          String    @id @default(uuid())
+  name        String
+  type        String    // CASH, BANK, WALLET
+  currencyId  String
+  balance     Float     @default(0.0)
+  isActive    Boolean   @default(true)
+
+  currency    Currency  @relation(fields: [currencyId], references: [id])
+  movements   TreasuryMovement[]
+}
+
+model TreasuryMovement {
+  id          String    @id @default(uuid())
+  accountId   String
+  date        DateTime  @default(now())
+  type        String    // INCOME, EXPENSE, TRANSFER, ADJUSTMENT
+  amount      Float
+  concept     String
+  reference   String?
+  
+  account     TreasuryAccount @relation(fields: [accountId], references: [id])
+}
+
+// ---------------------------------------------------------
+// LIQUIDACIONES
+// ---------------------------------------------------------
+
+model Settlement {
+  id          String    @id @default(uuid())
+  providerId  String
+  operationId String
+  dueDate     DateTime
+  amount      Float
+  paidAmount  Float     @default(0.0)
+  state       String    @default("PENDING") // PENDING, PARTIAL, SETTLED, EXPIRED
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  provider    Contact   @relation(fields: [providerId], references: [id])
+  operation   Operation @relation(fields: [operationId], references: [id])
+}

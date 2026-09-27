@@ -1,0 +1,10 @@
+COMANDOS DEL PROYECTO
+
+Levantar servidor local -> npm run dev
+Detener servidor en terminal -> Ctrl + C (luego S + Enter)
+Liberar puerto 3000 trabado (PowerShell) -> Stop-Process -Id (Get-NetTCPConnection -LocalPort 3000).OwningProcess -Force
+Regenerar cliente de base de datos -> npx prisma generate
+Abrir panel visual de base de datos -> npx prisma studio
+Cambiar clave de administrador -> node migrate-admin-password.js "NUEVA_CLAVE"
+Compilar proyecto para producción -> npm run build
+Iniciar proyecto en producción -> npm run start

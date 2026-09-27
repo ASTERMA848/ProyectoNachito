@@ -1,0 +1,63 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.js
+.yarn/install-state.gz
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ─── Variables de entorno — NUNCA subir al repositorio ───────────────────────
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+.env*.local
+
+# ─── Base de datos SQLite ─────────────────────────────────────────────────────
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+prisma/*.db
+prisma/*.db-journal
+
+# ─── Archivos subidos por usuarios ───────────────────────────────────────────
+/public/uploads/
+
+# ─── Claves y certificados ───────────────────────────────────────────────────
+*.key
+*.crt
+*.cert
+*.p12
+*.pfx
+*.pem
+id_rsa
+id_rsa.pub
+*.ppk
+
+# ─── Vercel ──────────────────────────────────────────────────────────────────
+.vercel
+
+# ─── TypeScript ──────────────────────────────────────────────────────────────
+*.tsbuildinfo
+next-env.d.ts

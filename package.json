@@ -1,0 +1,35 @@
+{
+  "name": "app-temp",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@hwyuanzi/liquid-glass-ui": "github:hwyuanzi/LiquidGlass-UI",
+    "@liquefy-ui/core": "^1.0.0",
+    "@liquefy-ui/icons": "^1.0.0",
+    "@liquefy-ui/react": "^1.0.0",
+    "@prisma/client": "^5.22.0",
+    "@types/bcryptjs": "^3.0.0",
+    "@types/dagre": "^0.7.54",
+    "@xyflow/react": "^12.11.0",
+    "bcryptjs": "^3.0.3",
+    "dagre": "^0.8.5",
+    "next": "14.2.35",
+    "react": "^18",
+    "react-dom": "^18"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "eslint": "^8",
+    "eslint-config-next": "14.2.35",
+    "prisma": "^5.22.0",
+    "typescript": "^5"
+  }
+}
