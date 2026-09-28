@@ -82,21 +82,12 @@ export async function PUT(
       }
     }
 
-    // Verificar contraseña admin para modificar operaciones completadas
-    if (oldOperation.state === "COMPLETED") {
-      if (user.role !== "ADMIN") {
-        return NextResponse.json(
-          { error: "Solo el administrador puede modificar operaciones completadas" },
-          { status: 403 }
-        );
-      }
-      const authorized = await verifyAdminPassword(user.id, adminPassword);
-      if (!authorized) {
-        return NextResponse.json(
-          { error: "Contraseña de administrador incorrecta" },
-          { status: 401 }
-        );
-      }
+    // Solo el administrador puede modificar operaciones completadas
+    if (oldOperation.state === "COMPLETED" && user.role !== "ADMIN") {
+      return NextResponse.json(
+        { error: "Solo el administrador puede modificar operaciones completadas" },
+        { status: 403 }
+      );
     }
 
     const updatedOperation = await prisma.operation.update({
@@ -165,21 +156,12 @@ export async function PATCH(
       return NextResponse.json({ error: "Operación no encontrada" }, { status: 404 });
     }
 
-    // Modificar operaciones completadas requiere ser ADMIN + contraseña
-    if (oldOperation.state === "COMPLETED") {
-      if (user.role !== "ADMIN") {
-        return NextResponse.json(
-          { error: "Solo el administrador puede modificar operaciones completadas" },
-          { status: 403 }
-        );
-      }
-      const authorized = await verifyAdminPassword(user.id, adminPassword);
-      if (!authorized) {
-        return NextResponse.json(
-          { error: "Contraseña de administrador incorrecta" },
-          { status: 401 }
-        );
-      }
+    // Solo el administrador puede modificar operaciones completadas
+    if (oldOperation.state === "COMPLETED" && user.role !== "ADMIN") {
+      return NextResponse.json(
+        { error: "Solo el administrador puede modificar operaciones completadas" },
+        { status: 403 }
+      );
     }
 
     const updatedOperation = await prisma.operation.update({

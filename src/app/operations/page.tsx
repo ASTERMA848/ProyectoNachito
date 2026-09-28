@@ -186,12 +186,6 @@ export default function OperationsPage() {
   };
 
   const handleEdit = (op: any) => {
-    if (op.state === "COMPLETED") {
-      setPendingAction({ type: "EDIT", payload: op });
-      setIsAdminPromptOpen(true);
-      return;
-    }
-
     setFormData({
       clientId: op.clientId,
       providerId: op.providerId,
@@ -209,12 +203,6 @@ export default function OperationsPage() {
   };
 
   const handleStateChange = async (op: any, newState: string) => {
-    if (op.state === "COMPLETED") {
-      setPendingAction({ type: "STATE_CHANGE", payload: { op, newState } });
-      setIsAdminPromptOpen(true);
-      return;
-    }
-
     try {
       const res = await fetch(`/api/operations/${op.id}`, {
         method: "PATCH",
@@ -1071,103 +1059,6 @@ export default function OperationsPage() {
       </Portal>
       )}
 
-      {isAdminPromptOpen && (
-        <Portal>
-          <div
-            className="flowbite-drawer-overlay animate-fade-in"
-            style={{ justifyContent: "center", alignItems: "center", zIndex: 110 }}
-            onClick={() => {
-              setIsAdminPromptOpen(false);
-              setAdminPasswordInput("");
-              setAdminPromptError(null);
-              setPendingAction(null);
-            }}
-          >
-            <GlassCard
-              className="flowbite-dropdown-animate"
-              style={{
-                width: "90%",
-                maxWidth: "400px",
-                margin: "0 auto",
-                padding: "1.5rem",
-                display: "flex",
-                flexDirection: "column",
-                gap: "16px",
-              }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px", borderBottom: "1px solid var(--border-color)", paddingBottom: "10px" }}>
-                <span style={{ fontSize: "14px", fontWeight: 700, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                  🔒 Autorización Requerida
-                </span>
-                <button
-                  onClick={() => {
-                    setIsAdminPromptOpen(false);
-                    setAdminPasswordInput("");
-                    setAdminPromptError(null);
-                    setPendingAction(null);
-                  }}
-                  style={{
-                    background: "none",
-                    border: "none",
-                    fontSize: "18px",
-                    cursor: "pointer",
-                    color: "var(--text-secondary)",
-                  }}
-                >
-                  ✕
-                </button>
-              </div>
-
-              <div>
-                <p style={{ fontSize: "13px", color: "var(--text-secondary)", marginBottom: "8px" }}>
-                  Esta operación está **Completada**. Para modificarla o cambiar su estado, se requieren permisos de administrador. Por favor, ingresa la contraseña:
-                </p>
-                <input
-                  type="password"
-                  className="flowbite-input"
-                  placeholder="Contraseña de Administrador"
-                  value={adminPasswordInput}
-                  onChange={(e) => setAdminPasswordInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      handleVerifyAdminPassword();
-                    }
-                  }}
-                  autoFocus
-                />
-                {adminPromptError && (
-                  <p style={{ color: "#ef4444", fontSize: "12px", marginTop: "6px", fontWeight: 500 }}>
-                    ⚠️ {adminPromptError}
-                  </p>
-                )}
-              </div>
-
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "4px" }}>
-                <button
-                  type="button"
-                  className="flowbite-btn flowbite-btn-text"
-                  onClick={() => {
-                    setIsAdminPromptOpen(false);
-                    setAdminPasswordInput("");
-                    setAdminPromptError(null);
-                    setPendingAction(null);
-                  }}
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="button"
-                  className="flowbite-btn flowbite-btn-primary"
-                  onClick={handleVerifyAdminPassword}
-                >
-                  Confirmar
-                </button>
-              </div>
-            </GlassCard>
-          </div>
-        </Portal>
-      )}
       {activeStateChangeOp && (
         <Portal>
           <div
