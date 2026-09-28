@@ -1,36 +1,92 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Agencia de Cambio — Sistema de Gestión Operativa (Liquid Glass UI)
 
-## Getting Started
+Sistema integral de gestión de operaciones cambiarias, cuentas corrientes, tesorería, liquidaciones y auditoría desarrollado con Next.js 14, React 18, Tailwind/Liquid Glass UI y Prisma (SQLite).
 
-First, run the development server:
+---
+
+## 🚀 Guía de Despliegue Local (en cualquier PC)
+
+Sigue estos sencillos pasos para instalar y ejecutar el proyecto desde cero en otra computadora:
+
+### 1. Requisitos Previos
+- **Node.js**: v18.x o v20.x superior ([Descargar Node.js](https://nodejs.org/))
+- **Git**: Instalar Git ([Descargar Git](https://git-scm.com/))
+
+---
+
+### 2. Clonar el Repositorio
+Abre la terminal en la carpeta deseada e instala el proyecto:
+
+```bash
+git clone https://github.com/ASTERMA848/ProyectoNachito.git
+cd ProyectoNachito
+```
+
+---
+
+### 3. Instalar Dependencias
+Instala los paquetes necesarios del proyecto:
+
+```bash
+npm install
+```
+
+---
+
+### 4. Configurar Variables de Entorno
+Copia el archivo de ejemplo `.env.example` para crear tu archivo `.env` local:
+
+**En Windows (PowerShell):**
+```powershell
+Copy-Item .env.example .env
+```
+
+**En Mac / Linux / Bash:**
+```bash
+cp .env.example .env
+```
+
+*(El archivo `.env` ya viene preconfigurado con SQLite `file:./dev.db` para desarrollo local).*
+
+---
+
+### 5. Crear la Base de Datos e Inicializar Datos
+Ejecuta el comando automatizado de base de datos que crea las tablas e inserta el usuario administrador y las monedas base (`USD`, `EUR`, `ARS`, `BRL`, `USDT`):
+
+```bash
+npm run db:setup
+```
+
+> **Credenciales de Acceso Inicial:**
+> - **Usuario:** `admin`
+> - **Contraseña:** `admin` *(Se recomienda cambiar la clave en la sección Mi Perfil o mediante el script `node migrate-admin-password.js "NUEVA_CLAVE"`)*.
+
+---
+
+### 6. Iniciar el Servidor en Desarrollo
+Levanta la aplicación localmente:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Abre tu navegador e ingresa a: **`http://localhost:3000`**
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 🛠️ Comandos Útiles
 
-## Learn More
+- **Iniciar Servidor de Desarrollo:** `npm run dev`
+- **Reconfigurar / Reiniciar Base de Datos:** `npm run db:setup`
+- **Panel Visual de la Base de Datos (Prisma Studio):** `npx prisma studio`
+- **Cambiar Clave de Administrador por Terminal:** `node migrate-admin-password.js "NUEVA_CLAVE"`
+- **Compilar para Producción:** `npm run build`
+- **Ejecutar en Modo Producción:** `npm run start`
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 🔒 Estructura y Tecnologías
+- **Frontend / Backend:** Next.js 14 (App Router)
+- **UI Framework:** Liquefy UI / Liquid Glass Design System
+- **Base de Datos:** SQLite con Prisma ORM
+- **Seguridad:** Autenticación mediante Sesión HTTP-Only y Hashing Bcrypt
