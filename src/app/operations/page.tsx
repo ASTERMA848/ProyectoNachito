@@ -859,13 +859,21 @@ export default function OperationsPage() {
                   }}
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <button
-                    onClick={() => handleEdit(op)}
-                    className="flowbite-btn flowbite-btn-text"
-                    style={{ padding: "6px 12px", fontSize: "12px" }}
-                  >
-                    ️ Editar Ficha
-                  </button>
+                  <LiquidMenu
+                    align="end"
+                    items={[
+                      { label: "✏️ Editar Ficha", onSelect: () => handleEdit(op) },
+                      { label: "📜 Tracking de Historial", onSelect: () => openHistoryModal(op) }
+                    ]}
+                    trigger={
+                      <button
+                        className="flowbite-btn flowbite-btn-text"
+                        style={{ padding: "6px 12px", fontSize: "12px", color: "var(--color-ash)" }}
+                      >
+                        Acciones ▾
+                      </button>
+                    }
+                  />
                 </div>
               </GlassCard>
             ))
