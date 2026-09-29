@@ -285,6 +285,7 @@ export default function Header({ user }: { user?: { username: string; role: stri
             top: "100%",
             left: 0,
             right: 0,
+            backgroundColor: "var(--bg-color)",
             borderBottom: "1px solid var(--border-color)",
             boxShadow: "var(--shadow-md)",
             zIndex: 80,
