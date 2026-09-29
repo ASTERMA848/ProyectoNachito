@@ -318,19 +318,22 @@ export default function Header({ user }: { user?: { username: string; role: stri
             if (allowedRoutes.length === 0) return null;
 
             return (
-              <div key={category.id} style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                <span
+              <div key={category.id} style={{ display: "flex", flexDirection: "column", gap: "6px", marginBottom: "8px" }}>
+                <div
                   style={{
-                    fontSize: "12.5px",
-                    fontWeight: 600,
+                    fontSize: "14px",
+                    fontWeight: 800,
                     textTransform: "uppercase",
-                    color: "var(--text-light)",
-                    letterSpacing: "0.05em",
-                    paddingLeft: "8px",
+                    color: "var(--text-primary)",
+                    letterSpacing: "0.08em",
+                    padding: "8px 12px",
+                    backgroundColor: "rgba(255, 255, 255, 0.05)",
+                    borderLeft: "3px solid var(--primary-color)",
+                    borderRadius: "0 6px 6px 0",
                   }}
                 >
                   {category.label}
-                </span>
+                </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
                   {allowedRoutes.map((route) => {
                     const isItemActive = pathname === route.href;

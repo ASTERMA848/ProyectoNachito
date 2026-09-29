@@ -1231,9 +1231,7 @@ html, body {
   .flowbite-mobile-menu-panel {
     top: 60px !important;
     max-height: calc(100vh - 60px) !important;
-    -webkit-backdrop-filter: blur(28px) saturate(160%);
-    backdrop-filter: blur(28px) saturate(160%);
-    background: rgba(8, 12, 26, 0.92) !important;
+    background: #05060A !important;
   }
 }
 
