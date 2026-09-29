@@ -13,6 +13,11 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
 
   const isAuthPage = pathname === "/login" || pathname === "/logout";
 
+  // Registrar componentes web de LiquidGlass UI en el cliente siempre
+  useEffect(() => {
+    import("@/lib/liquid-glass/liquid-glass.js").catch(() => {});
+  }, []);
+
   useEffect(() => {
     if (isAuthPage) {
       setLoading(false);
@@ -59,11 +64,6 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
     checkAuth();
   }, [pathname, router, isAuthPage]);
 
-  // Registrar componentes web de LiquidGlass UI en el cliente
-  useEffect(() => {
-    import("@/lib/liquid-glass/liquid-glass.js").catch(() => {});
-  }, []);
-
   // Aplicar el tema del usuario
   useEffect(() => {
     if (user?.theme) {
@@ -74,10 +74,17 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
         document.documentElement.classList.add("light");
         document.documentElement.classList.remove("dark");
       } else {
-        document.documentElement.classList.remove("dark", "light");
+        document.documentElement.classList.add("dark");
+        document.documentElement.classList.remove("light");
       }
+    } else {
+      document.documentElement.classList.add("dark");
     }
   }, [user?.theme]);
+
+  if (isAuthPage) {
+    return <>{children}</>;
+  }
 
   if (loading) {
     return (
@@ -115,10 +122,6 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
         </div>
       </div>
     );
-  }
-
-  if (isAuthPage) {
-    return <>{children}</>;
   }
 
   return (

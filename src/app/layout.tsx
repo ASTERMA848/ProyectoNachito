@@ -29,7 +29,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es" className={`${manrope.variable} ${jetbrainsMono.variable}`}>
+    <html lang="es" className={`dark ${manrope.variable} ${jetbrainsMono.variable}`}>
       <body className={manrope.className}>
         <LiquefyProvider theme="dark">
           <MainLayout>{children}</MainLayout>

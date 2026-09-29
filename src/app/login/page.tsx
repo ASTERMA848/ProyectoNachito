@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { GlassCard, LiquidCheckbox } from "@liquefy-ui/react";
+import { GlassCard } from "@liquefy-ui/react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -138,13 +138,31 @@ export default function LoginPage() {
             </div>
 
             {/* Show Password Checkbox */}
-            <div style={{ display: "flex", alignItems: "center", margin: 0 }}>
-              <LiquidCheckbox
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                cursor: "pointer",
+                userSelect: "none",
+                margin: "4px 0",
+              }}
+              onClick={() => setShowPassword(!showPassword)}
+            >
+              <input
+                type="checkbox"
                 checked={showPassword}
-                onCheckedChange={(checked) => setShowPassword(!!checked)}
-                label="Mostrar contraseña"
-                disabled={loading}
+                onChange={(e) => setShowPassword(e.target.checked)}
+                style={{
+                  width: "16px",
+                  height: "16px",
+                  cursor: "pointer",
+                  accentColor: "var(--primary-color)",
+                }}
               />
+              <span style={{ fontSize: "13px", color: "var(--text-secondary)", fontWeight: 500 }}>
+                Mostrar contraseña
+              </span>
             </div>
 
             {/* Submit Button */}
