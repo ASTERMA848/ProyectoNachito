@@ -60,18 +60,18 @@ export default function Header({ user }: { user?: { username: string; role: stri
 
   // Opciones completas con iconos para GlassDock (tamaño proporcionado y con presencia)
   const navItems = [
-    { href: "/", label: "Dashboard", category: "gestion", icon: <HomeIcon size={22} /> },
-    { href: "/operations", label: "Operaciones", category: "gestion", icon: <ArrowRightIcon size={22} /> },
-    { href: "/contacts", label: "Contactos", category: "gestion", icon: <UserIcon size={22} /> },
-    { href: "/accounts", label: "Cuentas Ctes.", category: "gestion", icon: <BriefcaseIcon size={22} /> },
-    { href: "/treasury", label: "Tesorería", category: "treasury", icon: <FolderIcon size={22} /> },
-    { href: "/settlements", label: "Liquidaciones", category: "treasury", icon: <CircleCheckIcon size={22} /> },
-    { href: "/reports", label: "Reportes", category: "treasury", icon: <ColumnsIcon size={22} /> },
-    { href: "/settings", label: "Configuración", category: "admin", icon: <SettingsIcon size={22} /> },
-    { href: "/audit", label: "Auditoría", category: "admin", icon: <EyeIcon size={22} /> },
-    { href: "/sql-console", label: "Consola SQL", category: "admin", icon: <CommandIcon size={22} /> },
-    { href: "/schema", label: "Diagrama ER", category: "admin", icon: <ComponentsIcon size={22} /> },
-    { href: "/manual", label: "Manual de Uso", category: "manual", icon: <InfoIcon size={22} /> },
+    { href: "/", label: "Dashboard", category: "gestion", icon: <HomeIcon size={26} /> },
+    { href: "/operations", label: "Operaciones", category: "gestion", icon: <ArrowRightIcon size={26} /> },
+    { href: "/contacts", label: "Contactos", category: "gestion", icon: <UserIcon size={26} /> },
+    { href: "/accounts", label: "Cuentas Ctes.", category: "gestion", icon: <BriefcaseIcon size={26} /> },
+    { href: "/treasury", label: "Tesorería", category: "treasury", icon: <FolderIcon size={26} /> },
+    { href: "/settlements", label: "Liquidaciones", category: "treasury", icon: <CircleCheckIcon size={26} /> },
+    { href: "/reports", label: "Reportes", category: "treasury", icon: <ColumnsIcon size={26} /> },
+    { href: "/settings", label: "Configuración", category: "admin", icon: <SettingsIcon size={26} /> },
+    { href: "/audit", label: "Auditoría", category: "admin", icon: <EyeIcon size={26} /> },
+    { href: "/sql-console", label: "Consola SQL", category: "admin", icon: <CommandIcon size={26} /> },
+    { href: "/schema", label: "Diagrama ER", category: "admin", icon: <ComponentsIcon size={26} /> },
+    { href: "/manual", label: "Manual de Uso", category: "manual", icon: <InfoIcon size={26} /> },
   ];
 
   // Filtrar según los permisos del usuario
@@ -97,7 +97,7 @@ export default function Header({ user }: { user?: { username: string; role: stri
             textDecoration: "none",
             color: "var(--text-primary)",
             fontWeight: 600,
-            fontSize: "16px",
+            fontSize: "20px",
             letterSpacing: "-0.025em",
           }}
         >
@@ -169,7 +169,7 @@ export default function Header({ user }: { user?: { username: string; role: stri
                 border: "none",
                 color: "var(--text-primary)",
                 cursor: "pointer",
-                fontSize: "14.5px",
+                fontSize: "16.5px",
                 fontWeight: 500,
                 padding: "8px 12px",
                 borderRadius: "var(--radius-lg)",
@@ -204,7 +204,7 @@ export default function Header({ user }: { user?: { username: string; role: stri
                     alignItems: "center",
                     justifyContent: "center",
                     fontWeight: 600,
-                    fontSize: "11.5px",
+                    fontSize: "13.5px",
                     fontFamily: "var(--font-jetbrains-mono)",
                     border: "1px solid rgba(103, 152, 255, 0.3)",
                   }}
@@ -213,7 +213,7 @@ export default function Header({ user }: { user?: { username: string; role: stri
                 </span>
               )}
               <span className="flowbite-desktop-username">{user.username}</span>
-              <span style={{ fontSize: "10px", color: "var(--text-light)" }}>▼</span>
+              <span style={{ fontSize: "12px", color: "var(--text-light)" }}>▼</span>
             </button>
 
             {/* Dropdown Menu */}
@@ -232,7 +232,7 @@ export default function Header({ user }: { user?: { username: string; role: stri
                   style={{
                     padding: "8px 16px",
                     borderBottom: "1px solid var(--border-color)",
-                    fontSize: "13px",
+                    fontSize: "15px",
                     color: "var(--text-secondary)",
                   }}
                 >
