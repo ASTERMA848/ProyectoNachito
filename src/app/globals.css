@@ -5,30 +5,31 @@
    deep ambient backdrop, and calm decelerating interactions.
    ========================================================================== */
 
+@import "../styles/tokens.css";
 @import "../styles/liquid-glass.css";
 
 :root, .dark, .light {
   color-scheme: dark;
 
-  /* --- LiquidGlass Core Mappings --- */
-  --bg-color: #070913;
-  --bg-card: rgba(255, 255, 255, 0.055);
-  --bg-sidebar: rgba(15, 18, 35, 0.7);
-  --bg-alt: rgba(255, 255, 255, 0.035);
+  /* --- LiquidGlass & OTS Shared Mappings --- */
+  --bg-color: var(--ots-bg-canvas);
+  --bg-card: var(--ots-surface-1);
+  --bg-sidebar: var(--ots-surface-1);
+  --bg-alt: var(--ots-surface-2);
 
-  --text-primary: #ffffff;
-  --text-secondary: rgba(255, 255, 255, 0.74);
-  --text-light: rgba(255, 255, 255, 0.45);
+  --text-primary: var(--ots-text-primary);
+  --text-secondary: var(--ots-text-secondary);
+  --text-light: var(--ots-text-muted);
 
-  --border-color: rgba(255, 255, 255, 0.16);
-  --border-color-medium: rgba(255, 255, 255, 0.26);
-  --border-subtle: rgba(255, 255, 255, 0.09);
+  --border-color: var(--ots-border);
+  --border-color-medium: var(--ots-border-hover);
+  --border-subtle: var(--ots-border-subtle);
 
-  /* Vivid Liquid Glass Accents */
-  --primary-color: #6798ff;
-  --primary-hover: #82aaff;
-  --hover-bg: rgba(255, 255, 255, 0.08);
-  --selected-bg: rgba(103, 152, 255, 0.18);
+  /* Vivid Accents */
+  --primary-color: var(--ots-primary);
+  --primary-hover: var(--ots-primary-hover);
+  --hover-bg: rgba(255, 255, 255, 0.04);
+  --selected-bg: var(--ots-primary-muted);
 
   /* --- Liquid Glass Badge Colors (Frosted Tint Pills) --- */
   --badge-green-bg: rgba(52, 211, 153, 0.16);

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { GlassDock, DockItem, LiquidTooltip, LiquidMenu } from "@liquefy-ui/react";
+import { LiquidMenu } from "@liquefy-ui/react";
 import {
   HomeIcon,
   ArrowRightIcon,
@@ -103,36 +103,37 @@ export default function Header({ user }: { user?: { username: string; role: stri
         </Link>
       </div>
 
-      {/* Center section: GlassDock (Liquefy UI) con LiquidTooltip en cada opción */}
-      <div className="flowbite-desktop-nav">
-        <GlassDock label="Navegación principal" position="inline">
-          {allowedNavItems.map((item) => {
-            const isActive = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
-            return (
-              <LiquidTooltip
-                key={item.href}
-                content={item.label}
-                placement="bottom"
-                delay={60}
-                {...({ active: isActive } as any)}
-              >
-                <DockItem
-                  label={item.label}
-                  icon={item.icon}
-                  active={isActive}
-                  title=""
-                  onClick={(e) => {
-                    if (e.metaKey || e.ctrlKey) {
-                      window.open(item.href, "_blank");
-                    } else {
-                      router.push(item.href);
-                    }
-                  }}
-                />
-              </LiquidTooltip>
-            );
-          })}
-        </GlassDock>
+      {/* Center section: Institutional OTS Navigation Tabs */}
+      <div className="flowbite-desktop-nav" style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+        {allowedNavItems.map((item) => {
+          const isActive = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "8px",
+                padding: "6px 14px",
+                height: "36px",
+                borderRadius: "var(--ots-radius-md)",
+                fontSize: "13.5px",
+                fontWeight: isActive ? 600 : 500,
+                color: isActive ? "var(--ots-text-primary)" : "var(--ots-text-secondary)",
+                backgroundColor: isActive ? "var(--ots-surface-2)" : "transparent",
+                borderBottom: isActive ? "2px solid var(--ots-primary)" : "2px solid transparent",
+                textDecoration: "none",
+                transition: "all 150ms cubic-bezier(0.16, 1, 0.3, 1)",
+              }}
+            >
+              <span style={{ display: "inline-flex", opacity: isActive ? 1 : 0.7 }}>
+                {item.icon}
+              </span>
+              <span>{item.label}</span>
+            </Link>
+          );
+        })}
       </div>
 
       {/* Right section: User Profile + Hamburger (Mobile) */}

@@ -1,0 +1,57 @@
+/* ==========================================================================
+   OBSIDIAN TRADING SYSTEM (OTS) — DESIGN TOKENS
+   Institutional Fintech & High-Density Trading Terminal Theme
+   ========================================================================== */
+
+:root {
+  /* --- Canvas & Surfaces --- */
+  --ots-bg-canvas: #07080C;
+  --ots-surface-1: #0E1017;
+  --ots-surface-2: #141722;
+  --ots-surface-3: #1A1D2B;
+  --ots-surface-inset: #0B0C12;
+
+  /* --- Borders & Dividers --- */
+  --ots-border: #1F2433;
+  --ots-border-subtle: rgba(255, 255, 255, 0.07);
+  --ots-border-hover: #334155;
+  --ots-border-focus: #3B82F6;
+
+  /* --- Brand & Action Colors --- */
+  --ots-primary: #3B82F6;
+  --ots-primary-hover: #2563EB;
+  --ots-primary-active: #1D4ED8;
+  --ots-primary-muted: rgba(59, 130, 246, 0.12);
+
+  /* --- Semantic Status Colors --- */
+  --ots-success: #10B981;
+  --ots-success-bg: rgba(16, 185, 129, 0.12);
+  --ots-success-border: rgba(16, 185, 129, 0.3);
+
+  --ots-warning: #F59E0B;
+  --ots-warning-bg: rgba(245, 158, 11, 0.12);
+  --ots-warning-border: rgba(245, 158, 11, 0.3);
+
+  --ots-danger: #EF4444;
+  --ots-danger-bg: rgba(239, 68, 68, 0.12);
+  --ots-danger-border: rgba(239, 68, 68, 0.3);
+
+  --ots-info: #6366F1;
+  --ots-info-bg: rgba(99, 102, 241, 0.12);
+
+  /* --- Typography Colors --- */
+  --ots-text-primary: #F8FAFC;
+  --ots-text-secondary: #94A3B8;
+  --ots-text-muted: #64748B;
+  --ots-text-disabled: #475569;
+
+  /* --- Geometry & Spacing --- */
+  --ots-radius-sm: 4px;
+  --ots-radius-md: 6px;
+  --ots-radius-lg: 10px;
+  --ots-radius-pill: 9999px;
+
+  /* --- Typography Families & Scales --- */
+  --ots-font-sans: 'Inter', var(--font-manrope), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --ots-font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
