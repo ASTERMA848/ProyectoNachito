@@ -273,7 +273,12 @@ export async function DELETE(
         });
 
         const txs = await tx.transaction.findMany({
-          where: { operationId: currentOp.id },
+          where: {
+            OR: [
+              { operationId: currentOp.id },
+              { concept: { contains: currentOp.operationNumber } },
+            ],
+          },
           include: { account: true },
         });
 
