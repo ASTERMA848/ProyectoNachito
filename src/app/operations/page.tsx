@@ -286,6 +286,28 @@ export default function OperationsPage() {
     });
   };
 
+  
+  const handleDeleteOperation = async (op: any) => {
+    const confirmDelete = confirm(`¿Está seguro que desea eliminar la operación ${op.operationNumber}? Esto revertirá las transacciones y ajustará los saldos de cuentas corrientes asociadas.`);
+    if (!confirmDelete) return;
+
+    try {
+      const res = await fetch(`/api/operations/${op.id}`, {
+        method: "DELETE",
+      });
+
+      if (res.ok) {
+        alert(`Operación ${op.operationNumber} eliminada y saldos ajustados correctamente.`);
+        fetchData();
+      } else {
+        const data = await res.json();
+        alert(data.error || "Error al eliminar la operación");
+      }
+    } catch (error) {
+      alert("Error de conexión al servidor");
+    }
+  };
+
   const handleSaveDistributedSale = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!distributedData.providerId || !distributedData.currencyId || !distributedData.exchangeRate) {

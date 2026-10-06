@@ -237,3 +237,85 @@ export async function PATCH(
     return NextResponse.json({ error: "Error en el servidor" }, { status: 400 });
   }
 }
+
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const user = await requireAuth();
+    if (!user) {
+      return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+    }
+
+    const operationId = params.id;
+
+    const op = await prisma.operation.findFirst({
+      where: { id: operationId, deletedAt: null },
+      include: {
+        childOperations: true,
+      },
+    });
+
+    if (!op) {
+      return NextResponse.json({ error: "Operación no encontrada" }, { status: 404 });
+    }
+
+    const now = new Date();
+
+    await prisma.$transaction(async (tx) => {
+      const opsToDelete = [op, ...(op.childOperations || [])];
+
+      for (const currentOp of opsToDelete) {
+        await tx.operation.update({
+          where: { id: currentOp.id },
+          data: { deletedAt: now, state: "CANCELED" },
+        });
+
+        const txs = await tx.transaction.findMany({
+          where: { operationId: currentOp.id },
+          include: { account: true },
+        });
+
+        for (const transaction of txs) {
+          const account = transaction.account;
+          if (!account) continue;
+
+          const adjustment = transaction.credit - transaction.debit;
+          const newBalance = account.balance + adjustment;
+
+          await tx.account.update({
+            where: { id: account.id },
+            data: { balance: newBalance },
+          });
+
+          await tx.transaction.create({
+            data: {
+              accountId: account.id,
+              operationId: currentOp.id,
+              concept: `Reversión por eliminación Op. ${currentOp.operationNumber}`,
+              debit: transaction.credit,
+              credit: transaction.debit,
+              balance: newBalance,
+              observations: "Ajuste automático por eliminación de operación",
+            },
+          });
+        }
+      }
+    });
+
+    await logAudit({
+      userId: user.id,
+      action: "DELETE",
+      entity: "Operation",
+      entityId: operationId,
+      oldValues: { operationNumber: op.operationNumber, state: op.state },
+    });
+
+    return NextResponse.json({ success: true, message: "Operación eliminada y saldos ajustados" }, { status: 200 });
+  } catch (error: any) {
+    console.error("Operation DELETE error:", error);
+    return NextResponse.json({ error: "Error al eliminar la operación" }, { status: 500 });
+  }
+}
+
