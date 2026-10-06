@@ -20,6 +20,15 @@ export async function GET(req: NextRequest) {
         provider: true,
         originCurrency: true,
         destCurrency: true,
+        parentOperation: true,
+        childOperations: {
+          include: {
+            client: true,
+            provider: true,
+            originCurrency: true,
+            destCurrency: true,
+          },
+        },
       },
       orderBy: { createdAt: "desc" },
     });

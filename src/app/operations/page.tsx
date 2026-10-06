@@ -39,6 +39,22 @@ export default function OperationsPage() {
   const [historyLogs, setHistoryLogs] = useState<any[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
 
+  const [isTypeSelectorOpen, setIsTypeSelectorOpen] = useState(false);
+  const [isDistributedModalOpen, setIsDistributedModalOpen] = useState(false);
+  const [isSubmittingDistributed, setIsSubmittingDistributed] = useState(false);
+  const [expandedOpIds, setExpandedOpIds] = useState<string[]>([]);
+
+  const [distributedData, setDistributedData] = useState({
+    providerId: "",
+    currencyId: "",
+    exchangeRate: "",
+    operationDate: new Date().toISOString().split("T")[0],
+    observations: "",
+    items: [
+      { clientId: "", amount: "", observations: "", isPaid: true }
+    ],
+  });
+
   const [formData, setFormData] = useState({
     clientId: "",
     providerId: "",
@@ -242,7 +258,89 @@ export default function OperationsPage() {
     }
   };
 
+  const toggleExpandOp = (opId: string) => {
+    setExpandedOpIds((prev) =>
+      prev.includes(opId) ? prev.filter((id) => id !== opId) : [...prev, opId]
+    );
+  };
+
+  const handleAddDistributedItem = () => {
+    setDistributedData((prev) => ({
+      ...prev,
+      items: [...prev.items, { clientId: "", amount: "", observations: "", isPaid: true }],
+    }));
+  };
+
+  const handleRemoveDistributedItem = (index: number) => {
+    setDistributedData((prev) => ({
+      ...prev,
+      items: prev.items.filter((_, i) => i !== index),
+    }));
+  };
+
+  const handleDistributedItemChange = (index: number, field: string, value: any) => {
+    setDistributedData((prev) => {
+      const newItems = [...prev.items];
+      newItems[index] = { ...newItems[index], [field]: value };
+      return { ...prev, items: newItems };
+    });
+  };
+
+  const handleSaveDistributedSale = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!distributedData.providerId || !distributedData.currencyId || !distributedData.exchangeRate) {
+      alert("Complete los datos requeridos de la cabecera (Proveedor, Moneda, Cotización)");
+      return;
+    }
+    if (distributedData.items.length === 0) {
+      alert("Debe agregar al menos una línea de cliente");
+      return;
+    }
+    for (let i = 0; i < distributedData.items.length; i++) {
+      const item = distributedData.items[i];
+      if (!item.clientId) {
+        alert(`Seleccione el cliente en la línea #${i + 1}`);
+        return;
+      }
+      const val = parseFloat(item.amount);
+      if (isNaN(val) || val <= 0) {
+        alert(`El monto en la línea #${i + 1} debe ser un número positivo`);
+        return;
+      }
+    }
+
+    setIsSubmittingDistributed(true);
+    try {
+      const res = await fetch("/api/operations/distributed-sale", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(distributedData),
+      });
+
+      if (res.ok) {
+        setIsDistributedModalOpen(false);
+        setDistributedData({
+          providerId: "",
+          currencyId: "",
+          exchangeRate: "",
+          operationDate: new Date().toISOString().split("T")[0],
+          observations: "",
+          items: [{ clientId: "", amount: "", observations: "", isPaid: true }],
+        });
+        fetchData();
+      } else {
+        const err = await res.json();
+        alert(err.error || "Error al crear la operación distribuida");
+      }
+    } catch (error) {
+      alert("Error de conexión al servidor");
+    } finally {
+      setIsSubmittingDistributed(false);
+    }
+  };
+
   const filtered = operations.filter((op) => {
+    if (op.parentOperationId) return false; // Las hijas se muestran anidadas bajo su padre
     if (filterState && op.state !== filterState) return false;
 
     if (startDate) {
@@ -1166,6 +1264,413 @@ export default function OperationsPage() {
           </div>
         </Portal>
       )}
+
+      {/* --------------------------------------------------------- */}
+      {/* MODAL 1: SELECTOR DE TIPO DE OPERACIÓN                     */}
+      {/* --------------------------------------------------------- */}
+      {isTypeSelectorOpen && (
+        <Portal>
+          <div className="flowbite-drawer-overlay" onClick={() => setIsTypeSelectorOpen(false)}>
+            <div
+              style={{
+                backgroundColor: "var(--ots-surface-1)",
+                border: "1px solid var(--ots-border)",
+                borderRadius: "var(--ots-radius-lg)",
+                width: "90%",
+                maxWidth: "600px",
+                padding: "24px",
+                margin: "auto",
+                boxShadow: "0 20px 40px rgba(0,0,0,0.8)",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+                <div>
+                  <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--ots-text-muted)", letterSpacing: "0.08em" }}>
+                    NUEVA OPERACIÓN
+                  </span>
+                  <h2 style={{ fontSize: "18px", fontWeight: 700, color: "var(--ots-text-primary)", marginTop: "2px" }}>
+                    Seleccione el Tipo de Operación
+                  </h2>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsTypeSelectorOpen(false)}
+                  style={{ background: "none", border: "none", color: "var(--ots-text-muted)", fontSize: "18px", cursor: "pointer" }}
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                {/* Opción 1: Venta distribuida por clientes */}
+                <div
+                  onClick={() => {
+                    setIsTypeSelectorOpen(false);
+                    setIsDistributedModalOpen(true);
+                  }}
+                  style={{
+                    backgroundColor: "var(--ots-surface-2)",
+                    border: "1px solid var(--ots-primary)",
+                    borderRadius: "var(--ots-radius-md)",
+                    padding: "16px",
+                    cursor: "pointer",
+                    transition: "all 150ms ease",
+                  }}
+                  onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "rgba(59, 130, 246, 0.12)")}
+                  onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "var(--ots-surface-2)")}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: "15px", fontWeight: 700, color: "var(--ots-text-primary)" }}>
+                      1. Venta distribuida por clientes
+                    </span>
+                    <span style={{ fontSize: "11px", fontWeight: 700, padding: "2px 8px", borderRadius: "999px", backgroundColor: "var(--ots-primary-muted)", color: "var(--ots-primary)" }}>
+                      Recomendado
+                    </span>
+                  </div>
+                  <p style={{ fontSize: "12.5px", color: "var(--ots-text-secondary)", marginTop: "6px", lineHeight: "1.4" }}>
+                    Cabecera única de Proveedor, Moneda y Cotización. Permite distribuir en múltiples líneas por cliente, generando operaciones individuales y actualizando saldos automáticamente en cuenta corriente.
+                  </p>
+                </div>
+
+                {/* Opción 2: Operación Estándar 1 a 1 */}
+                <div
+                  onClick={() => {
+                    setIsTypeSelectorOpen(false);
+                    setEditingId(null);
+                    setFormData({
+                      clientId: "",
+                      providerId: "",
+                      originCurrencyId: "",
+                      originAmount: "",
+                      destCurrencyId: "",
+                      destAmount: "",
+                      exchangeRate: "",
+                      operationDate: new Date().toISOString().split("T")[0],
+                      observations: "",
+                      state: "PENDING",
+                    });
+                    setIsModalOpen(true);
+                  }}
+                  style={{
+                    backgroundColor: "var(--ots-surface-inset)",
+                    border: "1px solid var(--ots-border)",
+                    borderRadius: "var(--ots-radius-md)",
+                    padding: "16px",
+                    cursor: "pointer",
+                    transition: "all 150ms ease",
+                  }}
+                  onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "var(--ots-surface-2)")}
+                  onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "var(--ots-surface-inset)")}
+                >
+                  <span style={{ fontSize: "15px", fontWeight: 700, color: "var(--ots-text-primary)" }}>
+                    2. Operación Estándar (1 a 1)
+                  </span>
+                  <p style={{ fontSize: "12.5px", color: "var(--ots-text-secondary)", marginTop: "6px", lineHeight: "1.4" }}>
+                    Registro individual directo entre un único cliente y un proveedor.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </Portal>
+      )}
+
+      {/* --------------------------------------------------------- */}
+      {/* MODAL 2: FORMULARIO VENTA DISTRIBUIDA POR CLIENTES (TIPO 1) */}
+      {/* --------------------------------------------------------- */}
+      {isDistributedModalOpen && (
+        <Portal>
+          <div className="flowbite-drawer-overlay" onClick={() => setIsDistributedModalOpen(false)}>
+            <div
+              style={{
+                backgroundColor: "var(--ots-surface-1)",
+                borderLeft: "1px solid var(--ots-border)",
+                width: "100%",
+                maxWidth: "850px",
+                height: "100vh",
+                display: "flex",
+                flexDirection: "column",
+                marginLeft: "auto",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div
+                style={{
+                  padding: "18px 24px",
+                  borderBottom: "1px solid var(--ots-border)",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  backgroundColor: "var(--ots-surface-2)",
+                }}
+              >
+                <div>
+                  <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--ots-primary)", letterSpacing: "0.08em" }}>
+                    TIPO 1
+                  </span>
+                  <h2 style={{ fontSize: "17px", fontWeight: 700, color: "var(--ots-text-primary)", marginTop: "2px" }}>
+                    Venta Distribuida por Clientes
+                  </h2>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsDistributedModalOpen(false)}
+                  style={{ background: "none", border: "none", color: "var(--ots-text-muted)", fontSize: "20px", cursor: "pointer" }}
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Scrollable Form */}
+              <div style={{ flex: 1, overflowY: "auto", padding: "24px" }}>
+                <form id="distributed-form" onSubmit={handleSaveDistributedSale}>
+                  {/* SECCIÓN CABECERA */}
+                  <div
+                    style={{
+                      backgroundColor: "var(--ots-surface-inset)",
+                      border: "1px solid var(--ots-border)",
+                      borderRadius: "var(--ots-radius-md)",
+                      padding: "18px",
+                      marginBottom: "24px",
+                    }}
+                  >
+                    <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--ots-text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: "14px" }}>
+                      1. Cabecera de la Operación
+                    </span>
+
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 200px), 1fr))", gap: "16px" }}>
+                      {/* Proveedor */}
+                      <div className="flowbite-form-group">
+                        <label className="flowbite-form-label">Proveedor *</label>
+                        <LiquidSelect
+                          value={distributedData.providerId}
+                          onChange={(val) => setDistributedData({ ...distributedData, providerId: val })}
+                          placeholder="Seleccionar Proveedor..."
+                          required
+                          options={providers.map((p) => ({ value: p.id, label: p.name }))}
+                        />
+                      </div>
+
+                      {/* Moneda */}
+                      <div className="flowbite-form-group">
+                        <label className="flowbite-form-label">Moneda *</label>
+                        <LiquidSelect
+                          value={distributedData.currencyId}
+                          onChange={(val) => setDistributedData({ ...distributedData, currencyId: val })}
+                          placeholder="Seleccionar Moneda..."
+                          required
+                          options={currencies.map((c) => ({ value: c.id, label: `${c.code} - ${c.name}` }))}
+                        />
+                      </div>
+
+                      {/* Cotización */}
+                      <div className="flowbite-form-group">
+                        <label className="flowbite-form-label">Cotización (Valor de Venta en ARS) *</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          required
+                          value={distributedData.exchangeRate}
+                          onChange={(e) => setDistributedData({ ...distributedData, exchangeRate: e.target.value })}
+                          className="flowbite-input"
+                          placeholder="ej: 1500.00"
+                        />
+                      </div>
+
+                      {/* Fecha */}
+                      <div className="flowbite-form-group">
+                        <label className="flowbite-form-label">Fecha Operativa *</label>
+                        <input
+                          type="date"
+                          required
+                          value={distributedData.operationDate}
+                          onChange={(e) => setDistributedData({ ...distributedData, operationDate: e.target.value })}
+                          className="flowbite-input"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Observaciones generales */}
+                    <div className="flowbite-form-group" style={{ marginTop: "14px" }}>
+                      <label className="flowbite-form-label">Observaciones Generales de Cabecera</label>
+                      <input
+                        type="text"
+                        value={distributedData.observations}
+                        onChange={(e) => setDistributedData({ ...distributedData, observations: e.target.value })}
+                        className="flowbite-input"
+                        placeholder="ej: Lote distribuido turno mañana..."
+                      />
+                    </div>
+                  </div>
+
+                  {/* SECCIÓN DETALLE / LÍNEAS POR CLIENTE */}
+                  <div
+                    style={{
+                      backgroundColor: "var(--ots-surface-inset)",
+                      border: "1px solid var(--ots-border)",
+                      borderRadius: "var(--ots-radius-md)",
+                      padding: "18px",
+                    }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
+                      <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--ots-text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                        2. Detalle de Clientes & Montos
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleAddDistributedItem}
+                        className="flowbite-btn flowbite-btn-primary"
+                        style={{ padding: "6px 14px", fontSize: "12px" }}
+                      >
+                        + Agregar línea
+                      </button>
+                    </div>
+
+                    {/* Tabla Dinámica de Líneas */}
+                    <div style={{ overflowX: "auto" }}>
+                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
+                        <thead>
+                          <tr style={{ borderBottom: "1px solid var(--ots-border)", color: "var(--ots-text-muted)", fontSize: "11px", textTransform: "uppercase" }}>
+                            <th style={{ padding: "8px", textAlign: "left", width: "30%" }}>Cliente *</th>
+                            <th style={{ padding: "8px", textAlign: "left", width: "20%" }}>Monto *</th>
+                            <th style={{ padding: "8px", textAlign: "left", width: "30%" }}>Observaciones</th>
+                            <th style={{ padding: "8px", textAlign: "center", width: "12%" }}>Pagado</th>
+                            <th style={{ padding: "8px", textAlign: "center", width: "8%" }}>Acción</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {distributedData.items.map((item, index) => (
+                            <tr key={index} style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                              <td style={{ padding: "8px" }}>
+                                <LiquidSelect
+                                  value={item.clientId}
+                                  onChange={(val) => handleDistributedItemChange(index, "clientId", val)}
+                                  placeholder="Cliente..."
+                                  options={clients.map((c) => ({ value: c.id, label: c.name }))}
+                                />
+                              </td>
+                              <td style={{ padding: "8px" }}>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  required
+                                  value={item.amount}
+                                  onChange={(e) => handleDistributedItemChange(index, "amount", e.target.value)}
+                                  className="flowbite-input"
+                                  placeholder="0.00"
+                                  style={{ fontFamily: "var(--ots-font-mono)" }}
+                                />
+                              </td>
+                              <td style={{ padding: "8px" }}>
+                                <input
+                                  type="text"
+                                  value={item.observations}
+                                  onChange={(e) => handleDistributedItemChange(index, "observations", e.target.value)}
+                                  className="flowbite-input"
+                                  placeholder="Notas..."
+                                />
+                              </td>
+                              <td style={{ padding: "8px", textAlign: "center" }}>
+                                <select
+                                  value={item.isPaid ? "true" : "false"}
+                                  onChange={(e) => handleDistributedItemChange(index, "isPaid", e.target.value === "true")}
+                                  className="flowbite-input"
+                                  style={{ padding: "6px", fontSize: "12px" }}
+                                >
+                                  <option value="true">Sí (Pagado)</option>
+                                  <option value="false">No (Fiado)</option>
+                                </select>
+                              </td>
+                              <td style={{ padding: "8px", textAlign: "center" }}>
+                                {distributedData.items.length > 1 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveDistributedItem(index)}
+                                    style={{
+                                      background: "none",
+                                      border: "none",
+                                      color: "var(--ots-danger)",
+                                      cursor: "pointer",
+                                      fontSize: "16px",
+                                    }}
+                                    title="Eliminar línea"
+                                  >
+                                    ✕
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </form>
+              </div>
+
+              {/* Footer Summary & Actions */}
+              <div
+                style={{
+                  padding: "18px 24px",
+                  borderTop: "1px solid var(--ots-border)",
+                  backgroundColor: "var(--ots-surface-2)",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  flexWrap: "wrap",
+                  gap: "16px",
+                }}
+              >
+                <div>
+                  {(() => {
+                    const totalMonto = distributedData.items.reduce((s, i) => s + (parseFloat(i.amount) || 0), 0);
+                    const rate = parseFloat(distributedData.exchangeRate) || 0;
+                    const totalARS = totalMonto * rate;
+                    const selectedCur = currencies.find((c) => c.id === distributedData.currencyId);
+                    return (
+                      <div style={{ display: "flex", gap: "20px" }}>
+                        <div>
+                          <span style={{ fontSize: "11px", color: "var(--ots-text-muted)", textTransform: "uppercase", display: "block" }}>Líneas / Total Moneda</span>
+                          <strong style={{ fontSize: "15px", fontFamily: "var(--ots-font-mono)", color: "var(--ots-text-primary)" }}>
+                            {distributedData.items.length} líneas | {totalMonto.toLocaleString()} {selectedCur?.code || ""}
+                          </strong>
+                        </div>
+                        <div>
+                          <span style={{ fontSize: "11px", color: "var(--ots-text-muted)", textTransform: "uppercase", display: "block" }}>Total Convertido en ARS</span>
+                          <strong style={{ fontSize: "15px", fontFamily: "var(--ots-font-mono)", color: "var(--ots-success)" }}>
+                            $ {totalARS.toLocaleString()} ARS
+                          </strong>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+
+                <div style={{ display: "flex", gap: "10px" }}>
+                  <button
+                    type="button"
+                    onClick={() => setIsDistributedModalOpen(false)}
+                    className="flowbite-btn flowbite-btn-text"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    form="distributed-form"
+                    disabled={isSubmittingDistributed}
+                    className="flowbite-btn flowbite-btn-primary"
+                  >
+                    {isSubmittingDistributed ? "Guardando..." : "Guardar Operación Agrupadora"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </Portal>
+      )}
+
     </>
   );
 }

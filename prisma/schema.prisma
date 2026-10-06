@@ -137,9 +137,15 @@ model Operation {
   id               String       @id @default(uuid())
   operationNumber  String       @unique 
   
-  clientId         String
+  type             String       @default("STANDARD") // STANDARD, DISTRIBUTED_SALE, etc.
+
+  parentOperationId String?
+  parentOperation   Operation?  @relation("ParentChildOps", fields: [parentOperationId], references: [id], onDelete: Cascade)
+  childOperations   Operation[] @relation("ParentChildOps")
+
+  clientId         String?
   providerId       String
-  client           Contact      @relation("ClientOperations", fields: [clientId], references: [id])
+  client           Contact?     @relation("ClientOperations", fields: [clientId], references: [id])
   provider         Contact      @relation("ProviderOperations", fields: [providerId], references: [id])
 
   originCurrencyId String
@@ -152,8 +158,9 @@ model Operation {
   exchangeRate     Float
   operationDate    DateTime
 
+  isPaid           Boolean      @default(false)
   observations     String?
-  state            String       @default("PENDING") // PENDING, PROCESSING, COMPLETED, CANCELED
+  state            String       @default("PENDING") // PENDING, PARTIAL, COMPLETED, CANCELED
 
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
@@ -163,6 +170,7 @@ model Operation {
   attachments      Attachment[]
   comments         InternalComment[]
   settlements      Settlement[]
+  transactions     Transaction[] @relation("OpTransactions")
 }
 
 model OperationStateHistory {
@@ -216,6 +224,7 @@ model Account {
 model Transaction {
   id          String    @id @default(uuid())
   accountId   String
+  operationId String?
   date        DateTime  @default(now())
   concept     String
   debit       Float     @default(0.0)
@@ -224,6 +233,7 @@ model Transaction {
   observations String?
   
   account     Account   @relation(fields: [accountId], references: [id])
+  operation   Operation? @relation("OpTransactions", fields: [operationId], references: [id])
 }
 
 // ---------------------------------------------------------
