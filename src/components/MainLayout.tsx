@@ -33,7 +33,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
           
           const role = data.user.role;
           const username = data.user.username;
-          const isAuditorRoute = pathname === "/audit" || pathname === "/sql-console" || pathname === "/schema";
+          const isAuditorRoute = pathname === "/audit" || pathname === "/sql-console";
           
           if (username === "admin") {
             // El admin hardcodeado tiene acceso a todo

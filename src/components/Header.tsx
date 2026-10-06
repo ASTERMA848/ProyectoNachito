@@ -9,13 +9,9 @@ import {
   ArrowRightIcon,
   UserIcon,
   BriefcaseIcon,
-  FolderIcon,
-  CircleCheckIcon,
-  ColumnsIcon,
   SettingsIcon,
   EyeIcon,
   CommandIcon,
-  ComponentsIcon,
   InfoIcon,
 } from "@liquefy-ui/icons";
 
@@ -38,22 +34,12 @@ export default function Header({ user }: { user?: { username: string; role: stri
       ],
     },
     {
-      id: "treasury",
-      label: "Tesorería y Pagos",
-      routes: [
-        { href: "/treasury", label: "Tesorería" },
-        { href: "/settlements", label: "Liquidaciones" },
-        { href: "/reports", label: "Reportes" },
-      ],
-    },
-    {
       id: "admin",
       label: "Administración",
       routes: [
         { href: "/settings", label: "Configuración" },
         { href: "/audit", label: "Auditoría" },
         { href: "/sql-console", label: "Consola SQL" },
-        { href: "/schema", label: "Diagrama ER" },
       ],
     },
   ];
@@ -64,13 +50,9 @@ export default function Header({ user }: { user?: { username: string; role: stri
     { href: "/operations", label: "Operaciones", category: "gestion", icon: <ArrowRightIcon size={26} /> },
     { href: "/contacts", label: "Contactos", category: "gestion", icon: <UserIcon size={26} /> },
     { href: "/accounts", label: "Cuentas Ctes.", category: "gestion", icon: <BriefcaseIcon size={26} /> },
-    { href: "/treasury", label: "Tesorería", category: "treasury", icon: <FolderIcon size={26} /> },
-    { href: "/settlements", label: "Liquidaciones", category: "treasury", icon: <CircleCheckIcon size={26} /> },
-    { href: "/reports", label: "Reportes", category: "treasury", icon: <ColumnsIcon size={26} /> },
     { href: "/settings", label: "Configuración", category: "admin", icon: <SettingsIcon size={26} /> },
     { href: "/audit", label: "Auditoría", category: "admin", icon: <EyeIcon size={26} /> },
     { href: "/sql-console", label: "Consola SQL", category: "admin", icon: <CommandIcon size={26} /> },
-    { href: "/schema", label: "Diagrama ER", category: "admin", icon: <ComponentsIcon size={26} /> },
     { href: "/manual", label: "Manual de Uso", category: "manual", icon: <InfoIcon size={26} /> },
   ];
 
@@ -78,10 +60,10 @@ export default function Header({ user }: { user?: { username: string; role: stri
   const allowedNavItems = navItems.filter((item) => {
     if (user?.username === "admin") return true;
     if (user?.role === "AUDITOR") {
-      return ["/settings", "/audit", "/sql-console", "/schema"].includes(item.href);
+      return ["/settings", "/audit", "/sql-console"].includes(item.href);
     }
     // ADMIN y OPERATOR
-    return !["/audit", "/sql-console", "/schema"].includes(item.href);
+    return !["/audit", "/sql-console"].includes(item.href);
   });
 
   return (

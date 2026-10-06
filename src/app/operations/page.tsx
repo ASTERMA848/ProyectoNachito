@@ -719,21 +719,13 @@ export default function OperationsPage() {
                         </div>
                       </LiquidTableCell>
                       <LiquidTableCell align="right">
-                        <LiquidMenu
-                          align="end"
-                          items={[
-                            { label: "✏️ Editar", onSelect: () => handleEdit(op) },
-                            { label: "📜 Tracking de Historial", onSelect: () => openHistoryModal(op) }
-                          ]}
-                          trigger={
-                            <button
-                              className="flowbite-btn flowbite-btn-text"
-                              style={{ padding: "4px 8px", fontSize: "12px", color: "var(--color-ash)" }}
-                            >
-                              Acciones ▾
-                            </button>
-                          }
-                        />
+                        <button
+                          onClick={() => handleEdit(op)}
+                          className="flowbite-btn flowbite-btn-text"
+                          style={{ padding: "4px 8px", fontSize: "12px" }}
+                        >
+                          ️ Editar
+                        </button>
                       </LiquidTableCell>
                     </LiquidTableRow>
                   ))
@@ -859,21 +851,13 @@ export default function OperationsPage() {
                   }}
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <LiquidMenu
-                    align="end"
-                    items={[
-                      { label: "✏️ Editar Ficha", onSelect: () => handleEdit(op) },
-                      { label: "📜 Tracking de Historial", onSelect: () => openHistoryModal(op) }
-                    ]}
-                    trigger={
-                      <button
-                        className="flowbite-btn flowbite-btn-text"
-                        style={{ padding: "6px 12px", fontSize: "12px", color: "var(--color-ash)" }}
-                      >
-                        Acciones ▾
-                      </button>
-                    }
-                  />
+                  <button
+                    onClick={() => handleEdit(op)}
+                    className="flowbite-btn flowbite-btn-text"
+                    style={{ padding: "6px 12px", fontSize: "12px" }}
+                  >
+                    ️ Editar Ficha
+                  </button>
                 </div>
               </GlassCard>
             ))
@@ -1179,108 +1163,6 @@ export default function OperationsPage() {
                 </button>
               </div>
             </GlassCard>
-          </div>
-        </Portal>
-      )}
-
-      {historyModalOp && (
-        <Portal>
-          <div className="flowbite-drawer-overlay" onClick={() => setHistoryModalOp(null)}>
-            <div className="flowbite-drawer" style={{ width: "100%", maxWidth: "600px" }} onClick={(e) => e.stopPropagation()}>
-              <div className="flowbite-drawer-header">
-                <span style={{ fontSize: "15px", fontWeight: 700, color: "#ffffff", display: "flex", alignItems: "center", gap: "6px" }}>
-                  📜 Tracking de Operación {historyModalOp.operationNumber}
-                </span>
-                <button onClick={() => setHistoryModalOp(null)} className="flowbite-drawer-close">✕</button>
-              </div>
-              <div className="flowbite-drawer-body">
-                {historyLoading ? (
-                  <div style={{ textAlign: "center", padding: "2rem", color: "var(--text-secondary)" }}>Cargando historial...</div>
-                ) : historyLogs.length === 0 ? (
-                  <div style={{ textAlign: "center", padding: "2rem", color: "var(--text-secondary)" }}>No hay cambios registrados.</div>
-                ) : (
-                  <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-                    {historyLogs.map((log) => {
-                      const oldVals = log.oldValues ? JSON.parse(log.oldValues) : {};
-                      const newVals = log.newValues ? JSON.parse(log.newValues) : {};
-                      const fieldsChanged = Object.keys(newVals);
-                      return (
-                        <div key={log.id} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "8px", padding: "12px" }}>
-                          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px", fontSize: "12px", color: "var(--text-secondary)" }}>
-                            <span><strong>{log.user?.username || "Usuario"}</strong> ({log.action})</span>
-                            <span>{new Date(log.createdAt).toLocaleString()}</span>
-                          </div>
-                          <div style={{ fontSize: "13px" }}>
-                            {fieldsChanged.map(field => {
-                              const label = field === "state" ? "Estado" : field === "originAmount" ? "Monto Origen" : field === "destAmount" ? "Monto Destino" : field;
-                              return (
-                                <div key={field} style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "4px" }}>
-                                  <span style={{ color: "var(--color-ash)" }}>{label}:</span>
-                                  <span style={{ textDecoration: "line-through", opacity: 0.6 }}>{oldVals[field] || "-"}</span>
-                                  <span>→</span>
-                                  <span style={{ color: "var(--primary-color)" }}>{newVals[field] || "-"}</span>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </Portal>
-      )}
-
-      {historyModalOp && (
-        <Portal>
-          <div className="flowbite-drawer-overlay" onClick={() => setHistoryModalOp(null)}>
-            <div className="flowbite-drawer" style={{ width: "100%", maxWidth: "600px" }} onClick={(e) => e.stopPropagation()}>
-              <div className="flowbite-drawer-header">
-                <span style={{ fontSize: "15px", fontWeight: 700, color: "#ffffff", display: "flex", alignItems: "center", gap: "6px" }}>
-                  📜 Tracking de Operación {historyModalOp.operationNumber}
-                </span>
-                <button onClick={() => setHistoryModalOp(null)} className="flowbite-drawer-close">✕</button>
-              </div>
-              <div className="flowbite-drawer-body">
-                {historyLoading ? (
-                  <div style={{ textAlign: "center", padding: "2rem", color: "var(--text-secondary)" }}>Cargando historial...</div>
-                ) : historyLogs.length === 0 ? (
-                  <div style={{ textAlign: "center", padding: "2rem", color: "var(--text-secondary)" }}>No hay cambios registrados.</div>
-                ) : (
-                  <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-                    {historyLogs.map((log) => {
-                      const oldVals = log.oldValues ? JSON.parse(log.oldValues) : {};
-                      const newVals = log.newValues ? JSON.parse(log.newValues) : {};
-                      const fieldsChanged = Object.keys(newVals);
-                      return (
-                        <div key={log.id} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "8px", padding: "12px" }}>
-                          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px", fontSize: "12px", color: "var(--text-secondary)" }}>
-                            <span><strong>{log.user?.username || "Usuario"}</strong> ({log.action})</span>
-                            <span>{new Date(log.createdAt).toLocaleString()}</span>
-                          </div>
-                          <div style={{ fontSize: "13px" }}>
-                            {fieldsChanged.map(field => {
-                              const label = field === "state" ? "Estado" : field === "originAmount" ? "Monto Origen" : field === "destAmount" ? "Monto Destino" : field;
-                              return (
-                                <div key={field} style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "4px" }}>
-                                  <span style={{ color: "var(--color-ash)" }}>{label}:</span>
-                                  <span style={{ textDecoration: "line-through", opacity: 0.6 }}>{oldVals[field] || "-"}</span>
-                                  <span>→</span>
-                                  <span style={{ color: "var(--primary-color)" }}>{newVals[field] || "-"}</span>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </div>
           </div>
         </Portal>
       )}

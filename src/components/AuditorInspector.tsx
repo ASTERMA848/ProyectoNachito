@@ -61,8 +61,6 @@ export default function AuditorInspector({ user }: { user: any }) {
   if (pathname.includes("/operations")) inferredModel = "Operation";
   else if (pathname.includes("/contacts")) inferredModel = "Contact";
   else if (pathname.includes("/accounts")) inferredModel = "Account";
-  else if (pathname.includes("/treasury")) inferredModel = "TreasuryAccount / Movement";
-  else if (pathname.includes("/settlements")) inferredModel = "Settlement";
   else if (pathname.includes("/settings")) {
     // Es difícil saber exacto en settings, pero damos pistas
     inferredModel = "Currency / User / Tag / Settings";

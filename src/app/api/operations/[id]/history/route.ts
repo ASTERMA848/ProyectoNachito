@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { requireAuth } from "@/lib/session";
+import { requireAdminOrAuditor } from "@/lib/session";
 
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   try {
-    const user = await requireAuth();
+    const user = await requireAdminOrAuditor();
     if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
     const operationId = params.id;
@@ -30,3 +30,4 @@ export async function GET(request: Request, { params }: { params: { id: string }
     return NextResponse.json({ error: "Error en el servidor" }, { status: 500 });
   }
 }
+
