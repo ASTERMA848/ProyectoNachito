@@ -824,13 +824,35 @@ export default function OperationsPage() {
                         </div>
                       </LiquidTableCell>
                       <LiquidTableCell align="right">
-                        <button
-                          onClick={() => handleEdit(op)}
-                          className="flowbite-btn flowbite-btn-text"
-                          style={{ padding: "4px 8px", fontSize: "12px" }}
-                        >
-                          ️ Editar
-                        </button>
+                        <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end" }} onClick={(e) => e.stopPropagation()}>
+                          <button
+                            type="button"
+                            onClick={() => handleEdit(op)}
+                            className="flowbite-btn flowbite-btn-text"
+                            style={{ padding: "4px 8px", fontSize: "12px" }}
+                            title="Editar Ficha"
+                          >
+                            ✏️ Editar
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => openHistoryModal(op)}
+                            className="flowbite-btn flowbite-btn-text"
+                            style={{ padding: "4px 8px", fontSize: "12px" }}
+                            title="Ver Historial"
+                          >
+                            📜 Historial
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteOperation(op)}
+                            className="flowbite-btn flowbite-btn-text"
+                            style={{ padding: "4px 8px", fontSize: "12px", color: "var(--ots-danger)" }}
+                            title="Eliminar Registro y ajustar saldos"
+                          >
+                            🗑️ Eliminar
+                          </button>
+                        </div>
                       </LiquidTableCell>
                     </LiquidTableRow>
                   ))
@@ -956,13 +978,32 @@ export default function OperationsPage() {
                   }}
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <button
-                    onClick={() => handleEdit(op)}
-                    className="flowbite-btn flowbite-btn-text"
-                    style={{ padding: "6px 12px", fontSize: "12px" }}
-                  >
-                    ️ Editar Ficha
-                  </button>
+                  <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                    <button
+                      type="button"
+                      onClick={() => handleEdit(op)}
+                      className="flowbite-btn flowbite-btn-text"
+                      style={{ padding: "6px 12px", fontSize: "12px" }}
+                    >
+                      ✏️ Editar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openHistoryModal(op)}
+                      className="flowbite-btn flowbite-btn-text"
+                      style={{ padding: "6px 12px", fontSize: "12px" }}
+                    >
+                      📜 Historial
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteOperation(op)}
+                      className="flowbite-btn flowbite-btn-text"
+                      style={{ padding: "6px 12px", fontSize: "12px", color: "var(--ots-danger)" }}
+                    >
+                      🗑️ Eliminar
+                    </button>
+                  </div>
                 </div>
               </GlassCard>
             ))
