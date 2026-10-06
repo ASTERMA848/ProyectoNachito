@@ -486,22 +486,7 @@ export default function OperationsPage() {
               <button
                 type="button"
                 className="flowbite-btn flowbite-btn-primary"
-                onClick={() => {
-                  setEditingId(null);
-                  setFormData({
-                    clientId: "",
-                    providerId: "",
-                    originCurrencyId: "",
-                    originAmount: "",
-                    destCurrencyId: "",
-                    destAmount: "",
-                    exchangeRate: "",
-                    operationDate: new Date().toISOString().split("T")[0],
-                    observations: "",
-                    state: "PENDING",
-                  });
-                  setIsModalOpen(true);
-                }}
+                onClick={() => setIsTypeSelectorOpen(true)}
               >
                 <svg
                   className="w-4 h-4"
