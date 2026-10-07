@@ -1,0 +1,10 @@
+.accounts { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr)); gap: 12px; margin-bottom: 28px; }
+.account { display: flex; flex-direction: column; justify-content: space-between; gap: 12px; padding: 16px; min-width: 0; background: var(--ots-surface-1); border: 1px solid var(--ots-border); border-radius: 14px; }
+.accountHeading { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.accountHeading > :last-child { flex-shrink: 0; }
+.accountName { font-size: 12px; font-weight: 700; color: var(--ots-text-secondary); overflow-wrap: anywhere; }
+.balance { font-family: var(--ots-font-mono); font-size: 21px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.accountActions { display: flex; flex-wrap: wrap; gap: 6px; }
+.accountActions button { display: inline-flex; align-items: center; gap: 5px; padding: 6px 8px; font-size: 11px; min-height: 32px; }
+.accountActions button:disabled { opacity: 0.5; cursor: default; }
+.accountActions button:focus-visible { outline: 2px solid var(--ots-primary); outline-offset: 3px; }

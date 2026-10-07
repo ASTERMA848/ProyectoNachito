@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireAdmin, requireAuth } from "@/lib/session";
+import { ensureCurrencyTreasuryAccounts } from "@/lib/treasury-accounts";
 
 export const dynamic = "force-dynamic";
 
@@ -77,7 +78,8 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const currency = await prisma.currency.create({
+    const currency = await prisma.$transaction(async tx => {
+      const created = await tx.currency.create({
       data: {
         code: trimmedCode,
         name: String(name).trim().substring(0, 100),
@@ -86,6 +88,9 @@ export async function POST(req: NextRequest) {
         color: safeColor,
         isActive: true,
       },
+      });
+      await ensureCurrencyTreasuryAccounts(tx);
+      return created;
     });
 
     return NextResponse.json({ currency }, { status: 201 });

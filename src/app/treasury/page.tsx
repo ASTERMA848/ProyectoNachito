@@ -14,6 +14,7 @@ import {
 import { BriefcaseIcon } from "@liquefy-ui/icons";
 import TreasuryMovementDialog from "@/components/TreasuryMovementDialog";
 import TreasuryHistory from "@/components/TreasuryHistory";
+import styles from "./treasury.module.css";
 
 const fetcher = async (url: string) => {
   const response = await fetch(url);
@@ -31,16 +32,17 @@ export default function TreasuryPage() {
   const accounts = data?.accounts || [];
   const movements = data?.movements || [];
 
-  const formatNumber = (val: number | undefined | null, currencyCode: string) => {
+  const formatNumber = (val: number | undefined | null, currencyCode: string, decimals = 2) => {
     const num = typeof val === "number" ? val : 0;
     try {
       return new Intl.NumberFormat("es-AR", {
         style: "currency",
         currency: currencyCode,
-        minimumFractionDigits: 2,
+        minimumFractionDigits: Math.min(2, decimals),
+        maximumFractionDigits: decimals,
       }).format(num);
     } catch {
-      return `${currencyCode} ${num.toLocaleString("es-AR", { minimumFractionDigits: 2 })}`;
+      return `${currencyCode} ${num.toLocaleString("es-AR", { minimumFractionDigits: Math.min(2, decimals), maximumFractionDigits: decimals })}`;
     }
   };
 
@@ -107,17 +109,10 @@ export default function TreasuryPage() {
         <>
           {accounts.length === 0 ? (
             <div style={{ textAlign: "center", padding: "48px", color: "var(--ots-text-secondary)", backgroundColor: "var(--ots-surface-1)", borderRadius: "var(--ots-radius-lg)", border: "1px solid var(--ots-border)", marginBottom: "2rem" }}>
-              No hay cajas registradas aún. Las cajas se crean automáticamente al cobrar o pagar operaciones.
+              No hay monedas creadas todavía. Agregá una moneda en Configuración para ver su caja en Tesorería.
             </div>
           ) : (
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 280px), 1fr))",
-                gap: "1.25rem",
-                marginBottom: "2.5rem",
-              }}
-            >
+            <div className={styles.accounts}>
               {accounts.map((acc) => {
                 const isPositive = (acc.balance || 0) >= 0;
                 const curCode = acc.currency?.code || "ARS";
@@ -125,21 +120,10 @@ export default function TreasuryPage() {
                 return (
                   <div
                     key={acc.id}
-                    style={{
-                      backgroundColor: "var(--ots-surface-1)",
-                      border: "1px solid var(--ots-border)",
-                      borderRadius: "var(--ots-radius-lg)",
-                      padding: "20px 24px",
-                      display: "flex",
-                      flexDirection: "column",
-                      justifyContent: "space-between",
-                      gap: "16px",
-                      boxShadow: "var(--ots-shadow-sm)",
-                      transition: "transform 150ms ease, box-shadow 150ms ease",
-                    }}
+                    className={styles.account}
                   >
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--ots-text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                    <div className={styles.accountHeading}>
+                      <span className={styles.accountName}>
                         {acc.name}
                       </span>
                       <span 
@@ -153,7 +137,7 @@ export default function TreasuryPage() {
                           border: `1px solid ${curColor}40`
                         }}
                       >
-                        {curCode}
+                        {curCode}{!acc.currency?.isActive ? " · Inactiva" : ""}
                       </span>
                     </div>
                     
@@ -161,27 +145,20 @@ export default function TreasuryPage() {
                       <span style={{ fontSize: "11px", color: "var(--ots-text-muted)", textTransform: "uppercase", display: "block", marginBottom: "4px" }}>
                         Saldo Disponible
                       </span>
-                      <div
-                        style={{
-                          fontFamily: "var(--ots-font-mono)",
-                          fontSize: "26px",
-                          fontWeight: 700,
-                          color: isPositive ? "var(--ots-text-primary)" : "var(--ots-danger)",
-                          letterSpacing: "-0.02em",
-                        }}
+                      <div className={styles.balance}
+                        style={{ color: isPositive ? "var(--ots-text-primary)" : "var(--ots-danger)" }}
                       >
-                        {formatNumber(acc.balance, curCode)}
+                        {formatNumber(acc.balance, curCode, acc.currency?.decimals ?? 2)}
                       </div>
                     </div>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                    <div className={styles.accountActions}>
                     {data?.canManage && <button type="button" className="flowbite-btn flowbite-btn-secondary"
-                      style={{ alignSelf: "flex-start", padding: "6px 10px", fontSize: "12px", display: "inline-flex", gap: "6px", alignItems: "center" }}
+                      disabled={!acc.currency?.isActive} title={!acc.currency?.isActive ? "Activá la moneda en Configuración para registrar movimientos." : undefined}
                       onClick={() => setMovementAccountId(acc.id)} aria-label={`Ingreso o extracción en ${acc.name}, ${curCode}`}>
                       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M8 4v16m-4-4 4 4 4-4M16 20V4m-4 4 4-4 4 4" /></svg>
                       Ingreso / extracción
                     </button>}
                     <button type="button" className="flowbite-btn flowbite-btn-secondary"
-                      style={{ padding: "6px 10px", fontSize: "12px", display: "inline-flex", gap: "6px", alignItems: "center" }}
                       aria-label={`Ver historial de ${acc.name}, ${curCode}`} aria-pressed={historyAccount?.id === acc.id}
                       onClick={() => setHistoryAccount({ id: acc.id, name: acc.name })}>
                       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 11a9 9 0 1 1 2.6 7M3 4v7h7M12 7v5l3 2" /></svg>

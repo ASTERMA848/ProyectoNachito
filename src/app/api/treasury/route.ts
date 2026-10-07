@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireAuth } from "@/lib/session";
 import { recordManualTreasuryMovement, TreasuryError } from "@/lib/manual-treasury";
+import { ensureCurrencyTreasuryAccounts } from "@/lib/treasury-accounts";
 
 export const dynamic = "force-dynamic";
 
@@ -10,11 +11,7 @@ export async function GET(req: NextRequest) {
     const user = await requireAuth();
     if (!user) return NextResponse.json({ error: "No autenticado" }, { status: 401 });
 
-    const [accounts, movements] = await Promise.all([prisma.treasuryAccount.findMany({
-      where: { isActive: true },
-      include: { currency: true },
-      orderBy: { name: "asc" },
-    }), prisma.treasuryMovement.findMany({
+    const [accounts, movements] = await Promise.all([prisma.$transaction(ensureCurrencyTreasuryAccounts), prisma.treasuryMovement.findMany({
       take: 100,
       orderBy: { date: "desc" },
       include: {
