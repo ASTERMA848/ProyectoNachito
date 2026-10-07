@@ -114,11 +114,10 @@ export async function PUT(
             if (!account) continue;
 
             const adjustment = transaction.debit - transaction.credit;
-            const newBalance = account.balance + adjustment;
 
             await tx.account.update({
               where: { id: account.id },
-              data: { balance: newBalance },
+              data: { balance: { increment: adjustment } },
             });
           }
           await tx.transaction.deleteMany({ where: { operationId: currentOp.id } });
@@ -174,7 +173,7 @@ export async function PUT(
           where: { contactId_currencyId: { contactId: providerId, currencyId } },
         });
         if (!providerAccount) {
-          providerAccount = await tx.account.create({ data: { contactId: providerId, currencyId, balance: 0, type: "CASH" } });
+          providerAccount = await tx.account.create({ data: { contactId: providerId, currencyId, balance: 0 } });
         }
         const providerBalanceAfter = providerAccount.balance - totalOriginAmount;
         await tx.account.update({
@@ -230,7 +229,7 @@ export async function PUT(
 
         // 4. UPDATE / CREATE CHILDREN
         const existingChildren = op.childOperations || [];
-        const newChildOperations = [];
+        const newChildOperations: any[] = [];
 
         for (let i = 0; i < Math.max(items.length, existingChildren.length); i++) {
           if (i < items.length) {
@@ -286,7 +285,7 @@ export async function PUT(
               where: { contactId_currencyId: { contactId: item.clientId, currencyId } },
             });
             if (!clientAccount) {
-              clientAccount = await tx.account.create({ data: { contactId: item.clientId, currencyId, balance: 0, type: "CASH" } });
+              clientAccount = await tx.account.create({ data: { contactId: item.clientId, currencyId, balance: 0 } });
             }
             const balanceAfterDebit = clientAccount.balance + itemAmount;
             await tx.account.update({

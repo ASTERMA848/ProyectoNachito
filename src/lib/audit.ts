@@ -1,6 +1,6 @@
 import prisma from './prisma';
 
-type AuditAction = 'CREATE' | 'UPDATE' | 'DELETE' | 'LOGIN' | 'REPORT' | 'SQL_QUERY' | 'UPDATE_STATE' | 'TRANSFER';
+type AuditAction = 'CREATE' | 'UPDATE' | 'DELETE' | 'LOGIN' | 'REPORT' | 'SQL_QUERY' | 'UPDATE_STATE' | 'TRANSFER' | 'UPDATE_STATE_OR_PAY';
 
 interface AuditLogPayload {
   userId?: string;

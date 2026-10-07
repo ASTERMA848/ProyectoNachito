@@ -343,11 +343,10 @@ export async function DELETE(
             if (!account) continue;
 
             const adjustment = transaction.debit - transaction.credit;
-            const newBalance = account.balance + adjustment;
 
             await tx.account.update({
               where: { id: account.id },
-              data: { balance: newBalance },
+              data: { balance: { increment: adjustment } },
             });
           }
           await tx.transaction.deleteMany({ where: { operationId: currentOp.id } });

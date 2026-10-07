@@ -104,7 +104,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const newBalance = account.balance + debit - credit;
+    const newBalance = account.balance - debit + credit;
 
     const [, newTransaction] = await prisma.$transaction([
       prisma.account.update({

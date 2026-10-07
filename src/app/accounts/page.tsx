@@ -84,7 +84,7 @@ export default function AccountsPage() {
     }
   };
 
-  const filteredAccounts = accounts.filter((acc) => {
+  const filteredAccounts = accounts.filter((acc: any) => {
     if (searchTerm.trim() !== "") {
       return acc.contact?.name?.toLowerCase().includes(searchTerm.toLowerCase());
     }

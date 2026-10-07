@@ -1,4 +1,4 @@
-import { prisma } from "./prisma";
+import prisma from "./prisma";
 
 /**
  * Registra un movimiento directo en una cuenta de tesorería (ingreso o egreso).
@@ -21,7 +21,7 @@ export async function registerTreasuryMovement({
   reference?: string;
   observations?: string;
 }) {
-  return await prisma.$transaction(async (tx) => {
+  return await prisma.$transaction(async (tx: any) => {
     const account = await tx.treasuryAccount.findUnique({
       where: { id: treasuryAccountId },
     });

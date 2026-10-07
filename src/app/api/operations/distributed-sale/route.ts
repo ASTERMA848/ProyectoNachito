@@ -208,7 +208,7 @@ export async function POST(req: NextRequest) {
          });
       }
 
-      const childOperations = [];
+      const childOperations: any[] = [];
 
 
       // 3. Crear Operaciones Hijas por cada línea y sus movimientos en Cuentas Corrientes

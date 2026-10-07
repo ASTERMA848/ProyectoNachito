@@ -379,7 +379,7 @@ export default function OperationsPage() {
     }
   };
 
-  const filtered = operations.filter((op) => {
+  const filtered = operations.filter((op: any) => {
     if (op.parentOperationId) return false; // Las hijas se muestran anidadas bajo su padre
     if (filterState && op.state !== filterState) return false;
 
@@ -402,8 +402,8 @@ export default function OperationsPage() {
     return true;
   });
 
-  const clients = contacts.filter((c) => c.isClient && c.isActive);
-  const providers = contacts.filter((c) => c.isProvider && c.isActive);
+  const clients = contacts.filter((c: any) => c.isClient && c.isActive);
+  const providers = contacts.filter((c: any) => c.isProvider && c.isActive);
 
   return (
     <>
