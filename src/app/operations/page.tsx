@@ -1946,8 +1946,8 @@ export default function OperationsPage() {
                                   className="flowbite-input"
                                   style={{ padding: "6px", fontSize: "12px" }}
                                 >
-                                  <option value="true">Cobrado</option>
-                                  <option value="false">Fiado</option>
+                                  <option value="true">SI</option>
+                                  <option value="false">NO</option>
                                 </select>
                               </td>
                               {!singleClientMode && <td data-label="Acción" style={{ padding: "8px", textAlign: "center" }}>
