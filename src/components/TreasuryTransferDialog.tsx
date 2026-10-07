@@ -31,17 +31,65 @@ export default function TreasuryTransferDialog({
   const dialog = useRef<HTMLDialogElement>(null);
   const saving = useRef(false);
 
-  const defaultOriginId = initialOriginAccountId && accounts.some((a) => a.id === initialOriginAccountId)
-    ? initialOriginAccountId
-    : accounts[0]?.id || "";
+  // Determinar IDs iniciales basados en accounts si ya están disponibles
+  const getInitialOrigin = () => {
+    if (initialOriginAccountId && accounts.some((a) => a.id === initialOriginAccountId)) {
+      return initialOriginAccountId;
+    }
+    return accounts.length > 0 ? accounts[0].id : "";
+  };
 
-  const defaultDestId = accounts.find((a) => a.id !== defaultOriginId)?.id || "";
+  const getInitialDest = (origId: string) => {
+    return accounts.find((a) => a.id !== origId)?.id || "";
+  };
 
-  const [originAccountId, setOriginAccountId] = useState(defaultOriginId);
-  const [destAccountId, setDestAccountId] = useState(defaultDestId);
+  const [originAccountId, setOriginAccountId] = useState(getInitialOrigin);
+  const [destAccountId, setDestAccountId] = useState(() => getInitialDest(getInitialOrigin()));
+
+  // Efecto de sincronización si accounts llega después del montaje inicial
+  useEffect(() => {
+    if (accounts.length === 0) return;
+
+    setOriginAccountId((prevOrigin) => {
+      const isOriginValid = accounts.some((a) => a.id === prevOrigin);
+      const chosenOrigin = isOriginValid
+        ? prevOrigin
+        : (initialOriginAccountId && accounts.some((a) => a.id === initialOriginAccountId)
+            ? initialOriginAccountId
+            : accounts[0].id);
+
+      setDestAccountId((prevDest) => {
+        const isDestValid = accounts.some((a) => a.id === prevDest && a.id !== chosenOrigin);
+        if (isDestValid) return prevDest;
+        const nextDest = accounts.find((a) => a.id !== chosenOrigin);
+        return nextDest ? nextDest.id : "";
+      });
+
+      return chosenOrigin;
+    });
+  }, [accounts, initialOriginAccountId]);
+
+  const handleOriginChange = (id: string) => {
+    setOriginAccountId(id);
+    setError("");
+    if (id === destAccountId) {
+      const nextDest = accounts.find((a) => a.id !== id)?.id || "";
+      setDestAccountId(nextDest);
+    }
+  };
+
+  const handleDestChange = (id: string) => {
+    setDestAccountId(id);
+    setError("");
+    if (id === originAccountId) {
+      const nextOrigin = accounts.find((a) => a.id !== id)?.id || "";
+      setOriginAccountId(nextOrigin);
+    }
+  };
 
   const [originAmountStr, setOriginAmountStr] = useState("");
   const [exchangeRateStr, setExchangeRateStr] = useState("");
+  const [feePercentageStr, setFeePercentageStr] = useState("");
   const [destAmountStr, setDestAmountStr] = useState("");
   const [reason, setReason] = useState("");
 
@@ -58,45 +106,57 @@ export default function TreasuryTransferDialog({
     dialog.current?.showModal();
   }, []);
 
-  const calcOrigin = (destStr: string, rateStr: string) => {
+  const calcOrigin = (destStr: string, rateStr: string, feeStr: string) => {
     const dest = parseFloat(destStr);
-    const r = parseFloat(rateStr);
+    const r = isSameCurrency ? 1 : parseFloat(rateStr);
+    const fee = parseFloat(feeStr) || 0;
+
     if (!isNaN(dest) && dest > 0 && !isNaN(r) && r > 0 && originAccount && destAccount) {
+      const destBruto = fee === 100 ? 0 : dest / (1 - fee / 100);
       let orig: number;
       if (originAccount.currency.code === "ARS" && destAccount.currency.code !== "ARS") {
-        orig = dest * r;
+        orig = destBruto * r;
       } else {
-        orig = dest / r;
+        orig = destBruto / r;
       }
       const decimals = originAccount.currency.decimals;
       setOriginAmountStr(Number(orig.toFixed(decimals)).toString());
     }
   };
 
-  const calcDest = (origStr: string, rateStr: string) => {
+  const calcDest = (origStr: string, rateStr: string, feeStr: string) => {
     const orig = parseFloat(origStr);
-    const r = parseFloat(rateStr);
+    const r = isSameCurrency ? 1 : parseFloat(rateStr);
+    const fee = parseFloat(feeStr) || 0;
+
     if (!isNaN(orig) && orig > 0 && !isNaN(r) && r > 0 && originAccount && destAccount) {
-      let dest: number;
+      let destBruto: number;
       if (originAccount.currency.code === "ARS" && destAccount.currency.code !== "ARS") {
-        dest = orig / r;
+        destBruto = orig / r;
       } else {
-        dest = orig * r;
+        destBruto = orig * r;
       }
+      const destNeto = destBruto * (1 - fee / 100);
       const decimals = destAccount.currency.decimals;
-      setDestAmountStr(Number(dest.toFixed(decimals)).toString());
+      setDestAmountStr(Number(destNeto.toFixed(decimals)).toString());
     }
   };
 
-  const calcRate = (origStr: string, destStr: string) => {
+  const calcRate = (origStr: string, destStr: string, feeStr: string) => {
+    if (isSameCurrency) return;
     const orig = parseFloat(origStr);
     const dest = parseFloat(destStr);
+    const fee = parseFloat(feeStr) || 0;
+
     if (!isNaN(orig) && orig > 0 && !isNaN(dest) && dest > 0 && originAccount && destAccount) {
+      const destBruto = fee === 100 ? 0 : dest / (1 - fee / 100);
       let r: number;
-      if (originAccount.currency.code === "ARS" && destAccount.currency.code !== "ARS") {
-        r = orig / dest;
+      if (destBruto === 0) {
+        r = 1;
+      } else if (originAccount.currency.code === "ARS" && destAccount.currency.code !== "ARS") {
+        r = orig / destBruto;
       } else {
-        r = dest / orig;
+        r = destBruto / orig;
       }
       setExchangeRateStr(Number(r.toFixed(4)).toString());
     }
@@ -105,10 +165,10 @@ export default function TreasuryTransferDialog({
   // Synchronize when origin or dest account changes
   useEffect(() => {
     if (isSameCurrency) {
-      setDestAmountStr(originAmountStr);
+      calcDest(originAmountStr, "1", feePercentageStr);
       setExchangeRateStr("1");
     } else if (originAmountStr && exchangeRateStr) {
-      calcDest(originAmountStr, exchangeRateStr);
+      calcDest(originAmountStr, exchangeRateStr, feePercentageStr);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [originAccountId, destAccountId]);
@@ -117,11 +177,11 @@ export default function TreasuryTransferDialog({
     setOriginAmountStr(val);
     setError("");
     if (isSameCurrency) {
-      setDestAmountStr(val);
+      calcDest(val, "1", feePercentageStr);
     } else if (exchangeRateStr && parseFloat(exchangeRateStr) > 0) {
-      calcDest(val, exchangeRateStr);
+      calcDest(val, exchangeRateStr, feePercentageStr);
     } else if (destAmountStr && parseFloat(destAmountStr) > 0) {
-      calcRate(val, destAmountStr);
+      calcRate(val, destAmountStr, feePercentageStr);
     }
   };
 
@@ -130,9 +190,20 @@ export default function TreasuryTransferDialog({
     setError("");
     if (isSameCurrency) return;
     if (destAmountStr && parseFloat(destAmountStr) > 0) {
-      calcOrigin(destAmountStr, val);
+      calcOrigin(destAmountStr, val, feePercentageStr);
     } else if (originAmountStr && parseFloat(originAmountStr) > 0) {
-      calcDest(originAmountStr, val);
+      calcDest(originAmountStr, val, feePercentageStr);
+    }
+  };
+
+  const handleFeePercentageChange = (val: string) => {
+    setFeePercentageStr(val);
+    setError("");
+    // If we change fee, usually we want to update the Destination amount (Net)
+    if (originAmountStr && parseFloat(originAmountStr) > 0 && (isSameCurrency || (exchangeRateStr && parseFloat(exchangeRateStr) > 0))) {
+      calcDest(originAmountStr, exchangeRateStr || "1", val);
+    } else if (destAmountStr && parseFloat(destAmountStr) > 0 && (isSameCurrency || (exchangeRateStr && parseFloat(exchangeRateStr) > 0))) {
+      calcOrigin(destAmountStr, exchangeRateStr || "1", val);
     }
   };
 
@@ -140,11 +211,11 @@ export default function TreasuryTransferDialog({
     setDestAmountStr(val);
     setError("");
     if (isSameCurrency) {
-      setOriginAmountStr(val);
+      calcOrigin(val, "1", feePercentageStr);
     } else if (exchangeRateStr && parseFloat(exchangeRateStr) > 0) {
-      calcOrigin(val, exchangeRateStr);
+      calcOrigin(val, exchangeRateStr, feePercentageStr);
     } else if (originAmountStr && parseFloat(originAmountStr) > 0) {
-      calcRate(originAmountStr, val);
+      calcRate(originAmountStr, val, feePercentageStr);
     }
   };
 
@@ -254,12 +325,10 @@ export default function TreasuryTransferDialog({
                 id="origin-account"
                 className="flowbite-input"
                 value={originAccountId}
-                onChange={(e) => {
-                  setOriginAccountId(e.target.value);
-                  setError("");
-                }}
+                onChange={(e) => handleOriginChange(e.target.value)}
                 autoFocus
               >
+                {accounts.length === 0 && <option value="" disabled>Cargando cajas...</option>}
                 {accounts.map((item) => (
                   <option key={item.id} value={item.id}>
                     {item.name} ({item.currency.code})
@@ -273,11 +342,9 @@ export default function TreasuryTransferDialog({
                 id="dest-account"
                 className="flowbite-input"
                 value={destAccountId}
-                onChange={(e) => {
-                  setDestAccountId(e.target.value);
-                  setError("");
-                }}
+                onChange={(e) => handleDestChange(e.target.value)}
               >
+                {accounts.length === 0 && <option value="" disabled>Cargando cajas...</option>}
                 {accounts.map((item) => (
                   <option key={item.id} value={item.id} disabled={item.id === originAccountId}>
                     {item.name} ({item.currency.code}) {item.id === originAccountId ? "(Origen)" : ""}
@@ -304,7 +371,7 @@ export default function TreasuryTransferDialog({
               </div>
 
               <div>
-                <label htmlFor="exchange-rate">Cotización / Tipo de Cambio</label>
+                <label htmlFor="exchange-rate">Cotización / Tasa</label>
                 <FormattedNumberInput
                   id="exchange-rate"
                   className="flowbite-input"
@@ -316,7 +383,19 @@ export default function TreasuryTransferDialog({
                 />
               </div>
 
-              <div style={{ gridColumn: "1 / -1" }}>
+              <div>
+                <label htmlFor="fee-percentage">Comisión (%) - Opcional</label>
+                <FormattedNumberInput
+                  id="fee-percentage"
+                  className="flowbite-input"
+                  maxDecimals={2}
+                  value={feePercentageStr}
+                  onChangeValue={(val) => handleFeePercentageChange(val)}
+                  placeholder="Ej: 2,5"
+                />
+              </div>
+
+              <div>
                 <label htmlFor="dest-amount">Monto recibido en {destAccount?.currency.code}</label>
                 <FormattedNumberInput
                   id="dest-amount"
@@ -330,17 +409,44 @@ export default function TreasuryTransferDialog({
               </div>
             </div>
           ) : (
-            <div>
-              <label htmlFor="same-amount">Monto a transferir en {originAccount?.currency.code}</label>
-              <FormattedNumberInput
-                id="same-amount"
-                className="flowbite-input"
-                maxDecimals={originAccount?.currency.decimals ?? 2}
-                value={originAmountStr}
-                onChangeValue={(val) => handleOriginAmountChange(val)}
-                placeholder="0,00"
-                required
-              />
+            <div className={styles.grid2}>
+              <div>
+                <label htmlFor="same-amount">Monto enviado en {originAccount?.currency.code}</label>
+                <FormattedNumberInput
+                  id="same-amount"
+                  className="flowbite-input"
+                  maxDecimals={originAccount?.currency.decimals ?? 2}
+                  value={originAmountStr}
+                  onChangeValue={(val) => handleOriginAmountChange(val)}
+                  placeholder="0,00"
+                  required
+                />
+              </div>
+
+              <div>
+                <label htmlFor="fee-percentage">Comisión (%) - Opcional</label>
+                <FormattedNumberInput
+                  id="fee-percentage"
+                  className="flowbite-input"
+                  maxDecimals={2}
+                  value={feePercentageStr}
+                  onChangeValue={(val) => handleFeePercentageChange(val)}
+                  placeholder="Ej: 2,5"
+                />
+              </div>
+
+              <div style={{ gridColumn: "1 / -1" }}>
+                <label htmlFor="same-amount-dest">Monto recibido en {destAccount?.currency.code}</label>
+                <FormattedNumberInput
+                  id="same-amount-dest"
+                  className="flowbite-input"
+                  maxDecimals={destAccount?.currency.decimals ?? 2}
+                  value={destAmountStr}
+                  onChangeValue={(val) => handleDestAmountChange(val)}
+                  placeholder="0,00"
+                  required
+                />
+              </div>
             </div>
           )}
 

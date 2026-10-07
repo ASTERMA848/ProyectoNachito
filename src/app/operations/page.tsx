@@ -102,7 +102,7 @@ export default function OperationsPage() {
   const needsOptions = isModalOpen || isDistributedModalOpen;
   const { data: contactsData } = useSWR(needsOptions ? "/api/contacts?options=1" : null, fetcher, { keepPreviousData: true });
   const { data: currenciesData } = useSWR(needsOptions ? "/api/currencies" : null, fetcher, { keepPreviousData: true });
-  const { data: treasuryData } = useSWR(isTransferModalOpen ? "/api/treasury" : null, fetcher);
+  const { data: treasuryData } = useSWR("/api/treasury", fetcher, { revalidateOnFocus: false });
 
   const queryParams = new URLSearchParams({
     page: page.toString(),
