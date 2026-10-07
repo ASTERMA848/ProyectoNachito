@@ -63,6 +63,7 @@ export default function OperationsPage() {
 
   const [distributedData, setDistributedData] = useState({
     providerId: "",
+    providerIsPaid: false as boolean | null,
     currencyId: "",
     exchangeRate: "",
     operationDate: new Date().toISOString().split("T")[0],
@@ -246,6 +247,7 @@ export default function OperationsPage() {
     if (op.type === "DISTRIBUTED_SALE" || (op.childOperations && op.childOperations.length > 0)) {
       setDistributedData({
         providerId: op.providerId || "",
+        providerIsPaid: op.providerIsPaid ?? null,
         currencyId: op.originCurrencyId || "",
         exchangeRate: op.exchangeRate ? op.exchangeRate.toString() : "",
         operationDate: op.operationDate ? new Date(op.operationDate).toISOString().split("T")[0] : new Date().toISOString().split("T")[0],
@@ -410,6 +412,7 @@ export default function OperationsPage() {
         setEditingId(null);
         setDistributedData({
           providerId: "",
+          providerIsPaid: false,
           currencyId: "",
           exchangeRate: "",
           operationDate: new Date().toISOString().split("T")[0],
@@ -842,7 +845,7 @@ export default function OperationsPage() {
                   <LiquidTableHeaderCell style={{ width: "14%" }}>Tipo</LiquidTableHeaderCell>
                   <LiquidTableHeaderCell style={{ width: "16%" }}>Monto Origen</LiquidTableHeaderCell>
                   <LiquidTableHeaderCell style={{ width: "16%" }}>Monto Destino</LiquidTableHeaderCell>
-                  <LiquidTableHeaderCell style={{ width: "10%" }}>Pagado</LiquidTableHeaderCell>
+                  <LiquidTableHeaderCell style={{ width: "10%" }}>Cobros / Pago</LiquidTableHeaderCell>
                   <LiquidTableHeaderCell style={{ width: "10%" }}>Estado</LiquidTableHeaderCell>
                   <LiquidTableHeaderCell style={{ width: "12%" }} align="right">Acciones</LiquidTableHeaderCell>
                 </LiquidTableRow>
@@ -893,13 +896,16 @@ export default function OperationsPage() {
                           >
                             {paidText}
                           </span>
+                          {isDistributed && <div style={{ fontSize: "11px", marginTop: "4px", color: "var(--text-secondary)" }}>
+                            Proveedor: {op.providerIsPaid == null ? "revisar pago" : op.providerIsPaid ? "pagado" : "pendiente"}
+                          </div>}
                         </LiquidTableCell>
                         <LiquidTableCell>
                           <div style={{ display: "inline-block" }}>
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setActiveStateChangeOp(op);
+                                if (isDistributed) handleEdit(op); else setActiveStateChangeOp(op);
                               }}
                               className={`flowbite-badge ${
                                 op.state === "PENDING"
@@ -922,6 +928,7 @@ export default function OperationsPage() {
                               }}
                             >
                               {op.state === "PENDING" && "Pendiente"}
+                              {op.state === "PARTIAL" && "Parcial"}
                               {op.state === "COMPLETED" && "Completada"}
                               {op.state === "CANCELED" && "Cancelada"}
                               <span style={{ fontSize: "9px", color: "inherit", opacity: 0.8 }}>▼</span>
@@ -1012,7 +1019,7 @@ export default function OperationsPage() {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        setActiveStateChangeOp(op);
+                        if (op.type === "DISTRIBUTED_SALE") handleEdit(op); else setActiveStateChangeOp(op);
                       }}
                       className={`flowbite-badge ${
                         op.state === "PENDING"
@@ -1035,6 +1042,7 @@ export default function OperationsPage() {
                       }}
                     >
                       {op.state === "PENDING" && "Pendiente"}
+                      {op.state === "PARTIAL" && "Parcial"}
                       {op.state === "COMPLETED" && "Completada"}
                       {op.state === "CANCELED" && "Cancelada"}
                       <span style={{ fontSize: "9px", color: "inherit", opacity: 0.8 }}>▼</span>
@@ -1044,6 +1052,9 @@ export default function OperationsPage() {
 
                 {/* Clients & Provider */}
                 <div style={{ fontSize: "13px" }}>
+                  {op.type === "DISTRIBUTED_SALE" && <div style={{ marginBottom: "4px", color: "var(--text-secondary)" }}>
+                    Cobros: {op.isPaid ? "completos" : op.childOperations?.some((child: any) => child.isPaid) ? "parciales" : "pendientes"} · Proveedor: {op.providerIsPaid == null ? "revisar pago" : op.providerIsPaid ? "pagado" : "pendiente"}
+                  </div>}
                   <div>
                     <strong style={{ color: "var(--text-secondary)" }}>Cliente: </strong>
                     <span style={{ fontWeight: 500, color: "var(--text-primary)" }}>{op.client?.name}</span>
@@ -1533,6 +1544,10 @@ export default function OperationsPage() {
                   onClick={() => {
                     setIsTypeSelectorOpen(false);
                     setIsDistributedModalOpen(true);
+                    setEditingId(null);
+                    setDistributedData({ providerId: "", providerIsPaid: false, currencyId: "", exchangeRate: "",
+                      operationDate: new Date().toISOString().split("T")[0], observations: "",
+                      items: [{ clientId: "", exchangeRate: "", amount: "", observations: "", isPaid: true }] });
                   }}
                   style={{
                     backgroundColor: "var(--ots-surface-2)",
@@ -1718,7 +1733,22 @@ export default function OperationsPage() {
                           className="flowbite-input"
                         />
                       </div>
+                      <div className="flowbite-form-group">
+                        <label className="flowbite-form-label" htmlFor="provider-payment">Pago al proveedor *</label>
+                        <select id="provider-payment" className="flowbite-input" required
+                          value={distributedData.providerIsPaid == null ? "" : distributedData.providerIsPaid ? "true" : "false"}
+                          onChange={e => setDistributedData({ ...distributedData, providerIsPaid: e.target.value === "true" })}>
+                          <option value="" disabled>Revisar pago anterior</option>
+                          <option value="false">Pendiente</option>
+                          <option value="true">Pagado en ARS</option>
+                        </select>
+                      </div>
                     </div>
+
+                    <p style={{ fontSize: "12px", color: "var(--ots-text-secondary)", marginTop: "12px" }}>
+                      El pago al proveedor es independiente de los cobros. Los fiados mantienen deuda en {currencies.find((currency: any) => currency.id === distributedData.currencyId)?.code || "la moneda elegida"}.
+                      Al guardar se registra la recepción y entrega de la divisa; marcar un pago registra su importe en ARS a la cotización indicada.
+                    </p>
 
                     {/* Observaciones generales */}
                     <div className="flowbite-form-group" style={{ marginTop: "14px" }}>
@@ -1765,7 +1795,7 @@ export default function OperationsPage() {
                             <th style={{ padding: "8px", textAlign: "left", width: "16%" }}>Cotización Cliente</th>
                             <th style={{ padding: "8px", textAlign: "left", width: "17%" }}>Monto *</th>
                             <th style={{ padding: "8px", textAlign: "left", width: "24%" }}>Observaciones</th>
-                            <th style={{ padding: "8px", textAlign: "center", width: "10%" }}>Pagado</th>
+                            <th style={{ padding: "8px", textAlign: "center", width: "10%" }}>Cobrado</th>
                             <th style={{ padding: "8px", textAlign: "center", width: "8%" }}>Acción</th>
                           </tr>
                         </thead>
@@ -1819,8 +1849,8 @@ export default function OperationsPage() {
                                   className="flowbite-input"
                                   style={{ padding: "6px", fontSize: "12px" }}
                                 >
-                                  <option value="true">Sí (Pagado)</option>
-                                  <option value="false">No (Fiado)</option>
+                                  <option value="true">Cobrado</option>
+                                  <option value="false">Fiado</option>
                                 </select>
                               </td>
                               <td style={{ padding: "8px", textAlign: "center" }}>
@@ -1896,7 +1926,7 @@ export default function OperationsPage() {
                           </strong>
                         </div>
                         <div style={{ borderLeft: "1px solid var(--ots-border)", paddingLeft: "24px" }}>
-                          <span style={{ fontSize: "11px", color: "var(--ots-text-muted)", textTransform: "uppercase", display: "block", fontWeight: 700 }}>Ganancia Operativa ARS</span>
+                          <span style={{ fontSize: "11px", color: "var(--ots-text-muted)", textTransform: "uppercase", display: "block", fontWeight: 700 }}>Margen Pactado ARS</span>
                           <strong style={{ fontSize: "16px", fontFamily: "var(--ots-font-mono)", color: gananciaNetaARS >= 0 ? "var(--ots-success)" : "var(--ots-danger)" }}>
                             $ {gananciaNetaARS.toLocaleString()} ARS
                           </strong>

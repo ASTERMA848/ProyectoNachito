@@ -69,6 +69,9 @@ export async function PUT(
     if (!oldOperation) {
       return NextResponse.json({ error: "Operación no encontrada" }, { status: 404 });
     }
+    if (oldOperation.type.startsWith("DISTRIBUTED_SALE")) {
+      return NextResponse.json({ error: "Editá la venta distribuida desde su formulario para actualizar pagos y saldos juntos" }, { status: 400 });
+    }
 
     // Validar Bloqueo Contable
     const settings = await prisma.settings.findFirst();
@@ -146,6 +149,9 @@ export async function PATCH(
 
     if (!oldOperation) {
       return NextResponse.json({ error: "Operación no encontrada" }, { status: 404 });
+    }
+    if (oldOperation.type.startsWith("DISTRIBUTED_SALE")) {
+      return NextResponse.json({ error: "Actualizá los cobros y el pago al proveedor desde Editar venta distribuida" }, { status: 400 });
     }
 
     // Validar estado si se envió
@@ -401,4 +407,3 @@ export async function DELETE(
     return NextResponse.json({ error: error?.message || "Error al eliminar la operación" }, { status: 500 });
   }
 }
-

@@ -43,7 +43,7 @@ async function fixture(tx, count) {
   await tx.contact.createMany({ data: contacts });
   await tx.currency.createMany({ data: currencies });
   return { providerId: contacts[0].id, currencyId: currencies[0].id, destCurrencyId: currencies[1].id,
-    currencyCode: currencies[0].code, exchangeRate: 1000, operationDate: new Date('2026-10-06T12:00:00Z'), observations: 'Prueba reversible',
+    currencyCode: currencies[0].code, providerIsPaid: true, exchangeRate: 1000, operationDate: new Date('2026-10-06T12:00:00Z'), observations: 'Prueba reversible',
     items: Array.from({ length: count }, (_, i) => ({ clientId: contacts[1 + i % 2].id, amount: 100 + i,
       exchangeRate: 1010 + i, observations: '', isPaid: true })) };
 }
@@ -84,7 +84,7 @@ async function run(label, save, count, checks = false) {
         const same = await helper.saveDistributedSale(tx, input, sale.parentOp.id);
         assert.deepEqual(await snapshot(tx, input), initial, 'Editar sin cambios conserva saldos y cantidad de movimientos');
         assert.deepEqual(same.childOperations.map(c => c.id), sale.childOperations.map(c => c.id), 'Conservar IDs');
-        const mixed = { ...input, items: input.items.slice(0, 3).map((i, index) => ({ ...i, isPaid: index === 0 })) };
+        const mixed = { ...input, providerIsPaid: false, items: input.items.slice(0, 3).map((i, index) => ({ ...i, isPaid: index === 0 })) };
         const edited = await helper.saveDistributedSale(tx, mixed, sale.parentOp.id);
         assert.equal(edited.parentOp.state, 'PARTIAL');
         assert.equal(await tx.operation.count({ where: { parentOperationId: sale.parentOp.id, deletedAt: null } }), 3);
@@ -95,12 +95,20 @@ async function run(label, save, count, checks = false) {
         // Agregar filas después de quitar otras no debe chocar con los números de las hijas borradas.
         await helper.saveDistributedSale(tx, input, sale.parentOp.id);
         assert.deepEqual(await snapshot(tx, input), initial);
-        const pending = { ...input, items: input.items.map(i => ({ ...i, isPaid: false })) };
+        const pending = { ...input, providerIsPaid: false, items: input.items.map(i => ({ ...i, isPaid: false })) };
         const pendingSale = await helper.saveDistributedSale(tx, pending, sale.parentOp.id);
         assert.equal(pendingSale.parentOp.state, 'PENDING');
         const pendingSnapshot = await snapshot(tx, pending);
         assert.deepEqual(pendingSnapshot.treasury, [0, 0]);
         assert.equal(pendingSnapshot.transactions, count + 1);
+        const customersPaid = { ...input, providerIsPaid: false };
+        const unpaidProvider = await helper.saveDistributedSale(tx, customersPaid, sale.parentOp.id);
+        assert.equal(unpaidProvider.parentOp.state, 'PARTIAL', 'Todos los clientes cobrados no pagan al proveedor');
+        assert.equal(unpaidProvider.parentOp.providerIsPaid, false);
+        assert.equal((await snapshot(tx, customersPaid)).balances[0], -input.items.reduce((s, i) => s + i.amount, 0));
+        const paidProvider = await helper.saveDistributedSale(tx, { ...pending, providerIsPaid: true }, sale.parentOp.id);
+        assert.equal(paidProvider.parentOp.state, 'PARTIAL', 'Proveedor pagado con clientes fiados');
+        assert.equal((await snapshot(tx, pending)).balances[0], 0);
         // Moneda origen y destino iguales y proveedor también cliente.
         const sameCurrency = { ...input, destCurrencyId: input.currencyId, items: input.items.map(i => ({ ...i, clientId: input.providerId })) };
         await helper.saveDistributedSale(tx, sameCurrency, sale.parentOp.id);
@@ -112,11 +120,48 @@ async function run(label, save, count, checks = false) {
   console.log(JSON.stringify(result));
   return result;
 }
+async function screenshotCase() {
+  try {
+    await prisma.$transaction(async tx => {
+      const input = await fixture(tx, 3);
+      const third = await tx.contact.create({ data: { name: 'PERF tercero', isClient: true } });
+      input.exchangeRate = 1500;
+      input.providerIsPaid = false;
+      input.items = [
+        { ...input.items[0], amount: 500, exchangeRate: 1520, isPaid: true },
+        { ...input.items[1], amount: 600, exchangeRate: 1520, isPaid: false },
+        { ...input.items[0], clientId: third.id, amount: 400, exchangeRate: 1520, isPaid: false },
+      ];
+      const sale = await helper.saveDistributedSale(tx, input);
+      assert.equal(sale.parentOp.state, 'PARTIAL');
+      const initial = await snapshot(tx, input);
+      assert.deepEqual(initial.balances, [-1500, 0, 600, 400]);
+      assert.deepEqual(initial.treasury, [0, 760000]);
+      await helper.saveDistributedSale(tx, { ...input, providerIsPaid: true }, sale.parentOp.id);
+      const paid = await snapshot(tx, input);
+      assert.deepEqual(paid.balances, [0, 0, 600, 400]);
+      assert.deepEqual(paid.treasury, [0, -1490000]);
+      const everyonePaid = { ...input, items: input.items.map(item => ({ ...item, isPaid: true })) };
+      await helper.saveDistributedSale(tx, everyonePaid, sale.parentOp.id);
+      assert.deepEqual((await snapshot(tx, input)).balances, [-1500, 0, 0, 0]);
+      const completed = await helper.saveDistributedSale(tx, { ...everyonePaid, providerIsPaid: true }, sale.parentOp.id);
+      assert.equal(completed.parentOp.state, 'COMPLETED');
+      assert.deepEqual((await snapshot(tx, input)).balances, [0, 0, 0, 0]);
+      assert.deepEqual((await snapshot(tx, input)).treasury, [0, 30000]);
+      await helper.reverseSaleLedger(tx, [sale.parentOp.id, ...completed.childOperations.map(c => c.id)]);
+      assert.deepEqual((await snapshot(tx, input)).treasury, [0, 0]);
+      assert.equal((await snapshot(tx, input)).transactions, 0);
+      throw rollback;
+    }, { maxWait: 15000, timeout: 180000 });
+  } catch (error) { if (error !== rollback) throw error; }
+  console.log('OK: caso 500/600/400 USD, proveedor independiente, caja y reversión.');
+}
 async function main() {
   const before = {};
   for (const key of ['contact', 'currency', 'operation', 'account', 'transaction', 'treasuryAccount', 'treasuryMovement']) before[key] = await prisma[key].count();
   const old = legacy ? await run('antes', legacy, 10) : null;
   const optimized = await run('despues', helper.saveDistributedSale, 10, true);
+  await screenshotCase();
   if (old) assert.deepEqual(optimized.snapshot, old.snapshot, 'Mismos saldos y movimientos que el circuito anterior');
   for (const [key, count] of Object.entries(before)) assert.equal(await prisma[key].count(), count, `Sin datos de prueba persistentes en ${key}`);
   console.log('OK: saldos, edición, pagos mixtos, clientes repetidos, reducción/ampliación y rollback.');

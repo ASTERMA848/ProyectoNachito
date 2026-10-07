@@ -160,6 +160,7 @@ model Operation {
   operationDate    DateTime
 
   isPaid           Boolean      @default(false)
+  providerIsPaid   Boolean?     @default(false) // NULL: pago de una operación anterior pendiente de revisión
   observations     String?
   state            String       @default("PENDING") // PENDING, PARTIAL, COMPLETED, CANCELED
 

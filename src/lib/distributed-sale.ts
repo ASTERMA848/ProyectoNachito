@@ -5,7 +5,7 @@ type Tx = Prisma.TransactionClient;
 export type SaleItem = { clientId: string; amount: number; exchangeRate: number; observations: string | null; isPaid: boolean };
 export type SaleInput = {
   providerId: string; currencyId: string; destCurrencyId: string; currencyCode: string;
-  exchangeRate: number; operationDate: Date; observations: string | null; items: SaleItem[];
+  exchangeRate: number; operationDate: Date; observations: string | null; providerIsPaid: boolean; items: SaleItem[];
 };
 
 // Serializa la numeración sin contar todas las operaciones hijas ni reutilizar números borrados.
@@ -54,7 +54,7 @@ export async function applySaleLedger(tx: Tx, parent: Operation, children: Opera
   };
   record(input.providerId, parent, parent.originAmount, 0, `Compra de divisa (Op Agrupadora: ${parent.operationNumber})`,
     `Cotización Proveedor: ${input.exchangeRate}. Costo ARS: $${parent.destAmount.toLocaleString("es-AR")}`);
-  if (parent.isPaid) record(input.providerId, parent, 0, parent.originAmount,
+  if (input.providerIsPaid) record(input.providerId, parent, 0, parent.originAmount,
     `Pago al contado registrado (Op: ${parent.operationNumber})`, "Cancelación de deuda por compra");
   children.forEach((child, index) => {
     const item = input.items[index];
@@ -70,11 +70,10 @@ export async function applySaleLedger(tx: Tx, parent: Operation, children: Opera
   await tx.transaction.createMany({ data: transactions });
 
   const paidChildren = children.filter(c => c.isPaid);
-  if (!parent.isPaid && !paidChildren.length) return;
   // Una cuenta por moneda seleccionada una sola vez para todo el lote.
   await tx.$executeRaw`SELECT pg_advisory_xact_lock(72641002)`;
   const currencyIds = Array.from(new Set([input.currencyId, input.destCurrencyId]));
-  const existing = await tx.treasuryAccount.findMany({ where: { currencyId: { in: currencyIds } }, orderBy: { id: "asc" } });
+  const existing = await tx.treasuryAccount.findMany({ where: { currencyId: { in: currencyIds }, type: "CASH", isActive: true }, orderBy: [{ createdAt: "asc" }, { id: "asc" }] });
   const missing = currencyIds.filter(id => !existing.some(a => a.currencyId === id));
   if (missing.length) {
     const now = new Date();
@@ -91,12 +90,15 @@ export async function applySaleLedger(tx: Tx, parent: Operation, children: Opera
     deltas.set(id, (deltas.get(id) || 0) + (type === "INCOME" ? amount : -amount));
     movements.push({ id: randomUUID(), treasuryAccountId: id, operationId: op.id, type, amount, concept });
   };
-  if (parent.isPaid) {
-    movement(input.currencyId, parent, "INCOME", parent.originAmount, `Ingreso divisa por Op ${parent.operationNumber}`);
+  // La divisa se recibe del proveedor y se entrega a TODOS los clientes, incluso fiados.
+  movement(input.currencyId, parent, "INCOME", parent.originAmount, `Recepción divisa del proveedor Op ${parent.operationNumber}`);
+  children.forEach(child => {
+    movement(input.currencyId, child, "EXPENSE", child.originAmount, `Entrega divisa a cliente Op ${child.operationNumber}`);
+  });
+  if (input.providerIsPaid) {
     movement(input.destCurrencyId, parent, "EXPENSE", parent.destAmount, `Egreso base por Op ${parent.operationNumber}`);
   }
   paidChildren.forEach(child => {
-    movement(input.currencyId, child, "EXPENSE", child.originAmount, `Egreso divisa por venta Op ${child.operationNumber}`);
     movement(input.destCurrencyId, child, "INCOME", child.destAmount, `Ingreso base por venta Op ${child.operationNumber}`);
   });
   await tx.$executeRaw`
@@ -122,7 +124,8 @@ export async function saveDistributedSale(tx: Tx, input: SaleInput, parentId?: s
   const data = { providerId: input.providerId, originCurrencyId: input.currencyId, destCurrencyId: input.destCurrencyId,
     originAmount: total, destAmount: total * input.exchangeRate, exchangeRate: input.exchangeRate,
     operationDate: input.operationDate, observations: input.observations,
-    state: paid === input.items.length ? "COMPLETED" : paid ? "PARTIAL" : "PENDING", isPaid: paid === input.items.length };
+    state: paid === input.items.length && input.providerIsPaid ? "COMPLETED" : paid || input.providerIsPaid ? "PARTIAL" : "PENDING",
+    isPaid: paid === input.items.length, providerIsPaid: input.providerIsPaid };
   const parent = existing
     ? await tx.operation.update({ where: { id: existing.id }, data })
     : await tx.operation.create({ data: { ...data, id: randomUUID(), operationNumber: await nextOperationNumber(tx), type: "DISTRIBUTED_SALE" } });
@@ -130,7 +133,7 @@ export async function saveDistributedSale(tx: Tx, input: SaleInput, parentId?: s
   const children: Operation[] = input.items.map((item, index) => ({ ...parent,
     id: existing?.childOperations[index]?.id || randomUUID(),
     operationNumber: existing?.childOperations[index]?.operationNumber || `${parent.operationNumber}-${index + 1}`,
-    type: "DISTRIBUTED_SALE_ITEM", parentOperationId: parent.id, clientId: item.clientId,
+    type: "DISTRIBUTED_SALE_ITEM", parentOperationId: parent.id, clientId: item.clientId, providerIsPaid: false,
     originAmount: item.amount, destAmount: item.amount * item.exchangeRate, exchangeRate: item.exchangeRate,
     observations: item.observations, state: item.isPaid ? "COMPLETED" : "PENDING", isPaid: item.isPaid,
     deletedAt: null, createdAt: existing?.childOperations[index]?.createdAt || now, updatedAt: now }));
