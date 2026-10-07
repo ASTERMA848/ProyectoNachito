@@ -488,7 +488,7 @@ input[type="search"].flowbite-search-input {
 }
 .flowbite-search-input:focus,
 input[type="search"].flowbite-search-input:focus {
-  background: #ffffff;
+  background: var(--ots-surface-1);
   border-color: var(--ots-primary);
   box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
 }
@@ -554,7 +554,7 @@ input[type="search"].flowbite-search-input:focus {
 /* Primary Button */
 .flowbite-btn-primary {
   background: var(--ots-primary);
-  color: #ffffff !important;
+  color: var(--ots-primary-ink) !important;
   border: 1px solid var(--ots-primary);
   font-weight: 600 !important;
   box-shadow: 0 2px 8px rgba(79, 70, 229, 0.25);
@@ -562,7 +562,7 @@ input[type="search"].flowbite-search-input:focus {
 .flowbite-btn-primary:hover {
   background: var(--ots-primary-hover);
   border-color: var(--ots-primary-hover);
-  color: #ffffff !important;
+  color: var(--ots-primary-ink) !important;
 }
 
 .flowbite-btn-text {
@@ -627,7 +627,7 @@ select {
 .flowbite-form-input:focus,
 .flowbite-form-select:focus,
 select:focus {
-  background: #ffffff;
+  background: var(--ots-surface-1);
   border-color: var(--ots-primary);
   box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
 }
@@ -724,7 +724,7 @@ select:focus {
   width: 100%;
   max-width: 580px;
   max-height: calc(100vh - 3rem);
-  background: #ffffff;
+  background: var(--ots-surface-1);
   border: 1px solid var(--ots-border);
   border-radius: var(--ots-radius-lg);
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
@@ -781,7 +781,7 @@ select.flowbite-input, select {
   font-size: 14.5px !important;
 }
 select.flowbite-input option, select option {
-  background-color: #ffffff !important;
+  background-color: var(--ots-surface-1) !important;
   color: var(--ots-text-primary) !important;
   padding: 10px 14px !important;
   font-size: 14px !important;

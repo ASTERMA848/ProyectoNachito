@@ -17,6 +17,8 @@ import {
   GlassCard,
 } from "@liquefy-ui/react";
 
+import { formatMoney } from "@/lib/format-currency";
+
 const fetcher = (url: string) => fetch(url).then(res => res.json());
 
 export default function AccountsPage() {
@@ -335,7 +337,7 @@ export default function AccountsPage() {
               style={{
                 width: "100%",
                 maxWidth: "680px",
-                backgroundColor: "#ffffff",
+                backgroundColor: "var(--ots-surface-1)",
                 borderRadius: "var(--ots-radius-lg)",
                 boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
               }}
@@ -571,7 +573,7 @@ export default function AccountsPage() {
                                 fontWeight: tx.debit > 0 ? 700 : "normal",
                               }}
                             >
-                              {tx.debit > 0 ? tx.debit.toLocaleString() : "-"}
+                              {tx.debit > 0 ? formatMoney(tx.debit, 2) : "-"}
                             </LiquidTableCell>
                             <LiquidTableCell
                               align="right"
@@ -583,10 +585,10 @@ export default function AccountsPage() {
                                 fontWeight: tx.credit > 0 ? 700 : "normal",
                               }}
                             >
-                              {tx.credit > 0 ? tx.credit.toLocaleString() : "-"}
+                              {tx.credit > 0 ? formatMoney(tx.credit, 2) : "-"}
                             </LiquidTableCell>
                             <LiquidTableCell align="right" style={{ fontFamily: "monospace", fontWeight: 700, fontSize: "14px" }}>
-                              {tx.balance.toLocaleString()}
+                              {formatMoney(tx.balance, 2)}
                             </LiquidTableCell>
                           </LiquidTableRow>
                         ))
@@ -626,15 +628,15 @@ export default function AccountsPage() {
                           {new Date(tx.date).toLocaleString()}
                         </span>
                         <div style={{ display: "flex", gap: "6px" }}>
-                          {tx.debit > 0 && <span className="flowbite-badge flowbite-badge-green">+{tx.debit.toLocaleString()}</span>}
-                          {tx.credit > 0 && <span className="flowbite-badge flowbite-badge-red">-{tx.credit.toLocaleString()}</span>}
+                          {tx.debit > 0 && <span className="flowbite-badge flowbite-badge-green">+{formatMoney(tx.debit, 2)}</span>}
+                          {tx.credit > 0 && <span className="flowbite-badge flowbite-badge-red">-{formatMoney(tx.credit, 2)}</span>}
                         </div>
                       </div>
                       <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>{tx.concept}</div>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid var(--border-color)", paddingTop: "8px", marginTop: "4px", flexWrap: "wrap", gap: "8px" }}>
                         <span style={{ fontSize: "12px", color: "var(--text-secondary)" }}>Saldo:</span>
                         <span style={{ fontFamily: "monospace", fontWeight: 700, fontSize: "14px", color: "var(--text-primary)" }}>
-                          {tx.balance.toLocaleString()}
+                          {formatMoney(tx.balance, 2)}
                         </span>
                       </div>
                     </GlassCard>

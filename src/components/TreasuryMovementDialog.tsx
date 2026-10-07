@@ -2,6 +2,8 @@
 
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { useFeedback } from "@/components/FeedbackProvider";
+import FormattedNumberInput from "@/components/FormattedNumberInput";
+import { formatCurrency } from "@/lib/format-currency";
 import styles from "./TreasuryMovementDialog.module.css";
 
 export type TreasuryAccount = {
@@ -10,7 +12,7 @@ export type TreasuryAccount = {
 };
 
 function format(amount: number, account: TreasuryAccount) {
-  return `${amount.toLocaleString("es-AR", { maximumFractionDigits: account.currency.decimals })} ${account.currency.code}`;
+  return formatCurrency(amount, account.currency.code, account.currency.decimals);
 }
 
 export default function TreasuryMovementDialog({ accounts, initialAccountId, onClose, onSaved }: {
@@ -87,8 +89,9 @@ export default function TreasuryMovementDialog({ accounts, initialAccountId, onC
           </select>
         </div>
         <div><label htmlFor="treasury-amount">Importe {account ? `en ${account.currency.code}` : ""}</label>
-          <input id="treasury-amount" className="flowbite-input" type="number" inputMode="decimal" min={account ? 10 ** -account.currency.decimals : 0.01}
-            step={account ? 10 ** -account.currency.decimals : 0.01} value={amount} onChange={event => setAmount(event.target.value)} placeholder="0" required />
+          <FormattedNumberInput id="treasury-amount" className="flowbite-input"
+            maxDecimals={account ? account.currency.decimals : 2}
+            value={amount} onChangeValue={val => { setAmount(val); setError(""); }} placeholder="0,00" required />
           {account && <div className={styles.balance}>
             <span>Saldo actual <strong>{format(account.balance, account)}</strong></span>
             {validAmount && <span>Saldo después <strong>{format(account.balance + (type === "INCOME" ? numericAmount : -numericAmount), account)}</strong></span>}

@@ -255,7 +255,7 @@ export default function TreasuryPage() {
                                   gap: "4px",
                                 }}
                               >
-                                {isIncome ? "+" : "-"} {formatNumber(mov.amount, curCode)}
+                                {isIncome ? "+" : "-"} {formatNumber(mov.amount, curCode, mov.account?.currency?.decimals ?? 2)}
                               </span>
                             </LiquidTableCell>
                           </LiquidTableRow>

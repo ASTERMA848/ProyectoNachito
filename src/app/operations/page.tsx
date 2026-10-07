@@ -19,6 +19,8 @@ import {
 } from "@liquefy-ui/react";
 
 import TreasuryTransferDialog from "@/components/TreasuryTransferDialog";
+import FormattedNumberInput from "@/components/FormattedNumberInput";
+import { formatMoney, formatInputMask } from "@/lib/format-currency";
 
 const fetcher = async (url: string) => {
   const response = await fetch(url);
@@ -931,10 +933,10 @@ export default function OperationsPage() {
                           </span>
                         </LiquidTableCell>
                         <LiquidTableCell style={{ fontFamily: "monospace", fontWeight: 600 }}>
-                          {Number(op.originAmount).toLocaleString()} {op.originCurrency?.code}
+                          {formatMoney(op.originAmount, op.originCurrency?.decimals ?? 2)} {op.originCurrency?.code}
                         </LiquidTableCell>
                         <LiquidTableCell style={{ fontFamily: "monospace", fontWeight: 600 }}>
-                          {Number(op.destAmount).toLocaleString()} {op.destCurrency?.code}
+                          {formatMoney(op.destAmount, op.destCurrency?.decimals ?? 2)} {op.destCurrency?.code}
                         </LiquidTableCell>
                         <LiquidTableCell>
                           <span
@@ -1120,13 +1122,13 @@ export default function OperationsPage() {
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: "11px", textTransform: "uppercase", color: "var(--text-secondary)", fontWeight: 700 }}>Origen</div>
                     <div style={{ fontFamily: "monospace", fontSize: "14px", fontWeight: 700, color: "var(--text-primary)" }}>
-                      {Number(op.originAmount).toLocaleString()} {op.originCurrency?.code}
+                      {formatMoney(op.originAmount, op.originCurrency?.decimals ?? 2)} {op.originCurrency?.code}
                     </div>
                   </div>
                   <div style={{ borderLeft: "1px solid var(--border-color)", paddingLeft: "16px", flex: 1 }}>
                     <div style={{ fontSize: "11px", textTransform: "uppercase", color: "var(--text-secondary)", fontWeight: 700 }}>Destino</div>
                     <div style={{ fontFamily: "monospace", fontSize: "14px", fontWeight: 700, color: "var(--text-primary)" }}>
-                      {Number(op.destAmount).toLocaleString()} {op.destCurrency?.code}
+                      {formatMoney(op.destAmount, op.destCurrency?.decimals ?? 2)} {op.destCurrency?.code}
                     </div>
                   </div>
                 </div>
@@ -1304,14 +1306,12 @@ export default function OperationsPage() {
 
                       <div className="flowbite-form-group" style={{ marginBottom: 0 }}>
                         <label className="flowbite-form-label">Monto Origen *</label>
-                        <input
+                        <FormattedNumberInput
                           required
-                          type="number"
-                          step="0.01"
                           value={formData.originAmount}
-                          onChange={(e) => setFormData({ ...formData, originAmount: e.target.value })}
+                          onChangeValue={(val) => setFormData({ ...formData, originAmount: val })}
                           className="flowbite-input"
-                          placeholder="0.00"
+                          placeholder="0,00"
                           style={{ fontFamily: "var(--ots-font-mono)", fontSize: "15px" }}
                         />
                       </div>
@@ -1354,14 +1354,13 @@ export default function OperationsPage() {
                             {calcMode === "multiply" ? "Operador: (x) Multiplicar" : "Operador: (÷) Dividir"}
                           </button>
                         </div>
-                        <input
+                        <FormattedNumberInput
                           required
-                          type="number"
-                          step="0.0001"
+                          maxDecimals={4}
                           value={formData.exchangeRate}
-                          onChange={(e) => setFormData({ ...formData, exchangeRate: e.target.value })}
+                          onChangeValue={(val) => setFormData({ ...formData, exchangeRate: val })}
                           className="flowbite-input"
-                          placeholder="1.0000"
+                          placeholder="1,0000"
                           style={{ fontFamily: "var(--ots-font-mono)", fontSize: "15px" }}
                         />
                       </div>
@@ -1371,14 +1370,12 @@ export default function OperationsPage() {
                     <div className="flowbite-form-grid">
                       <div className="flowbite-form-group" style={{ marginBottom: 0 }}>
                         <label className="flowbite-form-label">Monto Destino (Calculado) *</label>
-                        <input
+                        <FormattedNumberInput
                           required
-                          type="number"
-                          step="0.01"
                           value={formData.destAmount}
-                          onChange={(e) => setFormData({ ...formData, destAmount: e.target.value })}
+                          onChangeValue={(val) => setFormData({ ...formData, destAmount: val })}
                           className="flowbite-input"
-                          placeholder="0.00"
+                          placeholder="0,00"
                           style={{ fontFamily: "var(--ots-font-mono)", fontSize: "15px", backgroundColor: "var(--ots-surface-2)" }}
                         />
                       </div>
@@ -1775,14 +1772,13 @@ export default function OperationsPage() {
                       {/* Cotización Proveedor */}
                       <div className="flowbite-form-group">
                         <label className="flowbite-form-label">Cotización Proveedor (Costo en ARS) *</label>
-                        <input
-                          type="number"
-                          step="0.01"
+                        <FormattedNumberInput
                           required
+                          maxDecimals={4}
                           value={distributedData.exchangeRate}
-                          onChange={(e) => setDistributedData({ ...distributedData, exchangeRate: e.target.value })}
+                          onChangeValue={(val) => setDistributedData({ ...distributedData, exchangeRate: val })}
                           className="flowbite-input"
-                          placeholder="ej: 1500.00"
+                          placeholder="ej: 1.500,00"
                         />
                       </div>
 
@@ -1908,25 +1904,22 @@ export default function OperationsPage() {
                                 />
                               </td>
                               <td data-label="Cotización cliente" style={{ padding: "8px" }}>
-                                <input
-                                  type="number"
-                                  step="0.01"
+                                <FormattedNumberInput
+                                  maxDecimals={4}
                                   value={item.exchangeRate}
-                                  onChange={(e) => handleDistributedItemChange(index, "exchangeRate", e.target.value)}
+                                  onChangeValue={(val) => handleDistributedItemChange(index, "exchangeRate", val)}
                                   className="flowbite-input"
-                                  placeholder={distributedData.exchangeRate || "1500"}
+                                  placeholder={distributedData.exchangeRate ? formatInputMask(distributedData.exchangeRate, 4) : "1.500,00"}
                                   style={{ fontFamily: "var(--ots-font-mono)" }}
                                 />
                               </td>
                               <td data-label="Monto" style={{ padding: "8px" }}>
-                                <input
-                                  type="number"
-                                  step="0.01"
+                                <FormattedNumberInput
                                   required
                                   value={item.amount}
-                                  onChange={(e) => handleDistributedItemChange(index, "amount", e.target.value)}
+                                  onChangeValue={(val) => handleDistributedItemChange(index, "amount", val)}
                                   className="flowbite-input"
-                                  placeholder="0.00"
+                                  placeholder="0,00"
                                   style={{ fontFamily: "var(--ots-font-mono)" }}
                                 />
                               </td>
@@ -1996,25 +1989,25 @@ export default function OperationsPage() {
                         <div>
                           <span style={{ fontSize: "11px", color: "var(--ots-text-muted)", textTransform: "uppercase", display: "block" }}>Total Comprado</span>
                           <strong style={{ fontSize: "15px", fontFamily: "var(--ots-font-mono)", color: "var(--ots-text-primary)" }}>
-                            {totalMonto.toLocaleString()} {selectedCur?.code || ""}
+                            {formatMoney(totalMonto, selectedCur?.decimals ?? 2)} {selectedCur?.code || ""}
                           </strong>
                         </div>
                         <div>
                           <span style={{ fontSize: "11px", color: "var(--ots-text-muted)", textTransform: "uppercase", display: "block" }}>Costo Proveedor ARS</span>
                           <strong style={{ fontSize: "15px", fontFamily: "var(--ots-font-mono)", color: "var(--ots-warning)" }}>
-                            $ {costProveedorARS.toLocaleString()} ARS
+                            $ {formatMoney(costProveedorARS, 2)} ARS
                           </strong>
                         </div>
                         <div>
                           <span style={{ fontSize: "11px", color: "var(--ots-text-muted)", textTransform: "uppercase", display: "block" }}>Total Ventas Clientes ARS</span>
                           <strong style={{ fontSize: "15px", fontFamily: "var(--ots-font-mono)", color: "var(--ots-success)" }}>
-                            $ {totalVentaClientesARS.toLocaleString()} ARS
+                            $ {formatMoney(totalVentaClientesARS, 2)} ARS
                           </strong>
                         </div>
                         <div style={{ borderLeft: "1px solid var(--ots-border)", paddingLeft: "24px" }}>
                           <span style={{ fontSize: "11px", color: "var(--ots-text-muted)", textTransform: "uppercase", display: "block", fontWeight: 700 }}>Margen Pactado ARS</span>
                           <strong style={{ fontSize: "16px", fontFamily: "var(--ots-font-mono)", color: gananciaNetaARS >= 0 ? "var(--ots-success)" : "var(--ots-danger)" }}>
-                            $ {gananciaNetaARS.toLocaleString()} ARS
+                            $ {formatMoney(gananciaNetaARS, 2)} ARS
                           </strong>
                         </div>
                       </div>

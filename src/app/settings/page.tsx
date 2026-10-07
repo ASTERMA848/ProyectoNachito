@@ -6,6 +6,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Portal from "@/components/Portal";
 import LiquidSelect from "@/components/LiquidSelect";
+import ThemePreference from "@/components/ThemePreference";
 import {
   LiquidTableContainer,
   LiquidTable,
@@ -74,6 +75,7 @@ export default function SettingsPage() {
   const [profileSuccess, setProfileSuccess] = useState<string | null>(null);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
+  const [themeSaving, setThemeSaving] = useState(false);
 
   const fetchTags = async () => {
     const res = await fetch("/api/tags");
@@ -260,7 +262,7 @@ export default function SettingsPage() {
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentUser) return;
+    if (!currentUser || themeSaving) return;
     setProfileLoading(true);
     setProfileSuccess(null);
     setProfileError(null);
@@ -808,19 +810,7 @@ export default function SettingsPage() {
                 />
               </div>
 
-              <div className="flowbite-form-group">
-                <label className="flowbite-form-label">Tema Visual</label>
-                <select
-                  value={profileTheme}
-                  onChange={(e) => setProfileTheme(e.target.value)}
-                  className="flowbite-input"
-                  disabled={profileLoading}
-                >
-                  <option value="SYSTEM">Sistema (Predeterminado)</option>
-                  <option value="LIGHT">Claro</option>
-                  <option value="DARK">Oscuro</option>
-                </select>
-              </div>
+              {currentUser && <ThemePreference value={profileTheme} userId={currentUser.id} onChange={setProfileTheme} onSavingChange={setThemeSaving} disabled={profileLoading} />}
 
               <div className="flowbite-form-group">
                 <label className="flowbite-form-label">Nueva Contraseña (dejar vacío para no cambiar)</label>
@@ -838,9 +828,9 @@ export default function SettingsPage() {
                 type="submit"
                 className="flowbite-btn flowbite-btn-primary"
                 style={{ height: "42px", width: "100%" }}
-                disabled={profileLoading}
+                disabled={profileLoading || themeSaving}
               >
-                {profileLoading ? "Guardando..." : "Actualizar Mis Datos"}
+                {profileLoading ? "Guardando..." : themeSaving ? "Guardando tema..." : "Actualizar Mis Datos"}
               </button>
             </div>
           </form>

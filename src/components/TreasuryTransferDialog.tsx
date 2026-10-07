@@ -2,6 +2,8 @@
 
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { useFeedback } from "@/components/FeedbackProvider";
+import FormattedNumberInput from "@/components/FormattedNumberInput";
+import { formatCurrency } from "@/lib/format-currency";
 import styles from "./TreasuryTransferDialog.module.css";
 
 export type TreasuryAccount = {
@@ -12,10 +14,7 @@ export type TreasuryAccount = {
 };
 
 function format(amount: number, account: TreasuryAccount) {
-  return `${amount.toLocaleString("es-AR", {
-    minimumFractionDigits: Math.min(2, account.currency.decimals),
-    maximumFractionDigits: account.currency.decimals,
-  })} ${account.currency.code}`;
+  return formatCurrency(amount, account.currency.code, account.currency.decimals);
 }
 
 export default function TreasuryTransferDialog({
@@ -293,45 +292,39 @@ export default function TreasuryTransferDialog({
             <div className={styles.grid2}>
               <div>
                 <label htmlFor="origin-amount">Monto enviado en {originAccount?.currency.code}</label>
-                <input
+                <FormattedNumberInput
                   id="origin-amount"
                   className="flowbite-input"
-                  type="number"
-                  inputMode="decimal"
-                  step="any"
+                  maxDecimals={originAccount?.currency.decimals ?? 2}
                   value={originAmountStr}
-                  onChange={(e) => handleOriginAmountChange(e.target.value)}
-                  placeholder="0.00"
+                  onChangeValue={(val) => handleOriginAmountChange(val)}
+                  placeholder="0,00"
                   required
                 />
               </div>
 
               <div>
                 <label htmlFor="exchange-rate">Cotización / Tipo de Cambio</label>
-                <input
+                <FormattedNumberInput
                   id="exchange-rate"
                   className="flowbite-input"
-                  type="number"
-                  inputMode="decimal"
-                  step="any"
+                  maxDecimals={4}
                   value={exchangeRateStr}
-                  onChange={(e) => handleExchangeRateChange(e.target.value)}
-                  placeholder="Ej: 1250"
+                  onChangeValue={(val) => handleExchangeRateChange(val)}
+                  placeholder="Ej: 1.250,00"
                   required
                 />
               </div>
 
               <div style={{ gridColumn: "1 / -1" }}>
                 <label htmlFor="dest-amount">Monto recibido en {destAccount?.currency.code}</label>
-                <input
+                <FormattedNumberInput
                   id="dest-amount"
                   className="flowbite-input"
-                  type="number"
-                  inputMode="decimal"
-                  step="any"
+                  maxDecimals={destAccount?.currency.decimals ?? 2}
                   value={destAmountStr}
-                  onChange={(e) => handleDestAmountChange(e.target.value)}
-                  placeholder="0.00"
+                  onChangeValue={(val) => handleDestAmountChange(val)}
+                  placeholder="0,00"
                   required
                 />
               </div>
@@ -339,15 +332,13 @@ export default function TreasuryTransferDialog({
           ) : (
             <div>
               <label htmlFor="same-amount">Monto a transferir en {originAccount?.currency.code}</label>
-              <input
+              <FormattedNumberInput
                 id="same-amount"
                 className="flowbite-input"
-                type="number"
-                inputMode="decimal"
-                step="any"
+                maxDecimals={originAccount?.currency.decimals ?? 2}
                 value={originAmountStr}
-                onChange={(e) => handleOriginAmountChange(e.target.value)}
-                placeholder="0.00"
+                onChangeValue={(val) => handleOriginAmountChange(val)}
+                placeholder="0,00"
                 required
               />
             </div>

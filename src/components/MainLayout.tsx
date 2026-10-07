@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Sidebar from "./Sidebar";
 import AuditorInspector from "./AuditorInspector";
+import { applyTheme, THEME_CHANGED_EVENT } from "@/lib/theme";
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -64,21 +65,17 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
   }, [pathname, router, isAuthPage]);
 
   useEffect(() => {
-    if (user?.theme) {
-      if (user.theme === "DARK") {
-        document.documentElement.classList.add("dark");
-        document.documentElement.classList.remove("light");
-      } else if (user.theme === "LIGHT") {
-        document.documentElement.classList.add("light");
-        document.documentElement.classList.remove("dark");
-      } else {
-        document.documentElement.classList.add("dark");
-        document.documentElement.classList.remove("light");
-      }
-    } else {
-      document.documentElement.classList.add("dark");
-    }
-  }, [user?.theme]);
+    applyTheme(isAuthPage ? "LIGHT" : user?.theme);
+  }, [user?.theme, isAuthPage]);
+
+  useEffect(() => {
+    const handleThemeChange = (event: Event) => {
+      const { userId, theme } = (event as CustomEvent).detail;
+      setUser((current: any) => current?.id === userId ? { ...current, theme } : current);
+    };
+    window.addEventListener(THEME_CHANGED_EVENT, handleThemeChange);
+    return () => window.removeEventListener(THEME_CHANGED_EVENT, handleThemeChange);
+  }, []);
 
   if (isAuthPage) {
     return <>{children}</>;

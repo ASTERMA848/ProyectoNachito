@@ -15,3 +15,113 @@
  GET /api/auth/me 200 in 569ms
  ✓ Compiled /api/auth/logout in 68ms (800 modules)
  POST /api/auth/logout 200 in 513ms
+ ✓ Compiled /api/treasury in 262ms (72 modules)
+ ✓ Compiled /api/operations in 73ms (74 modules)
+ ○ Compiling /accounts ...
+ ✓ Compiled /accounts in 1869ms (1621 modules)
+ ○ Compiling /sql-console ...
+ GET /api/treasury 200 in 4590ms
+ ✓ Compiled /sql-console in 1144ms (1608 modules)
+ GET /api/operations?page=1&limit=50&search=&state=&startDate=&endDate= 200 in 3770ms
+ ○ Compiling /contacts ...
+ ✓ Compiled /contacts in 1117ms (1620 modules)
+ GET /logout 200 in 1315ms
+ ✓ Compiled /api/auth/logout in 390ms (849 modules)
+ POST /api/auth/logout 200 in 832ms
+ POST /api/auth/logout 200 in 841ms
+ ✓ Compiled /login in 407ms (854 modules)
+ ✓ Compiled in 343ms (1601 modules)
+ ✓ Compiled in 639ms (1531 modules)
+ ✓ Compiled in 73ms (757 modules)
+ ✓ Compiled in 575ms (787 modules)
+ ✓ Compiled in 696ms (1550 modules)
+ ✓ Compiled in 377ms (1534 modules)
+ ✓ Compiled in 507ms (777 modules)
+ ✓ Compiled in 262ms (1551 modules)
+ ✓ Compiled in 569ms (779 modules)
+ ✓ Compiled in 319ms (779 modules)
+ ✓ Compiled in 312ms (779 modules)
+ ○ Compiling /api/auth/login ...
+ ✓ Compiled /api/auth/login in 559ms (792 modules)
+ POST /api/auth/login 200 in 3587ms
+ ✓ Compiled /api/auth/me in 117ms (800 modules)
+ GET /api/auth/me 200 in 563ms
+ ✓ Compiled /api/auth/theme in 143ms (803 modules)
+ PUT /api/auth/theme 200 in 1183ms
+ GET /api/auth/me 200 in 223ms
+ PUT /api/auth/theme 200 in 628ms
+ GET /api/auth/me 200 in 222ms
+ PUT /api/auth/theme 400 in 216ms
+ ○ Compiling /settings ...
+ ✓ Compiled /settings in 575ms (810 modules)
+ GET /settings 200 in 734ms
+ ✓ Compiled /api/users/[id] in 175ms (812 modules)
+ PUT /api/users/cace9ee3-c386-4052-a1b8-8172ae739794 200 in 2026ms
+ ✓ Compiled /api/auth/logout in 178ms (814 modules)
+ POST /api/auth/logout 200 in 625ms
+ POST /api/auth/login 200 in 3015ms
+ ✓ Compiled / in 409ms (795 modules)
+ ✓ Compiled /api/auth/me in 149ms (803 modules)
+ GET /api/auth/me 200 in 594ms
+ ✓ Compiled /settings in 333ms (810 modules)
+ ✓ Compiled /api/currencies in 200ms (813 modules)
+ ✓ Compiled (820 modules)
+ GET /api/auth/me 200 in 642ms
+ GET /api/auth/me 200 in 210ms
+ GET /api/auth/me 200 in 202ms
+ GET /api/settings 200 in 1253ms
+ GET /api/settings 200 in 405ms
+ GET /api/users 200 in 2628ms
+ GET /api/tags 200 in 2631ms
+ GET /api/currencies 200 in 2659ms
+ ✓ Compiled /api/auth/theme in 230ms (822 modules)
+ GET /api/currencies 200 in 632ms
+ GET /api/users 200 in 639ms
+ GET /api/tags 200 in 649ms
+ PUT /api/auth/theme 200 in 1262ms
+ GET /api/auth/me 200 in 216ms
+ GET /api/currencies 200 in 427ms
+ GET /api/users 200 in 434ms
+ GET /api/auth/me 200 in 436ms
+ GET /api/tags 200 in 615ms
+ GET /api/settings 200 in 627ms
+ GET /api/auth/me 200 in 233ms
+ GET /api/users 200 in 431ms
+ GET /api/auth/me 200 in 215ms
+ GET /api/tags 200 in 417ms
+ GET /api/settings 200 in 406ms
+ GET /api/currencies 200 in 619ms
+ PUT /api/auth/theme 200 in 1012ms
+ ✓ Compiled in 557ms (779 modules)
+ ✓ Compiled in 192ms (780 modules)
+ ✓ Compiled in 583ms (780 modules)
+ ✓ Compiled in 225ms (781 modules)
+ ✓ Compiled in 185ms (781 modules)
+ ✓ Compiled in 184ms (781 modules)
+ ✓ Compiled in 163ms (781 modules)
+ ✓ Compiled in 188ms (781 modules)
+ ✓ Compiled in 126ms (781 modules)
+ ✓ Compiled in 134ms (781 modules)
+ ✓ Compiled in 138ms (781 modules)
+ ✓ Compiled in 147ms (781 modules)
+ ✓ Compiled in 391ms (781 modules)
+ PUT /api/auth/theme 200 in 2882ms
+ GET /api/auth/me 200 in 237ms
+ GET /api/tags 200 in 651ms
+ GET /api/tags 200 in 416ms
+ GET /api/auth/me 200 in 1812ms
+ GET /api/auth/me 200 in 212ms
+ GET /api/currencies 200 in 2213ms
+ GET /api/settings 200 in 2214ms
+ GET /api/users 200 in 2251ms
+ GET /api/auth/me 200 in 211ms
+ GET /api/settings 200 in 417ms
+ GET /api/users 200 in 591ms
+ GET /api/currencies 200 in 623ms
+ PUT /api/auth/theme 200 in 1026ms
+ ✓ Compiled in 809ms (781 modules)
+ ✓ Compiled in 228ms (781 modules)
+ ✓ Compiled in 135ms (781 modules)
+ ✓ Compiled in 147ms (781 modules)
+ ✓ Compiled in 214ms (781 modules)
+[?25h

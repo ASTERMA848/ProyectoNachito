@@ -3,6 +3,7 @@ import { Manrope, JetBrains_Mono } from "next/font/google";
 import "@liquefy-ui/react/styles.css";
 import "./globals.css";
 import "../styles/responsive.css";
+import "../styles/themes.css";
 import MainLayout from "@/components/MainLayout";
 import { LiquefyProvider } from "@liquefy-ui/react";
 import FeedbackProvider from "@/components/FeedbackProvider";
@@ -32,7 +33,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es" className={`dark ${manrope.variable} ${jetbrainsMono.variable}`}>
+    <html lang="es" className={`light ${manrope.variable} ${jetbrainsMono.variable}`}>
       <body className={manrope.className}>
         <LiquefyProvider theme="dark">
           <FeedbackProvider><MainLayout>{children}</MainLayout></FeedbackProvider>

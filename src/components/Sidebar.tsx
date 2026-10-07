@@ -197,7 +197,7 @@ export default function Sidebar({ user, open, onClose }: { user?: { username: st
                 height: "34px",
                 borderRadius: "999px",
                 backgroundColor: "var(--ots-primary)",
-                color: "#ffffff",
+                color: "var(--ots-primary-ink)",
                 fontWeight: 700,
                 fontSize: "13px",
                 display: "flex",

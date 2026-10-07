@@ -22,6 +22,7 @@
   --ots-primary-hover: #4338ca;
   --ots-primary-active: #3730a3;
   --ots-primary-muted: rgba(79, 70, 229, 0.1);
+  --ots-primary-ink: #ffffff;
 
   /* --- Semantic Status Colors --- */
   --ots-success: #059669;
@@ -56,3 +57,35 @@
   --ots-font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
+html.dark {
+  color-scheme: dark;
+  --ots-bg-canvas: #25272c;
+  --ots-surface-1: #2d3036;
+  --ots-surface-2: #353840;
+  --ots-surface-3: #40444d;
+  --ots-surface-inset: #292c32;
+  --ots-border: #454951;
+  --ots-border-subtle: #626874;
+  --ots-border-hover: #828995;
+  --ots-border-focus: #a5acff;
+  --ots-primary: #a5acff;
+  --ots-primary-hover: #bac0ff;
+  --ots-primary-active: #949df5;
+  --ots-primary-muted: rgba(165, 172, 255, 0.13);
+  --ots-primary-ink: #25272c;
+  --ots-text-primary: #eceef2;
+  --ots-text-secondary: #b3b8c2;
+  --ots-text-muted: #a6acb8;
+  --ots-text-disabled: #828995;
+  --ots-success: #6ee7b7;
+  --ots-success-bg: #253e35;
+  --ots-success-border: #426857;
+  --ots-warning: #fcd58c;
+  --ots-warning-bg: #433929;
+  --ots-warning-border: #75613d;
+  --ots-danger: #ff9a9a;
+  --ots-danger-bg: #462f34;
+  --ots-danger-border: #7b4a54;
+  --ots-info: #a3c9ff;
+  --ots-info-bg: #2c3b50;
+}
