@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import useSWR from "swr";
+import useSWR, { useSWRConfig } from "swr";
 import {
   LiquidTableContainer,
   LiquidTable,
@@ -12,11 +12,21 @@ import {
   LiquidTableCell,
 } from "@liquefy-ui/react";
 import { BriefcaseIcon } from "@liquefy-ui/icons";
+import TreasuryMovementDialog from "@/components/TreasuryMovementDialog";
+import TreasuryHistory from "@/components/TreasuryHistory";
 
-const fetcher = (url: string) => fetch(url).then(res => res.json());
+const fetcher = async (url: string) => {
+  const response = await fetch(url);
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.error || "No se pudo cargar tesorería.");
+  return result;
+};
 
 export default function TreasuryPage() {
-  const { data, isLoading: loading, mutate: fetchTreasury } = useSWR("/api/treasury", fetcher);
+  const { mutate: refreshHistory } = useSWRConfig();
+  const { data, error, isLoading: loading, mutate: fetchTreasury } = useSWR("/api/treasury", fetcher);
+  const [movementAccountId, setMovementAccountId] = useState<string | null>(null);
+  const [historyAccount, setHistoryAccount] = useState<{ id: string; name: string } | null>(null);
 
   const accounts = data?.accounts || [];
   const movements = data?.movements || [];
@@ -76,7 +86,10 @@ export default function TreasuryPage() {
         </div>
         <button
           type="button"
-          onClick={fetchTreasury}
+          onClick={() => {
+            void fetchTreasury().catch(() => {});
+            void refreshHistory(key => typeof key === "string" && key.startsWith("/api/treasury/")).catch(() => {});
+          }}
           className="flowbite-btn flowbite-btn-secondary"
           style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px 16px" }}
         >
@@ -86,7 +99,7 @@ export default function TreasuryPage() {
       </div>
 
       {/* Cajas (Cards de Cuentas de Tesorería) */}
-      {loading ? (
+      {error ? <p role="alert" style={{ color: "var(--ots-danger)" }}>No se pudo cargar tesorería. Usá Actualizar para intentar nuevamente.</p> : loading ? (
         <div style={{ height: "160px", display: "flex", alignItems: "center", justifyContent: "center" }}>
           <span style={{ color: "var(--ots-text-secondary)", fontSize: "14px" }}>Cargando cajas de tesorería...</span>
         </div>
@@ -160,6 +173,21 @@ export default function TreasuryPage() {
                         {formatNumber(acc.balance, curCode)}
                       </div>
                     </div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                    {data?.canManage && <button type="button" className="flowbite-btn flowbite-btn-secondary"
+                      style={{ alignSelf: "flex-start", padding: "6px 10px", fontSize: "12px", display: "inline-flex", gap: "6px", alignItems: "center" }}
+                      onClick={() => setMovementAccountId(acc.id)} aria-label={`Ingreso o extracción en ${acc.name}, ${curCode}`}>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M8 4v16m-4-4 4 4 4-4M16 20V4m-4 4 4-4 4 4" /></svg>
+                      Ingreso / extracción
+                    </button>}
+                    <button type="button" className="flowbite-btn flowbite-btn-secondary"
+                      style={{ padding: "6px 10px", fontSize: "12px", display: "inline-flex", gap: "6px", alignItems: "center" }}
+                      aria-label={`Ver historial de ${acc.name}, ${curCode}`} aria-pressed={historyAccount?.id === acc.id}
+                      onClick={() => setHistoryAccount({ id: acc.id, name: acc.name })}>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 11a9 9 0 1 1 2.6 7M3 4v7h7M12 7v5l3 2" /></svg>
+                      Historial
+                    </button>
+                    </div>
                   </div>
                 );
               })}
@@ -167,7 +195,7 @@ export default function TreasuryPage() {
           )}
 
           {/* Tabla de Movimientos */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+          {historyAccount ? <TreasuryHistory key={historyAccount.id} accountId={historyAccount.id} accountName={historyAccount.name} onClose={() => setHistoryAccount(null)} /> : <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <h2 style={{ fontSize: "18px", fontWeight: 700, color: "var(--ots-text-primary)", letterSpacing: "-0.01em" }}>
                 Últimos Movimientos de Cajas
@@ -177,7 +205,7 @@ export default function TreasuryPage() {
               </span>
             </div>
 
-            <div className="flowbite-desktop-table-container" style={{ overflowX: "auto", width: "100%" }}>
+            <div style={{ overflowX: "auto", width: "100%" }}>
               <LiquidTableContainer style={{ margin: 0 }}>
                 <LiquidTable hover size="md">
                   <LiquidTableHead>
@@ -244,10 +272,17 @@ export default function TreasuryPage() {
                 </LiquidTable>
               </LiquidTableContainer>
             </div>
-          </div>
+          </div>}
         </>
       )}
+      {movementAccountId && <TreasuryMovementDialog accounts={accounts} initialAccountId={movementAccountId} onClose={() => setMovementAccountId(null)}
+        onSaved={result => {
+          void refreshHistory(key => typeof key === "string" && key.startsWith(`/api/treasury/${result.account.id}/movements`)).catch(() => {});
+          void fetchTreasury((current: typeof data) => current ? ({ ...current,
+            accounts: current.accounts.map(account => account.id === result.account.id ? result.account : account),
+            movements: [result.movement, ...current.movements].slice(0, 100),
+          }) : current, { revalidate: false });
+        }} />}
     </div>
   );
 }
-

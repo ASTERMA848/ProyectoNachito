@@ -14,6 +14,7 @@
     "db:provider-payments": "node scripts/migrate-provider-payments.cjs",
     "db:repair-provider-payments": "node scripts/migrate-provider-payments.cjs --repair",
     "test:operations": "node scripts/operations-performance.cjs",
+    "test:treasury": "node scripts/treasury-movements.cjs",
     "bench:operations": "node scripts/operations-performance.cjs --compare"
   },
   "prisma": {
