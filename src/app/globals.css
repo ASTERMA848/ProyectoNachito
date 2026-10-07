@@ -1141,10 +1141,7 @@ select.flowbite-input option:checked, select option:checked {
    COMPREHENSIVE RESPONSIVE RULES
    ========================================================================== */
 
-/* Prevent horizontal overflow on all screens */
-html, body {
-  overflow-x: hidden;
-}
+html, body { max-width: 100%; }
 
 /* Mobile-first responsive typography */
 @media (max-width: 479px) {

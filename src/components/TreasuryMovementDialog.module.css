@@ -17,3 +17,4 @@
 .dialog button:disabled { opacity: 0.6; cursor: wait; }
 .dialog :focus-visible { outline: 2px solid var(--ots-primary); outline-offset: 3px; }
 @media (max-width: 420px) { .dialog { padding: 20px; } .actions { flex-direction: column-reverse; } .actions button { width: 100%; } }
+@media (max-width: 767px) { .close { width: 44px; height: 44px; } .actions button { min-height: 44px; } .fields input, .fields select, .fields textarea { font-size: 16px; } }

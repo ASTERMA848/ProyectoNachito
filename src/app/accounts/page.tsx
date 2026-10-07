@@ -389,7 +389,7 @@ export default function AccountsPage() {
                     </div>
 
                     {/* Currency and Type in Grid */}
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+                    <div className="flowbite-form-grid">
                       <div className="flowbite-form-group" style={{ marginBottom: 0 }}>
                         <label className="flowbite-form-label">Moneda *</label>
                         <LiquidSelect

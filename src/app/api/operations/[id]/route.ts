@@ -69,7 +69,7 @@ export async function PUT(
     if (!oldOperation) {
       return NextResponse.json({ error: "Operación no encontrada" }, { status: 404 });
     }
-    if (oldOperation.type.startsWith("DISTRIBUTED_SALE")) {
+    if (oldOperation.type.startsWith("DISTRIBUTED_SALE") || oldOperation.type === "SINGLE_SALE") {
       return NextResponse.json({ error: "Editá la venta distribuida desde su formulario para actualizar pagos y saldos juntos" }, { status: 400 });
     }
 
@@ -150,7 +150,7 @@ export async function PATCH(
     if (!oldOperation) {
       return NextResponse.json({ error: "Operación no encontrada" }, { status: 404 });
     }
-    if (oldOperation.type.startsWith("DISTRIBUTED_SALE")) {
+    if (oldOperation.type.startsWith("DISTRIBUTED_SALE") || oldOperation.type === "SINGLE_SALE") {
       return NextResponse.json({ error: "Actualizá los cobros y el pago al proveedor desde Editar venta distribuida" }, { status: 400 });
     }
 

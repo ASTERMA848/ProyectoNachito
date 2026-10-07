@@ -182,9 +182,9 @@ export default function TreasuryPage() {
               </span>
             </div>
 
-            <div style={{ overflowX: "auto", width: "100%" }}>
+            <div className="responsive-table" role="region" aria-label="Movimientos de tesorería" tabIndex={0}>
               <LiquidTableContainer style={{ margin: 0 }}>
-                <LiquidTable hover size="md">
+                <LiquidTable hover size="md" className="treasury-movement-table">
                   <LiquidTableHead>
                     <LiquidTableRow>
                       <LiquidTableHeaderCell style={{ width: "18%" }}>Fecha</LiquidTableHeaderCell>

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireAuth } from "@/lib/session";
-import { saveDistributedSale, SaleInput, SaleItem } from "@/lib/distributed-sale";
+import { saveDistributedSale, SaleInput, SaleItem, SaleValidationError } from "@/lib/distributed-sale";
 
 export async function handleDistributedSale(req: NextRequest, parentId?: string) {
   try {
@@ -10,6 +10,11 @@ export async function handleDistributedSale(req: NextRequest, parentId?: string)
     const body = await req.json().catch(() => null);
     if (!body) return NextResponse.json({ error: "Datos inválidos" }, { status: 400 });
     const { providerId, currencyId, exchangeRate, operationDate, observations, items, providerIsPaid } = body;
+    const operationType = body.operationType ?? "DISTRIBUTED_SALE";
+    if (operationType !== "DISTRIBUTED_SALE" && operationType !== "SINGLE_SALE")
+      return NextResponse.json({ error: "Tipo de operación inválido" }, { status: 400 });
+    if (operationType === "SINGLE_SALE" && (!Array.isArray(items) || items.length !== 1))
+      return NextResponse.json({ error: "La operación 1 a 1 debe tener exactamente un movimiento de cliente." }, { status: 400 });
     if (typeof providerIsPaid !== "boolean") {
       return NextResponse.json({ error: "Indicá si el proveedor está pagado o pendiente" }, { status: 400 });
     }
@@ -54,17 +59,18 @@ export async function handleDistributedSale(req: NextRequest, parentId?: string)
     }
     const input: SaleInput = { providerId, currencyId, destCurrencyId: destination.id,
       currencyCode: origin.code, exchangeRate: rate, operationDate: date,
-      observations: observations ? String(observations).slice(0, 2000) : null, providerIsPaid, items: normalized };
+      observations: observations ? String(observations).slice(0, 2000) : null, providerIsPaid, items: normalized, operationType };
     const result = await prisma.$transaction(async tx => {
       const result = await saveDistributedSale(tx, input, parentId);
       await tx.auditLog.create({ data: { userId: user.id, action: parentId ? "UPDATE" : "CREATE", entity: "Operation",
         entityId: result.parentOp.id, newValues: JSON.stringify({ operationNumber: result.parentOp.operationNumber,
-          type: "DISTRIBUTED_SALE", totalAmount: result.parentOp.originAmount, itemCount: normalized.length,
+          type: result.parentOp.type, totalAmount: result.parentOp.originAmount, itemCount: normalized.length,
           providerIsPaid, clientPayments: normalized.map(item => ({ clientId: item.clientId, isPaid: item.isPaid })), state: result.parentOp.state }) } });
       return result;
     }, { maxWait: 10000, timeout: 30000 });
     return NextResponse.json(result, { status: parentId ? 200 : 201 });
   } catch (error) {
+    if (error instanceof SaleValidationError) return NextResponse.json({ error: error.message }, { status: 400 });
     console.error("Distributed sale save error:", error);
     const notFound = error instanceof Error && error.message === "Operación distribuida no encontrada";
     return NextResponse.json({ error: notFound ? error.message : "Error al guardar la operación distribuida" }, { status: notFound ? 404 : 500 });

@@ -112,6 +112,7 @@ export default async function Dashboard() {
 
       {/* Stats Grid: Neo-Fintech Minimal Metric Cards */}
       <div
+        className="dashboard-metrics"
         style={{
           display: "grid",
           gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 220px), 1fr))",

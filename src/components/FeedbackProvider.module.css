@@ -61,5 +61,6 @@
   .dialog { padding: 24px; }
   .dialog p { font-size: 16px; }
   .actions button { flex: 1; }
+  .close { min-width: 44px; min-height: 44px; justify-content: center; align-items: center; }
 }
 @media (prefers-reduced-motion: reduce) { .notice { animation: none; } }

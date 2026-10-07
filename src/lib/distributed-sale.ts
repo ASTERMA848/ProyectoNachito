@@ -6,7 +6,9 @@ export type SaleItem = { clientId: string; amount: number; exchangeRate: number;
 export type SaleInput = {
   providerId: string; currencyId: string; destCurrencyId: string; currencyCode: string;
   exchangeRate: number; operationDate: Date; observations: string | null; providerIsPaid: boolean; items: SaleItem[];
+  operationType?: "DISTRIBUTED_SALE" | "SINGLE_SALE";
 };
+export class SaleValidationError extends Error {}
 
 // Serializa la numeración sin contar todas las operaciones hijas ni reutilizar números borrados.
 export async function nextOperationNumber(tx: Tx) {
@@ -109,26 +111,31 @@ export async function applySaleLedger(tx: Tx, parent: Operation, children: Opera
 }
 
 export async function saveDistributedSale(tx: Tx, input: SaleInput, parentId?: string) {
+  if (input.operationType === "SINGLE_SALE" && input.items.length !== 1)
+    throw new SaleValidationError("La operación 1 a 1 debe tener exactamente un movimiento de cliente.");
   let existing: (Operation & { childOperations: Operation[] }) | null = null;
   if (parentId) {
     // Leer después del bloqueo: dos ediciones concurrentes no revierten el mismo lote dos veces.
     await tx.$queryRaw`SELECT id FROM "Operation" WHERE id = ${parentId} FOR UPDATE`;
-    existing = await tx.operation.findFirst({ where: { id: parentId, type: "DISTRIBUTED_SALE", deletedAt: null },
+    existing = await tx.operation.findFirst({ where: { id: parentId, type: { in: ["DISTRIBUTED_SALE", "SINGLE_SALE"] }, parentOperationId: null, deletedAt: null },
       include: { childOperations: { where: { deletedAt: null }, orderBy: { createdAt: "asc" } } } });
     if (!existing) throw new Error("Operación distribuida no encontrada");
+    if ((existing.type === "SINGLE_SALE" && input.items.length !== 1) || (input.operationType && input.operationType !== existing.type))
+      throw new SaleValidationError("No se puede cambiar el tipo de operación. La operación 1 a 1 admite un solo movimiento de cliente.");
     existing.childOperations.sort((a, b) => a.operationNumber.localeCompare(b.operationNumber, undefined, { numeric: true }));
     await reverseSaleLedger(tx, [parentId, ...existing.childOperations.map(c => c.id)]);
   }
   const total = input.items.reduce((sum, item) => sum + item.amount, 0);
   const paid = input.items.filter(i => i.isPaid).length;
-  const data = { providerId: input.providerId, originCurrencyId: input.currencyId, destCurrencyId: input.destCurrencyId,
+  const operationType = existing?.type || input.operationType || "DISTRIBUTED_SALE";
+  const data = { providerId: input.providerId, clientId: operationType === "SINGLE_SALE" ? input.items[0].clientId : null, originCurrencyId: input.currencyId, destCurrencyId: input.destCurrencyId,
     originAmount: total, destAmount: total * input.exchangeRate, exchangeRate: input.exchangeRate,
     operationDate: input.operationDate, observations: input.observations,
     state: paid === input.items.length && input.providerIsPaid ? "COMPLETED" : paid || input.providerIsPaid ? "PARTIAL" : "PENDING",
     isPaid: paid === input.items.length, providerIsPaid: input.providerIsPaid };
   const parent = existing
     ? await tx.operation.update({ where: { id: existing.id }, data })
-    : await tx.operation.create({ data: { ...data, id: randomUUID(), operationNumber: await nextOperationNumber(tx), type: "DISTRIBUTED_SALE" } });
+    : await tx.operation.create({ data: { ...data, id: randomUUID(), operationNumber: await nextOperationNumber(tx), type: operationType } });
   const now = new Date();
   const children: Operation[] = input.items.map((item, index) => ({ ...parent,
     id: existing?.childOperations[index]?.id || randomUUID(),

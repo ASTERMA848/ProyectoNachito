@@ -16,7 +16,6 @@ import {
   LiquidTableCell,
   GlassCard,
   LiquidMenu,
-  LiquidDatePicker,
 } from "@liquefy-ui/react";
 
 export default function SettingsPage() {
@@ -534,11 +533,9 @@ export default function SettingsPage() {
                   </button>
                 )}
               </div>
-              <LiquidDatePicker
+              <input type="date" className="flowbite-input" aria-label="Fecha de bloqueo contable"
                 value={accountingBlockDate}
-                onValueChange={(val) => setAccountingBlockDate(val || "")}
-                placeholder="Seleccionar fecha de bloqueo..."
-                locale="es-AR"
+                onChange={event => setAccountingBlockDate(event.target.value)}
               />
               <p style={{ fontSize: "12px", color: "var(--text-secondary)", marginTop: "6px" }}>
                 No se podrán crear ni modificar operaciones previas a esta fecha.

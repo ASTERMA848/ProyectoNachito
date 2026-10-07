@@ -18,7 +18,7 @@ export default function AuditorInspector({ user }: { user: any }) {
   const isAuditor = user?.role === "AUDITOR" || user?.username === "admin";
 
   useEffect(() => {
-    if (!isAuditor) return;
+    if (!isAuditor || !matchMedia("(hover: hover) and (pointer: fine)").matches) return;
 
     const handleMouseOver = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
@@ -70,7 +70,7 @@ export default function AuditorInspector({ user }: { user: any }) {
   const tooltipStyle: React.CSSProperties = {
     position: "fixed",
     top: hoveredElement.rect.bottom + 8 + "px",
-    left: hoveredElement.rect.left + "px",
+    left: Math.max(8, Math.min(hoveredElement.rect.left, window.innerWidth - 288)) + "px",
     backgroundColor: "rgba(17, 24, 39, 0.95)",
     color: "#f9fafb",
     padding: "12px",
@@ -81,6 +81,8 @@ export default function AuditorInspector({ user }: { user: any }) {
     pointerEvents: "none",
     border: "1px solid rgba(255,255,255,0.1)",
     minWidth: "220px",
+    maxWidth: "min(280px, calc(100vw - 16px))",
+    overflowWrap: "anywhere",
     fontFamily: "monospace",
   };
 

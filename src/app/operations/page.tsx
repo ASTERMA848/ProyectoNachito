@@ -62,6 +62,7 @@ export default function OperationsPage() {
 
   const [isTypeSelectorOpen, setIsTypeSelectorOpen] = useState(false);
   const [isDistributedModalOpen, setIsDistributedModalOpen] = useState(false);
+  const [singleClientMode, setSingleClientMode] = useState(false);
   const [isSubmittingDistributed, setIsSubmittingDistributed] = useState(false);
   const [expandedOpIds, setExpandedOpIds] = useState<string[]>([]);
   const [calcMode, setCalcMode] = useState<"multiply" | "divide">("multiply");
@@ -250,7 +251,8 @@ export default function OperationsPage() {
   };
 
   const handleEdit = (op: any) => {
-    if (op.type === "DISTRIBUTED_SALE" || (op.childOperations && op.childOperations.length > 0)) {
+    if (op.type === "DISTRIBUTED_SALE" || op.type === "SINGLE_SALE" || (op.childOperations && op.childOperations.length > 0)) {
+      setSingleClientMode(op.type === "SINGLE_SALE");
       setDistributedData({
         providerId: op.providerId || "",
         providerIsPaid: op.providerIsPaid ?? null,
@@ -332,6 +334,7 @@ export default function OperationsPage() {
   };
 
   const handleAddDistributedItem = () => {
+    if (singleClientMode) return;
     setDistributedData((prev) => ({
       ...prev,
       items: [...prev.items, { clientId: "", exchangeRate: "", amount: "", observations: "", isPaid: true }],
@@ -339,6 +342,7 @@ export default function OperationsPage() {
   };
 
   const handleRemoveDistributedItem = (index: number) => {
+    if (singleClientMode) return;
     setDistributedData((prev) => ({
       ...prev,
       items: prev.items.filter((_, i) => i !== index),
@@ -384,6 +388,10 @@ export default function OperationsPage() {
   const handleSaveDistributedSale = async (e: React.FormEvent) => {
     e.preventDefault();
     if (savingDistributedRef.current) return;
+    if (singleClientMode && distributedData.items.length !== 1) {
+      notify("La operación 1 a 1 admite un solo movimiento de cliente.");
+      return;
+    }
     if (!distributedData.providerId || !distributedData.currencyId || !distributedData.exchangeRate) {
       notify("Complete los datos requeridos de la cabecera (Proveedor, Moneda, Cotización)");
       return;
@@ -414,13 +422,13 @@ export default function OperationsPage() {
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(distributedData),
+        body: JSON.stringify({ ...distributedData, operationType: singleClientMode ? "SINGLE_SALE" : "DISTRIBUTED_SALE" }),
       });
 
       if (res.ok) {
         const saved = await res.json();
         refreshSavedOperation(saved);
-        notify("Venta distribuida guardada correctamente.", "success");
+        notify(singleClientMode ? "Operación 1 a 1 guardada correctamente." : "Venta distribuida guardada correctamente.", "success");
         setIsDistributedModalOpen(false);
         setEditingId(null);
         setDistributedData({
@@ -544,14 +552,14 @@ export default function OperationsPage() {
                   gap: "7px",
                   whiteSpace: "nowrap",
                   background: (isFiltersOpen || filterState || startDate || endDate)
-                    ? "rgba(103, 152, 255, 0.2)"
-                    : "rgba(255, 255, 255, 0.08)",
+                    ? "var(--ots-primary-muted)"
+                    : "var(--ots-surface-1)",
                   borderColor: (isFiltersOpen || filterState || startDate || endDate)
-                    ? "rgba(103, 152, 255, 0.55)"
-                    : "rgba(255, 255, 255, 0.22)",
+                    ? "var(--ots-primary)"
+                    : "var(--ots-border)",
                   color: (isFiltersOpen || filterState || startDate || endDate)
-                    ? "#ffffff"
-                    : "rgba(255, 255, 255, 0.8)",
+                    ? "var(--ots-primary)"
+                    : "var(--ots-text-secondary)",
                   boxShadow: (filterState || startDate || endDate)
                     ? "0 0 14px rgba(103, 152, 255, 0.3)"
                     : undefined
@@ -893,7 +901,7 @@ export default function OperationsPage() {
                             className="flowbite-badge flowbite-badge-purple"
                             style={{ fontSize: "11px", fontWeight: 600, padding: "2px 8px" }}
                           >
-                            {isDistributed ? "Venta Distribuida" : "Estándar 1 a 1"}
+                            {op.type === "SINGLE_SALE" ? "Operación 1 a 1" : isDistributed ? "Venta Distribuida" : "Estándar 1 a 1"}
                           </span>
                         </LiquidTableCell>
                         <LiquidTableCell style={{ fontFamily: "monospace", fontWeight: 600 }}>
@@ -1033,7 +1041,7 @@ export default function OperationsPage() {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (op.type === "DISTRIBUTED_SALE") handleEdit(op); else setActiveStateChangeOp(op);
+                        if (op.type === "DISTRIBUTED_SALE" || op.type === "SINGLE_SALE") handleEdit(op); else setActiveStateChangeOp(op);
                       }}
                       className={`flowbite-badge ${
                         op.state === "PENDING"
@@ -1066,7 +1074,7 @@ export default function OperationsPage() {
 
                 {/* Clients & Provider */}
                 <div style={{ fontSize: "13px" }}>
-                  {op.type === "DISTRIBUTED_SALE" && <div style={{ marginBottom: "4px", color: "var(--text-secondary)" }}>
+                  {(op.type === "DISTRIBUTED_SALE" || op.type === "SINGLE_SALE") && <div style={{ marginBottom: "4px", color: "var(--text-secondary)" }}>
                     Cobros: {op.isPaid ? "completos" : op.childOperations?.some((child: any) => child.isPaid) ? "parciales" : "pendientes"} · Proveedor: {op.providerIsPaid == null ? "revisar pago" : op.providerIsPaid ? "pagado" : "pendiente"}
                   </div>}
                   <div>
@@ -1222,7 +1230,7 @@ export default function OperationsPage() {
                 <form onSubmit={handleSave}>
                   <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
                     {/* Fila 1: Contactos (Cliente & Proveedor) */}
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+                    <div className="flowbite-form-grid">
                       <div className="flowbite-form-group" style={{ marginBottom: 0 }}>
                         <label className="flowbite-form-label">Cliente *</label>
                         <LiquidSelect
@@ -1253,7 +1261,7 @@ export default function OperationsPage() {
                     </div>
 
                     {/* Fila 2: Moneda y Monto Origen */}
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+                    <div className="flowbite-form-grid">
                       <div className="flowbite-form-group" style={{ marginBottom: 0 }}>
                         <label className="flowbite-form-label">Moneda Origen *</label>
                         <LiquidSelect
@@ -1284,7 +1292,7 @@ export default function OperationsPage() {
                     </div>
 
                     {/* Fila 3: Moneda Destino y Cotización */}
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+                    <div className="flowbite-form-grid">
                       <div className="flowbite-form-group" style={{ marginBottom: 0 }}>
                         <label className="flowbite-form-label">Moneda Destino *</label>
                         <LiquidSelect
@@ -1334,7 +1342,7 @@ export default function OperationsPage() {
                     </div>
 
                     {/* Fila 4: Monto Destino (Auto-calculado) y Fecha */}
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+                    <div className="flowbite-form-grid">
                       <div className="flowbite-form-group" style={{ marginBottom: 0 }}>
                         <label className="flowbite-form-label">Monto Destino (Calculado) *</label>
                         <input
@@ -1558,6 +1566,7 @@ export default function OperationsPage() {
                 <div
                   onClick={() => {
                     setIsTypeSelectorOpen(false);
+                    setSingleClientMode(false);
                     setIsDistributedModalOpen(true);
                     setEditingId(null);
                     setDistributedData({ providerId: "", providerIsPaid: false, currencyId: "", exchangeRate: "",
@@ -1579,9 +1588,6 @@ export default function OperationsPage() {
                     <span style={{ fontSize: "15px", fontWeight: 700, color: "var(--ots-text-primary)" }}>
                       1. Venta distribuida por clientes
                     </span>
-                    <span style={{ fontSize: "11px", fontWeight: 700, padding: "2px 8px", borderRadius: "999px", backgroundColor: "var(--ots-primary-muted)", color: "var(--ots-primary)" }}>
-                      Recomendado
-                    </span>
                   </div>
                   <p style={{ fontSize: "12.5px", color: "var(--ots-text-secondary)", marginTop: "6px", lineHeight: "1.4" }}>
                     Cabecera única de Proveedor, Moneda y Cotización. Permite distribuir en múltiples líneas por cliente, generando operaciones individuales y actualizando saldos automáticamente en cuenta corriente.
@@ -1593,19 +1599,11 @@ export default function OperationsPage() {
                   onClick={() => {
                     setIsTypeSelectorOpen(false);
                     setEditingId(null);
-                    setFormData({
-                      clientId: "",
-                      providerId: "",
-                      originCurrencyId: "",
-                      originAmount: "",
-                      destCurrencyId: "",
-                      destAmount: "",
-                      exchangeRate: "",
-                      operationDate: new Date().toISOString().split("T")[0],
-                      observations: "",
-                      state: "PENDING",
-                    });
-                    setIsModalOpen(true);
+                    setSingleClientMode(true);
+                    setDistributedData({ providerId: "", providerIsPaid: false, currencyId: "", exchangeRate: "",
+                      operationDate: new Date().toISOString().split("T")[0], observations: "",
+                      items: [{ clientId: "", exchangeRate: "", amount: "", observations: "", isPaid: true }] });
+                    setIsDistributedModalOpen(true);
                   }}
                   style={{
                     backgroundColor: "var(--ots-surface-inset)",
@@ -1622,7 +1620,7 @@ export default function OperationsPage() {
                     2. Operación Estándar (1 a 1)
                   </span>
                   <p style={{ fontSize: "12.5px", color: "var(--ots-text-secondary)", marginTop: "6px", lineHeight: "1.4" }}>
-                    Registro individual directo entre un único cliente y un proveedor.
+                    Mismo funcionamiento que la venta múltiple, con un solo movimiento de cliente. Cotizaciones de compra y venta, cobro y pago al proveedor independientes.
                   </p>
                 </div>
               </div>
@@ -1666,10 +1664,10 @@ export default function OperationsPage() {
               >
                 <div>
                   <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--ots-primary)", letterSpacing: "0.08em" }}>
-                    TIPO 1
+                    {singleClientMode ? "TIPO 2" : "TIPO 1"}
                   </span>
                   <h2 style={{ fontSize: "17px", fontWeight: 700, color: "var(--ots-text-primary)", marginTop: "2px" }}>
-                    Venta Distribuida por Clientes
+                    {singleClientMode ? "Operación 1 a 1" : "Venta Distribuida por Clientes"}
                   </h2>
                 </div>
                 <button
@@ -1682,7 +1680,7 @@ export default function OperationsPage() {
               </div>
 
               {/* Scrollable Form */}
-              <div style={{ flex: 1, overflowY: "auto", padding: "24px" }}>
+              <div className="operation-modal-body">
                 <form id="distributed-form" onSubmit={handleSaveDistributedSale}>
                   {/* SECCIÓN CABECERA */}
                   <div
@@ -1789,21 +1787,21 @@ export default function OperationsPage() {
                   >
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
                       <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--ots-text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                        2. Detalle de Clientes & Montos
+                        {singleClientMode ? "2. Movimiento del cliente" : "2. Detalle de Clientes & Montos"}
                       </span>
-                      <button
+                      {!singleClientMode && <button
                         type="button"
                         onClick={handleAddDistributedItem}
                         className="flowbite-btn flowbite-btn-primary"
                         style={{ padding: "6px 14px", fontSize: "12px" }}
                       >
                         + Agregar línea
-                      </button>
+                      </button>}
                     </div>
 
                     {/* Tabla Dinámica de Líneas */}
                     <div style={{ overflowX: "auto" }}>
-                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
+                      <table className="operation-client-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
                         <thead>
                           <tr style={{ borderBottom: "1px solid var(--ots-border)", color: "var(--ots-text-muted)", fontSize: "11px", textTransform: "uppercase" }}>
                             <th style={{ padding: "8px", textAlign: "left", width: "25%" }}>Cliente *</th>
@@ -1811,13 +1809,13 @@ export default function OperationsPage() {
                             <th style={{ padding: "8px", textAlign: "left", width: "17%" }}>Monto *</th>
                             <th style={{ padding: "8px", textAlign: "left", width: "24%" }}>Observaciones</th>
                             <th style={{ padding: "8px", textAlign: "center", width: "10%" }}>Cobrado</th>
-                            <th style={{ padding: "8px", textAlign: "center", width: "8%" }}>Acción</th>
+                            {!singleClientMode && <th style={{ padding: "8px", textAlign: "center", width: "8%" }}>Acción</th>}
                           </tr>
                         </thead>
                         <tbody>
                           {distributedData.items.map((item, index) => (
                             <tr key={index} style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-                              <td style={{ padding: "8px" }}>
+                              <td data-label="Cliente" style={{ padding: "8px" }}>
                                 <LiquidSelect
                                   value={item.clientId}
                                   onChange={(val) => handleDistributedItemChange(index, "clientId", val)}
@@ -1825,7 +1823,7 @@ export default function OperationsPage() {
                                   options={clients.map((c) => ({ value: c.id, label: c.name }))}
                                 />
                               </td>
-                              <td style={{ padding: "8px" }}>
+                              <td data-label="Cotización cliente" style={{ padding: "8px" }}>
                                 <input
                                   type="number"
                                   step="0.01"
@@ -1836,7 +1834,7 @@ export default function OperationsPage() {
                                   style={{ fontFamily: "var(--ots-font-mono)" }}
                                 />
                               </td>
-                              <td style={{ padding: "8px" }}>
+                              <td data-label="Monto" style={{ padding: "8px" }}>
                                 <input
                                   type="number"
                                   step="0.01"
@@ -1848,7 +1846,7 @@ export default function OperationsPage() {
                                   style={{ fontFamily: "var(--ots-font-mono)" }}
                                 />
                               </td>
-                              <td style={{ padding: "8px" }}>
+                              <td data-label="Observaciones" style={{ padding: "8px" }}>
                                 <input
                                   type="text"
                                   value={item.observations}
@@ -1857,7 +1855,7 @@ export default function OperationsPage() {
                                   placeholder="Notas..."
                                 />
                               </td>
-                              <td style={{ padding: "8px", textAlign: "center" }}>
+                              <td data-label="Cobrado" style={{ padding: "8px", textAlign: "center" }}>
                                 <select
                                   value={item.isPaid ? "true" : "false"}
                                   onChange={(e) => handleDistributedItemChange(index, "isPaid", e.target.value === "true")}
@@ -1868,7 +1866,7 @@ export default function OperationsPage() {
                                   <option value="false">Fiado</option>
                                 </select>
                               </td>
-                              <td style={{ padding: "8px", textAlign: "center" }}>
+                              {!singleClientMode && <td data-label="Acción" style={{ padding: "8px", textAlign: "center" }}>
                                 {distributedData.items.length > 1 && (
                                   <button
                                     type="button"
@@ -1885,7 +1883,7 @@ export default function OperationsPage() {
                                     ✕
                                   </button>
                                 )}
-                              </td>
+                              </td>}
                             </tr>
                           ))}
                         </tbody>
@@ -1896,18 +1894,7 @@ export default function OperationsPage() {
               </div>
 
               {/* Footer Summary & Actions */}
-              <div
-                style={{
-                  padding: "18px 24px",
-                  borderTop: "1px solid var(--ots-border)",
-                  backgroundColor: "var(--ots-surface-2)",
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  flexWrap: "wrap",
-                  gap: "16px",
-                }}
-              >
+              <div className="operation-footer">
                 <div>
                   {(() => {
                     const headerRate = parseFloat(distributedData.exchangeRate) || 0;
@@ -1921,7 +1908,7 @@ export default function OperationsPage() {
                     const selectedCur = currencies.find((c) => c.id === distributedData.currencyId);
                     const gananciaNetaARS = totalVentaClientesARS - costProveedorARS;
                     return (
-                      <div style={{ display: "flex", gap: "24px", alignItems: "center" }}>
+                      <div className="operation-summary">
                         <div>
                           <span style={{ fontSize: "11px", color: "var(--ots-text-muted)", textTransform: "uppercase", display: "block" }}>Total Comprado</span>
                           <strong style={{ fontSize: "15px", fontFamily: "var(--ots-font-mono)", color: "var(--ots-text-primary)" }}>
@@ -1951,7 +1938,7 @@ export default function OperationsPage() {
                   })()}
                 </div>
 
-                <div style={{ display: "flex", gap: "10px" }}>
+                <div className="operation-footer-actions">
                   <button
                     type="button"
                     onClick={() => { setIsDistributedModalOpen(false); setEditingId(null); }}
@@ -1965,7 +1952,7 @@ export default function OperationsPage() {
                     disabled={isSubmittingDistributed}
                     className="flowbite-btn flowbite-btn-primary"
                   >
-                    {isSubmittingDistributed ? "Guardando..." : "Guardar Operación Agrupadora"}
+                    {isSubmittingDistributed ? "Guardando..." : singleClientMode ? "Guardar operación 1 a 1" : "Guardar Operación Agrupadora"}
                   </button>
                 </div>
               </div>

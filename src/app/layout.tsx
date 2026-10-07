@@ -1,7 +1,8 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Manrope, JetBrains_Mono } from "next/font/google";
 import "@liquefy-ui/react/styles.css";
 import "./globals.css";
+import "../styles/responsive.css";
 import MainLayout from "@/components/MainLayout";
 import { LiquefyProvider } from "@liquefy-ui/react";
 import FeedbackProvider from "@/components/FeedbackProvider";
@@ -23,6 +24,7 @@ export const metadata: Metadata = {
   title: "Agencia de Cambio | Admin",
   description: "Sistema integral de gestión de operaciones cambiarias",
 };
+export const viewport: Viewport = { width: "device-width", initialScale: 1, viewportFit: "cover" };
 
 export default function RootLayout({
   children,

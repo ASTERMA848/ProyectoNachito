@@ -156,12 +156,45 @@ async function screenshotCase() {
   } catch (error) { if (error !== rollback) throw error; }
   console.log('OK: caso 500/600/400 USD, proveedor independiente, caja y reversión.');
 }
+async function singleClientCase() {
+  try {
+    await prisma.$transaction(async tx => {
+      const input = { ...await fixture(tx, 1), operationType: 'SINGLE_SALE', exchangeRate: 1500 };
+      input.items[0] = { ...input.items[0], amount: 500, exchangeRate: 1520 };
+      await assert.rejects(helper.saveDistributedSale(tx, { ...input, items: [input.items[0], input.items[0]] }), /exactamente un movimiento/);
+      let sale;
+      for (const [providerIsPaid, isPaid] of [[false, false], [false, true], [true, false], [true, true]]) {
+        const current = { ...input, providerIsPaid, items: [{ ...input.items[0], isPaid }] };
+        sale = await helper.saveDistributedSale(tx, current, sale?.parentOp.id);
+        assert.equal(sale.parentOp.type, 'SINGLE_SALE');
+        assert.equal(sale.parentOp.clientId, input.items[0].clientId);
+        assert.equal(sale.childOperations.length, 1);
+        assert.equal(sale.parentOp.state, providerIsPaid && isPaid ? 'COMPLETED' : providerIsPaid || isPaid ? 'PARTIAL' : 'PENDING');
+        const saved = await snapshot(tx, current);
+        assert.deepEqual(saved.balances, [providerIsPaid ? 0 : -500, isPaid ? 0 : 500]);
+        assert.deepEqual(saved.treasury, [0, (isPaid ? 760000 : 0) - (providerIsPaid ? 750000 : 0)]);
+        await helper.saveDistributedSale(tx, current, sale.parentOp.id);
+        assert.deepEqual(await snapshot(tx, current), saved, 'Editar 1 a 1 no duplica saldos ni movimientos');
+        // Una petición manipulada tampoco puede agregar clientes ni cambiar el tipo.
+        await assert.rejects(helper.saveDistributedSale(tx, { ...current, operationType: undefined, items: [current.items[0], current.items[0]] }, sale.parentOp.id), /un solo movimiento/);
+        await assert.rejects(helper.saveDistributedSale(tx, { ...current, operationType: 'DISTRIBUTED_SALE' }, sale.parentOp.id), /cambiar el tipo/);
+        assert.deepEqual(await snapshot(tx, current), saved);
+      }
+      await helper.reverseSaleLedger(tx, [sale.parentOp.id, ...sale.childOperations.map(child => child.id)]);
+      assert.deepEqual((await snapshot(tx, input)).treasury, [0, 0]);
+      assert.deepEqual((await snapshot(tx, input)).balances, [0, 0]);
+      throw rollback;
+    }, { maxWait: 15000, timeout: 180000 });
+  } catch (error) { if (error !== rollback) throw error; }
+  console.log('OK: 1 a 1, un solo cliente, cuatro combinaciones de pagos, margen 10.000 ARS, edición y reversión.');
+}
 async function main() {
   const before = {};
   for (const key of ['contact', 'currency', 'operation', 'account', 'transaction', 'treasuryAccount', 'treasuryMovement']) before[key] = await prisma[key].count();
   const old = legacy ? await run('antes', legacy, 10) : null;
   const optimized = await run('despues', helper.saveDistributedSale, 10, true);
   await screenshotCase();
+  await singleClientCase();
   if (old) assert.deepEqual(optimized.snapshot, old.snapshot, 'Mismos saldos y movimientos que el circuito anterior');
   for (const [key, count] of Object.entries(before)) assert.equal(await prisma[key].count(), count, `Sin datos de prueba persistentes en ${key}`);
   console.log('OK: saldos, edición, pagos mixtos, clientes repetidos, reducción/ampliación y rollback.');

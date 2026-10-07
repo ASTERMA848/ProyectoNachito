@@ -31,7 +31,7 @@ export default function LiquidSelect({
   style,
 }: LiquidSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [coords, setCoords] = useState<{ top: number; left: number; width: number }>({ top: 0, left: 0, width: 0 });
+  const [coords, setCoords] = useState({ top: 0, left: 0, width: 0, maxHeight: 260 });
   const containerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -42,10 +42,16 @@ export default function LiquidSelect({
   const updatePosition = () => {
     if (triggerRef.current) {
       const rect = triggerRef.current.getBoundingClientRect();
+      const viewport = window.visualViewport;
+      const bottom = (viewport?.height || window.innerHeight) + (viewport?.offsetTop || 0);
+      const below = bottom - rect.bottom - 12;
+      const above = rect.top - (viewport?.offsetTop || 0) - 12;
+      const upward = below < 140 && above > below;
+      const maxHeight = Math.max(64, Math.min(260, upward ? above : below));
+      const width = Math.min(rect.width, window.innerWidth - 16);
       setCoords({
-        top: rect.bottom + 4,
-        left: rect.left,
-        width: rect.width,
+        top: upward ? rect.top - maxHeight - 4 : rect.bottom + 4,
+        left: Math.max(8, Math.min(rect.left, window.innerWidth - width - 8)), width, maxHeight,
       });
     }
   };
@@ -97,6 +103,7 @@ export default function LiquidSelect({
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         setIsOpen(false);
+        triggerRef.current?.focus();
       }
     };
 
@@ -111,6 +118,7 @@ export default function LiquidSelect({
   const handleSelect = (val: string) => {
     onChange(val);
     setIsOpen(false);
+    triggerRef.current?.focus();
   };
 
   return (
@@ -124,6 +132,7 @@ export default function LiquidSelect({
         ref={triggerRef}
         type="button"
         disabled={disabled}
+        aria-haspopup="listbox" aria-expanded={isOpen} aria-label={placeholder}
         onClick={handleToggle}
         className="flowbite-input liquid-select-trigger"
         style={{
@@ -182,6 +191,7 @@ export default function LiquidSelect({
         <div
           ref={menuRef}
           className="liquid-select-menu"
+          role="listbox" aria-label={placeholder}
           style={{
             position: "fixed",
             top: `${coords.top}px`,
@@ -194,7 +204,7 @@ export default function LiquidSelect({
             padding: "6px",
             boxShadow:
               "0 20px 35px -5px rgba(0, 0, 0, 0.15), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
-            maxHeight: "260px",
+            maxHeight: `${coords.maxHeight}px`,
             overflowY: "auto",
             display: "flex",
             flexDirection: "column",
@@ -219,7 +229,9 @@ export default function LiquidSelect({
               return (
                 <div
                   key={opt.value}
+                  role="option" aria-selected={isSelected} tabIndex={0}
                   onClick={() => handleSelect(opt.value)}
+                  onKeyDown={event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); handleSelect(opt.value); } }}
                   style={{
                     padding: "9px 12px",
                     borderRadius: "var(--ots-radius-sm)",

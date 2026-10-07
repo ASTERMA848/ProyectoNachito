@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import {
   HomeIcon,
   ArrowRightIcon,
@@ -13,8 +14,38 @@ import {
   InfoIcon,
 } from "@liquefy-ui/icons";
 
-export default function Sidebar({ user }: { user?: { username: string; role: string; profilePicture?: string | null } | null }) {
+export default function Sidebar({ user, open, onClose }: { user?: { username: string; role: string; profilePicture?: string | null } | null; open: boolean; onClose: () => void }) {
   const pathname = usePathname();
+  const aside = useRef<HTMLElement>(null);
+  const [mobile, setMobile] = useState(false);
+  const close = useRef(onClose);
+  close.current = onClose;
+  useEffect(() => {
+    const query = matchMedia("(max-width: 1023px)");
+    const update = () => { setMobile(query.matches); if (!query.matches) close.current(); };
+    update(); query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
+  useEffect(() => {
+    if (!aside.current) return;
+    aside.current.inert = mobile && !open;
+    if (!mobile || !open) return;
+    const previous = document.activeElement as HTMLElement | null;
+    const oldOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    aside.current.querySelector<HTMLButtonElement>("button")?.focus();
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") close.current();
+      if (event.key !== "Tab") return;
+      const targets = aside.current?.querySelectorAll<HTMLElement>("a[href],button:not(:disabled)");
+      if (!targets?.length) return;
+      const first = targets[0], last = targets[targets.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    };
+    document.addEventListener("keydown", handleKey);
+    return () => { document.body.style.overflow = oldOverflow; document.removeEventListener("keydown", handleKey); previous?.focus(); };
+  }, [mobile, open]);
 
   const navItems = [
     { href: "/", label: "Dashboard", category: "gestion", icon: <HomeIcon size={20} /> },
@@ -64,6 +95,8 @@ export default function Sidebar({ user }: { user?: { username: string; role: str
               <Link
                 key={item.href}
                 href={item.href}
+                onClick={onClose}
+                aria-current={isActive ? "page" : undefined}
                 className={`sidebar-nav-item ${isActive ? "active" : ""}`}
               >
                 <span className="sidebar-icon" style={{ display: "inline-flex", color: isActive ? "var(--ots-primary)" : "var(--ots-text-muted)" }}>
@@ -80,26 +113,17 @@ export default function Sidebar({ user }: { user?: { username: string; role: str
 
   return (
     <aside
-      style={{
-        width: "260px",
-        height: "100vh",
-        position: "fixed",
-        top: 0,
-        left: 0,
-        backgroundColor: "var(--ots-surface-1)",
-        borderRight: "1px solid var(--ots-border)",
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "space-between",
-        padding: "24px 16px",
-        zIndex: 100,
-        boxShadow: "2px 0 12px rgba(0, 0, 0, 0.03)",
-      }}
+      ref={aside} id="app-sidebar" className={`app-sidebar ${open ? "is-open" : ""}`} role={mobile ? "dialog" : undefined}
+      aria-label="Menú de navegación" aria-modal={mobile && open ? true : undefined} aria-hidden={mobile && !open ? true : undefined}
     >
       <div>
+        <button type="button" className="app-sidebar-close" onClick={onClose} aria-label="Cerrar menú">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg>
+        </button>
         {/* Brand Header */}
         <Link
           href="/"
+          onClick={onClose}
           style={{
             display: "flex",
             alignItems: "center",
@@ -146,7 +170,7 @@ export default function Sidebar({ user }: { user?: { username: string; role: str
         </Link>
 
         {/* Navigation Sections */}
-        <nav>
+        <nav aria-label="Secciones del sistema">
           {renderNavGroup("Gestión Principal", gestionItems)}
           {renderNavGroup("Administración", adminItems)}
           {renderNavGroup("Ayuda", manualItems)}
@@ -207,4 +231,3 @@ export default function Sidebar({ user }: { user?: { username: string; role: str
     </aside>
   );
 }
-

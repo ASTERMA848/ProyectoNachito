@@ -154,7 +154,7 @@ export default function SqlConsolePage() {
             Resultados de la Consulta ({result.length} filas)
           </h2>
           {result.length > 0 ? (
-            <LiquidTableContainer style={{ marginTop: "12px" }}>
+            <LiquidTableContainer className="responsive-table" style={{ marginTop: "12px" }}>
               <LiquidTable hover size="md">
                 <LiquidTableHead>
                   <LiquidTableRow>

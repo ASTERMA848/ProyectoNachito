@@ -282,12 +282,12 @@ export default function ManualPage() {
           </p>
 
           {/* User Role Status Display */}
-          <div style={{ display: "flex", gap: "10px", alignItems: "center", marginTop: "1.5rem" }}>
-            <span style={{ fontSize: "13px", color: "rgba(255, 255, 255, 0.7)" }}>Sesión:</span>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", alignItems: "center", marginTop: "1.5rem", color: "var(--ots-text-primary)" }}>
+            <span style={{ fontSize: "13px", color: "var(--ots-text-secondary)" }}>Sesión:</span>
             {loading ? (
               <span style={{ fontSize: "13px", fontWeight: 600 }}>Cargando...</span>
             ) : currentUser ? (
-              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "8px" }}>
                 <strong style={{ fontSize: "13px" }}>{currentUser.username}</strong>
                 <span 
                   className="flowbite-badge" 

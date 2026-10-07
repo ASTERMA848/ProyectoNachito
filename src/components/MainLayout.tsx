@@ -10,6 +10,8 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  useEffect(() => { setMenuOpen(false); }, [pathname]);
 
   const isAuthPage = pathname === "/login" || pathname === "/logout";
 
@@ -120,12 +122,20 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
   }
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh", backgroundColor: "var(--ots-bg-canvas)" }}>
+    <div className="app-shell">
       {/* Sidebar Lateral Fijo (Opción B: Neo-Fintech Minimal) */}
-      <Sidebar user={user} />
+      <header className="app-mobile-header">
+        <button id="app-menu-toggle" type="button" className="app-menu-toggle" aria-label="Abrir menú de navegación" aria-expanded={menuOpen} aria-controls="app-sidebar" onClick={() => setMenuOpen(true)}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
+        </button>
+        <span>AGENCIA</span>
+        <span className="app-mobile-user">{user?.username}</span>
+      </header>
+      {menuOpen && <button type="button" className="app-sidebar-backdrop" aria-label="Cerrar menú de navegación" tabIndex={-1} onClick={() => setMenuOpen(false)} />}
+      <Sidebar user={user} open={menuOpen} onClose={() => setMenuOpen(false)} />
       
       {/* Contenido Principal desplazado 260px */}
-      <main style={{ flex: 1, marginLeft: "260px", minWidth: 0, padding: "32px 40px" }}>
+      <main className="app-main">
         {children}
       </main>
 
