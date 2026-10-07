@@ -1,5 +1,7 @@
 "use client";
 
+import { useFeedback } from "@/components/FeedbackProvider";
+
 import { useState } from "react";
 import useSWR from "swr";
 import Portal from "@/components/Portal";
@@ -18,6 +20,7 @@ import {
 const fetcher = (url: string) => fetch(url).then(res => res.json());
 
 export default function AccountsPage() {
+  const { notify, confirm: confirmAction } = useFeedback();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<any>(null);
@@ -52,6 +55,7 @@ export default function AccountsPage() {
       });
       if (res.ok) {
         setIsModalOpen(false);
+        notify("Movimiento guardado correctamente.", "success");
         fetchData();
         setFormData({
           contactId: "",
@@ -62,10 +66,10 @@ export default function AccountsPage() {
           observations: "",
         });
       } else {
-        alert("Error al guardar el movimiento");
+        notify("Error al guardar el movimiento");
       }
     } catch (error) {
-      alert("Error de red");
+      notify("Error de red");
     }
   };
 

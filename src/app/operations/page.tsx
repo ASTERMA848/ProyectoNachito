@@ -1,5 +1,7 @@
 "use client";
 
+import { useFeedback } from "@/components/FeedbackProvider";
+
 import { useState, useEffect, useRef } from "react";
 import useSWR from "swr";
 import Portal from "@/components/Portal";
@@ -24,6 +26,7 @@ const fetcher = async (url: string) => {
 };
 
 export default function OperationsPage() {
+  const { notify, confirm: confirmAction } = useFeedback();
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(50);
   
@@ -33,6 +36,8 @@ export default function OperationsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const savingRef = useRef(false);
   const savingDistributedRef = useRef(false);
+  const deletingOperations = useRef(new Set<string>());
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
@@ -170,6 +175,7 @@ export default function OperationsPage() {
       if (res.ok) {
         const saved = await res.json();
         refreshSavedOperation(saved);
+        notify("Operación guardada correctamente.", "success");
         setIsModalOpen(false);
         setEditingId(null);
         setVerifiedAdminPassword("");
@@ -187,10 +193,10 @@ export default function OperationsPage() {
         });
       } else {
         const errData = await res.json();
-        alert(errData.error || "Error al guardar la operación");
+        notify(errData.error || "Error al guardar la operación");
       }
     } catch (error) {
-      alert("Error de red");
+      notify("Error de red");
     } finally {
       savingRef.current = false;
       setIsSaving(false);
@@ -227,10 +233,10 @@ export default function OperationsPage() {
                 fetchData();
               } else {
                 const patchData = await patchRes.json();
-                alert(patchData.error || "Error al cambiar el estado");
+                notify(patchData.error || "Error al cambiar el estado");
               }
             } catch (error) {
-              alert("Error de red");
+              notify("Error de red");
             }
           }
           setPendingAction(null);
@@ -294,10 +300,10 @@ export default function OperationsPage() {
         fetchData();
       } else {
         const errData = await res.json();
-        alert(errData.error || "Error al cambiar el estado");
+        notify(errData.error || "Error al cambiar el estado");
       }
     } catch (error) {
-      alert("Error de red");
+      notify("Error de red");
     }
   };
 
@@ -310,10 +316,10 @@ export default function OperationsPage() {
         const data = await res.json();
         setHistoryLogs(data);
       } else {
-        alert("Error al cargar el historial");
+        notify("Error al cargar el historial");
       }
     } catch (error) {
-      alert("Error de red");
+      notify("Error de red");
     } finally {
       setHistoryLoading(false);
     }
@@ -349,23 +355,29 @@ export default function OperationsPage() {
 
   
   const handleDeleteOperation = async (op: any) => {
-    const confirmDelete = confirm(`¿Está seguro que desea eliminar la operación ${op.operationNumber}? Esto revertirá las transacciones y ajustará los saldos de cuentas corrientes asociadas.`);
-    if (!confirmDelete) return;
-
+    if (deletingOperations.current.has(op.id)) return;
+    deletingOperations.current.add(op.id);
     try {
+      const accepted = await confirmAction(`Se eliminará la operación ${op.operationNumber}. Se revertirán sus movimientos y se ajustarán los saldos de cuentas corrientes y tesorería asociados.`,
+        { title: "Eliminar operación", confirmLabel: "Eliminar operación", danger: true });
+      if (!accepted) return;
+      setDeletingId(op.id);
       const res = await fetch(`/api/operations/${op.id}`, {
         method: "DELETE",
       });
 
       if (res.ok) {
-        alert(`Operación ${op.operationNumber} eliminada y saldos ajustados correctamente.`);
+        notify(`Operación ${op.operationNumber} eliminada y saldos ajustados correctamente.`, "success");
         fetchData();
       } else {
         const data = await res.json();
-        alert(data.error || "Error al eliminar la operación");
+        notify(data.error || "Error al eliminar la operación");
       }
     } catch (error) {
-      alert("Error de conexión al servidor");
+      notify("Error de conexión al servidor");
+    } finally {
+      deletingOperations.current.delete(op.id);
+      setDeletingId(null);
     }
   };
 
@@ -373,22 +385,22 @@ export default function OperationsPage() {
     e.preventDefault();
     if (savingDistributedRef.current) return;
     if (!distributedData.providerId || !distributedData.currencyId || !distributedData.exchangeRate) {
-      alert("Complete los datos requeridos de la cabecera (Proveedor, Moneda, Cotización)");
+      notify("Complete los datos requeridos de la cabecera (Proveedor, Moneda, Cotización)");
       return;
     }
     if (distributedData.items.length === 0) {
-      alert("Debe agregar al menos una línea de cliente");
+      notify("Debe agregar al menos una línea de cliente");
       return;
     }
     for (let i = 0; i < distributedData.items.length; i++) {
       const item = distributedData.items[i];
       if (!item.clientId) {
-        alert(`Seleccione el cliente en la línea #${i + 1}`);
+        notify(`Seleccione el cliente en la línea #${i + 1}`);
         return;
       }
       const val = parseFloat(item.amount);
       if (isNaN(val) || val <= 0) {
-        alert(`El monto en la línea #${i + 1} debe ser un número positivo`);
+        notify(`El monto en la línea #${i + 1} debe ser un número positivo`);
         return;
       }
     }
@@ -408,6 +420,7 @@ export default function OperationsPage() {
       if (res.ok) {
         const saved = await res.json();
         refreshSavedOperation(saved);
+        notify("Venta distribuida guardada correctamente.", "success");
         setIsDistributedModalOpen(false);
         setEditingId(null);
         setDistributedData({
@@ -421,10 +434,10 @@ export default function OperationsPage() {
         });
       } else {
         const err = await res.json();
-        alert(err.error || "Error al crear/actualizar la operación distribuida");
+        notify(err.error || "Error al crear/actualizar la operación distribuida");
       }
     } catch (error) {
-      alert("Error de conexión al servidor");
+      notify("Error de conexión al servidor");
     } finally {
       savingDistributedRef.current = false;
       setIsSubmittingDistributed(false);
@@ -621,8 +634,8 @@ export default function OperationsPage() {
                 <LiquidMenu
                   align="end"
                   items={[
-                    { label: "Exportar a CSV", onSelect: () => alert("Exportando registros en formato CSV...") },
-                    { label: "Exportar a JSON", onSelect: () => alert("Exportando registros en formato JSON...") }
+                    { label: "Exportar a CSV", onSelect: () => notify("La exportación a CSV todavía no está disponible.", "info") },
+                    { label: "Exportar a JSON", onSelect: () => notify("La exportación a JSON todavía no está disponible.", "info") }
                   ]}
                   trigger={
                     <button
@@ -958,11 +971,12 @@ export default function OperationsPage() {
                             <button
                               type="button"
                               onClick={() => handleDeleteOperation(op)}
+                              disabled={deletingId === op.id}
                               className="flowbite-btn flowbite-btn-text"
                               style={{ padding: "4px 8px", fontSize: "12px", color: "var(--ots-danger)" }}
                               title="Eliminar Registro y ajustar saldos"
                             >
-                              🗑️ Eliminar
+                              {deletingId === op.id ? "Eliminando..." : "Eliminar"}
                             </button>
                           </div>
                         </LiquidTableCell>
@@ -1115,10 +1129,11 @@ export default function OperationsPage() {
                     <button
                       type="button"
                       onClick={() => handleDeleteOperation(op)}
+                      disabled={deletingId === op.id}
                       className="flowbite-btn flowbite-btn-text"
                       style={{ padding: "6px 12px", fontSize: "12px", color: "var(--ots-danger)" }}
                     >
-                      🗑️ Eliminar
+                      {deletingId === op.id ? "Eliminando..." : "Eliminar"}
                     </button>
                   </div>
                 </div>

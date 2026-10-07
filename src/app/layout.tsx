@@ -4,6 +4,7 @@ import "@liquefy-ui/react/styles.css";
 import "./globals.css";
 import MainLayout from "@/components/MainLayout";
 import { LiquefyProvider } from "@liquefy-ui/react";
+import FeedbackProvider from "@/components/FeedbackProvider";
 
 const manrope = Manrope({
   subsets: ["latin"],
@@ -32,7 +33,7 @@ export default function RootLayout({
     <html lang="es" className={`dark ${manrope.variable} ${jetbrainsMono.variable}`}>
       <body className={manrope.className}>
         <LiquefyProvider theme="dark">
-          <MainLayout>{children}</MainLayout>
+          <FeedbackProvider><MainLayout>{children}</MainLayout></FeedbackProvider>
         </LiquefyProvider>
       </body>
     </html>

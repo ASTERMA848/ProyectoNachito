@@ -1,5 +1,7 @@
 "use client";
 
+import { useFeedback } from "@/components/FeedbackProvider";
+
 import { useState, useEffect } from "react";
 import Portal from "@/components/Portal";
 import {
@@ -15,6 +17,7 @@ import {
 } from "@liquefy-ui/react";
 
 export default function ContactsPage() {
+  const { notify, confirm: confirmAction } = useFeedback();
   const [contacts, setContacts] = useState<any[]>([]);
   const [availableTags, setAvailableTags] = useState<any[]>([]);
   const [filterType, setFilterType] = useState("ALL");
@@ -77,14 +80,15 @@ export default function ContactsPage() {
       });
       if (res.ok) {
         setIsModalOpen(false);
+        notify("Contacto guardado correctamente.", "success");
         setEditingId(null);
         setFormData({ name: "", document: "", email: "", isClient: true, isProvider: false, tagIds: [] });
         fetchContacts();
       } else {
-        alert("Error al guardar contacto");
+        notify("Error al guardar contacto");
       }
     } catch (error) {
-      alert("Error de red");
+      notify("Error de red");
     }
   };
 
@@ -104,13 +108,14 @@ export default function ContactsPage() {
   };
 
   const handleArchive = async (id: string) => {
-    if (!confirm("¿Estás seguro de que deseas archivar este contacto?")) return;
+    if (!(await confirmAction("El contacto se archivará y dejará de aparecer entre los contactos activos.",
+      { title: "Archivar contacto", confirmLabel: "Archivar contacto", danger: true }))) return;
     try {
       const res = await fetch(`/api/contacts/${id}`, { method: "DELETE" });
-      if (res.ok) fetchContacts();
-      else alert("Error al archivar");
+      if (res.ok) { fetchContacts(); notify("Contacto archivado.", "success"); }
+      else notify("Error al archivar");
     } catch (error) {
-      alert("Error de red");
+      notify("Error de red");
     }
   };
 

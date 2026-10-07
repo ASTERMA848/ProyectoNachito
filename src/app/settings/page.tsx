@@ -1,5 +1,7 @@
 "use client";
 
+import { useFeedback } from "@/components/FeedbackProvider";
+
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Portal from "@/components/Portal";
@@ -18,6 +20,7 @@ import {
 } from "@liquefy-ui/react";
 
 export default function SettingsPage() {
+  const { notify, confirm: confirmAction } = useFeedback();
   const [tags, setTags] = useState<any[]>([]);
   const [newTagName, setNewTagName] = useState("");
   const [newTagColor, setNewTagColor] = useState("#3b82f6");
@@ -331,7 +334,7 @@ export default function SettingsPage() {
         fetchTags();
       } else {
         const errData = await res.json();
-        alert(errData.error || "Error al modificar la etiqueta");
+        notify(errData.error || "Error al modificar la etiqueta");
       }
     } else {
       const res = await fetch("/api/tags", {
@@ -345,7 +348,7 @@ export default function SettingsPage() {
         fetchTags();
       } else {
         const errData = await res.json();
-        alert(errData.error || "Error al crear la etiqueta");
+        notify(errData.error || "Error al crear la etiqueta");
       }
     }
   };
@@ -363,7 +366,8 @@ export default function SettingsPage() {
   };
 
   const handleDeleteTag = async (tagId: string) => {
-    if (!confirm("¿Está seguro de que desea eliminar esta etiqueta? Esto la quitará de todos los contactos asociados.")) {
+    if (!(await confirmAction("La etiqueta se eliminará y se quitará de todos los contactos asociados.",
+      { title: "Eliminar etiqueta", confirmLabel: "Eliminar etiqueta", danger: true }))) {
       return;
     }
 
@@ -379,10 +383,10 @@ export default function SettingsPage() {
         }
       } else {
         const data = await res.json();
-        alert(data.error || "Error al eliminar la etiqueta");
+        notify(data.error || "Error al eliminar la etiqueta");
       }
     } catch (e) {
-      alert("Error de red al eliminar la etiqueta");
+      notify("Error de red al eliminar la etiqueta");
     }
   };
 
@@ -429,10 +433,10 @@ export default function SettingsPage() {
         fetchUsers();
       } else {
         const data = await res.json();
-        alert(data.error || "Error al cambiar estado");
+        notify(data.error || "Error al cambiar estado");
       }
     } catch (err) {
-      alert("Error de red");
+      notify("Error de red");
     }
   };
 
