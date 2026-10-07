@@ -9,7 +9,10 @@
     "start": "next start",
     "lint": "next lint",
     "db:setup": "prisma db push && node prisma/seed.js",
-    "db:seed": "node prisma/seed.js"
+    "db:seed": "node prisma/seed.js",
+    "db:operation-indexes": "node scripts/apply-operation-indexes.cjs",
+    "test:operations": "node scripts/operations-performance.cjs",
+    "bench:operations": "node scripts/operations-performance.cjs --compare"
   },
   "prisma": {
     "seed": "node prisma/seed.js"

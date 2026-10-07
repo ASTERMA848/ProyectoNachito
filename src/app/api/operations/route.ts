@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireAuth } from "@/lib/session";
-import { logAudit } from "@/lib/audit";
+import { nextOperationNumber } from "@/lib/distributed-sale";
+import { randomUUID } from "node:crypto";
 
 export const dynamic = "force-dynamic";
 
@@ -13,11 +14,14 @@ export async function GET(req: NextRequest) {
     }
 
     const { searchParams } = new URL(req.url);
-    const page = parseInt(searchParams.get("page") || "1", 10);
-    const limit = parseInt(searchParams.get("limit") || "50", 10);
+    const page = Math.max(1, Math.min(1000000, Number(searchParams.get("page")) || 1));
+    const limit = Math.max(1, Math.min(100, Number(searchParams.get("limit")) || 50));
+    if (!Number.isInteger(page) || !Number.isInteger(limit)) {
+      return NextResponse.json({ error: "Paginación inválida" }, { status: 400 });
+    }
     const skip = (page - 1) * limit;
 
-    const search = searchParams.get("search") || "";
+    const search = (searchParams.get("search") || "").trim().slice(0, 200);
     const state = searchParams.get("state") || "";
     const startDate = searchParams.get("startDate") || "";
     const endDate = searchParams.get("endDate") || "";
@@ -28,7 +32,14 @@ export async function GET(req: NextRequest) {
     if (startDate || endDate) {
       where.operationDate = {};
       if (startDate) where.operationDate.gte = new Date(startDate);
-      if (endDate) where.operationDate.lte = new Date(endDate);
+      if (endDate) {
+        const exclusiveEnd = new Date(endDate);
+        exclusiveEnd.setUTCDate(exclusiveEnd.getUTCDate() + 1);
+        where.operationDate.lt = exclusiveEnd;
+      }
+      if (Object.values(where.operationDate).some(date => !Number.isFinite((date as Date).getTime()))) {
+        return NextResponse.json({ error: "Rango de fechas inválido" }, { status: 400 });
+      }
     }
     
     if (search) {
@@ -41,6 +52,7 @@ export async function GET(req: NextRequest) {
 
     const [operations, totalCount] = await Promise.all([
       prisma.operation.findMany({
+        relationLoadStrategy: "join",
         where,
         include: {
           client: { select: { id: true, name: true, document: true } },
@@ -49,6 +61,8 @@ export async function GET(req: NextRequest) {
           destCurrency: { select: { id: true, code: true, symbol: true, color: true } },
           parentOperation: { select: { id: true, operationNumber: true } },
           childOperations: {
+            where: { deletedAt: null },
+            orderBy: { createdAt: "asc" },
             select: {
               id: true,
               operationNumber: true,
@@ -63,7 +77,7 @@ export async function GET(req: NextRequest) {
             },
           },
         },
-        orderBy: { createdAt: "desc" },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
         skip,
         take: limit,
       }),
@@ -143,7 +157,11 @@ export async function POST(req: NextRequest) {
     }
 
     // Validar Bloqueo Contable
-    const settings = await prisma.settings.findFirst();
+    const [settings, contacts, currencies] = await Promise.all([
+      prisma.settings.findFirst({ select: { accountingBlockDate: true } }),
+      prisma.contact.findMany({ where: { id: { in: [clientId, providerId] }, deletedAt: null }, select: { id: true } }),
+      prisma.currency.findMany({ where: { id: { in: [originCurrencyId, destCurrencyId] }, isActive: true }, select: { id: true } }),
+    ]);
     if (settings?.accountingBlockDate && parsedDate < settings.accountingBlockDate) {
       const blockDateStr = new Date(settings.accountingBlockDate).toLocaleDateString("es-AR");
       return NextResponse.json(
@@ -158,14 +176,8 @@ export async function POST(req: NextRequest) {
     }
 
     // Verificar que los IDs referenciados existen
-    const [client, provider, originCurrency, destCurrency] = await Promise.all([
-      prisma.contact.findFirst({ where: { id: clientId, deletedAt: null } }),
-      prisma.contact.findFirst({ where: { id: providerId, deletedAt: null } }),
-      prisma.currency.findFirst({ where: { id: originCurrencyId, isActive: true } }),
-      prisma.currency.findFirst({ where: { id: destCurrencyId, isActive: true } }),
-    ]);
-
-    if (!client || !provider || !originCurrency || !destCurrency) {
+    if (!contacts.some(c => c.id === clientId) || !contacts.some(c => c.id === providerId) ||
+      !currencies.some(c => c.id === originCurrencyId) || !currencies.some(c => c.id === destCurrencyId)) {
       return NextResponse.json(
         { error: "Referencias inválidas: cliente, proveedor o monedas no encontradas" },
         { status: 400 }
@@ -173,12 +185,12 @@ export async function POST(req: NextRequest) {
     }
 
     // Generar número de operación de forma segura
-    const count = await prisma.operation.count();
-    const opNumber = `OP-${String(count + 1).padStart(6, "0")}`;
-
-    const newOp = await prisma.operation.create({
+    const newOp = await prisma.$transaction(async tx => {
+      const opNumber = await nextOperationNumber(tx);
+      const operation = await tx.operation.create({
       data: {
         operationNumber: opNumber,
+        id: randomUUID(),
         clientId,
         providerId,
         originCurrencyId,
@@ -190,20 +202,12 @@ export async function POST(req: NextRequest) {
         observations: observations ? String(observations).substring(0, 2000) : null,
         state: "PENDING", // Estado siempre fijado desde backend
       },
-    });
-
-    await logAudit({
-      userId: user.id,
-      action: "CREATE",
-      entity: "Operation",
-      entityId: newOp.id,
-      newValues: {
-        operationNumber: newOp.operationNumber,
-        originAmount: newOp.originAmount,
-        destAmount: newOp.destAmount,
-        state: newOp.state,
-      },
-    });
+      });
+      await tx.auditLog.create({ data: { userId: user.id, action: "CREATE", entity: "Operation", entityId: operation.id,
+        newValues: JSON.stringify({ operationNumber: operation.operationNumber, originAmount: operation.originAmount,
+          destAmount: operation.destAmount, state: operation.state }) } });
+      return operation;
+    }, { maxWait: 10000, timeout: 15000 });
 
     return NextResponse.json(newOp, { status: 201 });
   } catch (error: any) {

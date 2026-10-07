@@ -1,5 +1,6 @@
 generator client {
   provider = "prisma-client-js"
+  previewFeatures = ["relationJoins"]
 }
 
 datasource db {
@@ -177,6 +178,7 @@ model Operation {
   @@index([deletedAt])
   @@index([parentOperationId])
   @@index([operationDate])
+  @@index([deletedAt, parentOperationId, createdAt, id])
 }
 
 model OperationStateHistory {
@@ -243,6 +245,7 @@ model Transaction {
 
   @@index([accountId])
   @@index([date])
+  @@index([operationId])
 }
 
 // ---------------------------------------------------------
@@ -262,6 +265,7 @@ model TreasuryAccount {
 
   currency         Currency  @relation(fields: [currencyId], references: [id])
   movements        TreasuryMovement[]
+  @@index([currencyId])
 }
 
 model TreasuryMovement {
@@ -282,6 +286,7 @@ model TreasuryMovement {
 
   @@index([treasuryAccountId])
   @@index([date])
+  @@index([operationId])
 }
 
 // ---------------------------------------------------------

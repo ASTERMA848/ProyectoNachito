@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import useSWR from "swr";
 import Portal from "@/components/Portal";
 import LiquidSelect from "@/components/LiquidSelect";
@@ -16,7 +16,12 @@ import {
   LiquidMenu,
 } from "@liquefy-ui/react";
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
+const fetcher = async (url: string) => {
+  const response = await fetch(url);
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || "No se pudieron cargar las operaciones");
+  return data;
+};
 
 export default function OperationsPage() {
   const [page, setPage] = useState(1);
@@ -24,6 +29,10 @@ export default function OperationsPage() {
   
   const [filterState, setFilterState] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const savingRef = useRef(false);
+  const savingDistributedRef = useRef(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
@@ -41,8 +50,10 @@ export default function OperationsPage() {
   const [historyLoading, setHistoryLoading] = useState(false);
 
   useEffect(() => {
-    setPage(1);
-  }, [filterState, searchTerm, startDate, endDate]);
+    const timer = setTimeout(() => { setDebouncedSearch(searchTerm.trim()); setPage(1); }, 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+  useEffect(() => { setPage(1); }, [filterState, startDate, endDate]);
 
   const [isTypeSelectorOpen, setIsTypeSelectorOpen] = useState(false);
   const [isDistributedModalOpen, setIsDistributedModalOpen] = useState(false);
@@ -74,13 +85,14 @@ export default function OperationsPage() {
     state: "PENDING",
   });
 
-  const { data: contactsData } = useSWR("/api/contacts", fetcher);
-  const { data: currenciesData } = useSWR("/api/currencies", fetcher);
+  const needsOptions = isModalOpen || isDistributedModalOpen;
+  const { data: contactsData } = useSWR(needsOptions ? "/api/contacts?options=1" : null, fetcher, { keepPreviousData: true });
+  const { data: currenciesData } = useSWR(needsOptions ? "/api/currencies" : null, fetcher, { keepPreviousData: true });
 
   const queryParams = new URLSearchParams({
     page: page.toString(),
     limit: limit.toString(),
-    search: searchTerm,
+    search: debouncedSearch,
     state: filterState,
     startDate,
     endDate
@@ -89,12 +101,38 @@ export default function OperationsPage() {
   const { data: operationsData, error: opsError, isLoading: loading, mutate: fetchData } = useSWR(
     `/api/operations?${queryParams.toString()}`,
     fetcher,
-    { keepPreviousData: true }
+    { keepPreviousData: true, focusThrottleInterval: 30000 }
   );
 
   const operations = operationsData?.operations || [];
   const contacts = contactsData?.contacts || [];
   const currencies = currenciesData?.currencies || [];
+
+  // Mostrar la respuesta confirmada por el servidor mientras se verifica el listado en segundo plano.
+  const refreshSavedOperation = (result: any) => {
+    const op = result.parentOp || result;
+    const hydrated = { ...op,
+      client: contacts.find((c: any) => c.id === op.clientId) || op.client,
+      provider: contacts.find((c: any) => c.id === op.providerId) || op.provider,
+      originCurrency: currencies.find((c: any) => c.id === op.originCurrencyId) || op.originCurrency,
+      destCurrency: currencies.find((c: any) => c.id === op.destCurrencyId) || op.destCurrency,
+      childOperations: (result.childOperations || op.childOperations || []).map((child: any) => ({ ...child,
+        client: contacts.find((c: any) => c.id === child.clientId) || child.client })),
+    };
+    void fetchData((current: any) => {
+      if (!current) return current;
+      const exists = current.operations.some((item: any) => item.id === op.id);
+      const term = debouncedSearch.toLowerCase();
+      const date = op.operationDate.slice(0, 10);
+      const matches = (!filterState || op.state === filterState) && (!startDate || date >= startDate) &&
+        (!endDate || date <= endDate) && (!term || [op.operationNumber, hydrated.client?.name, hydrated.provider?.name]
+          .some(name => name?.toLowerCase().includes(term)));
+      const rows = current.operations.filter((item: any) => item.id !== op.id);
+      if (matches && (exists || page === 1)) rows.push(hydrated);
+      rows.sort((a: any, b: any) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id));
+      return { ...current, operations: rows.slice(0, limit) };
+    }, { revalidate: true }).catch(() => { /* SWR muestra el error y permite reintentar. */ });
+  };
 
 
   // Lógica de cálculo en tiempo real
@@ -113,6 +151,9 @@ export default function OperationsPage() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (savingRef.current) return;
+    savingRef.current = true;
+    setIsSaving(true);
     try {
       const url = editingId ? `/api/operations/${editingId}` : "/api/operations";
       const method = editingId ? "PUT" : "POST";
@@ -126,10 +167,11 @@ export default function OperationsPage() {
         }),
       });
       if (res.ok) {
+        const saved = await res.json();
+        refreshSavedOperation(saved);
         setIsModalOpen(false);
         setEditingId(null);
         setVerifiedAdminPassword("");
-        fetchData();
         setFormData({
           clientId: "",
           providerId: "",
@@ -148,6 +190,9 @@ export default function OperationsPage() {
       }
     } catch (error) {
       alert("Error de red");
+    } finally {
+      savingRef.current = false;
+      setIsSaving(false);
     }
   };
 
@@ -324,6 +369,7 @@ export default function OperationsPage() {
 
   const handleSaveDistributedSale = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (savingDistributedRef.current) return;
     if (!distributedData.providerId || !distributedData.currencyId || !distributedData.exchangeRate) {
       alert("Complete los datos requeridos de la cabecera (Proveedor, Moneda, Cotización)");
       return;
@@ -345,6 +391,7 @@ export default function OperationsPage() {
       }
     }
 
+    savingDistributedRef.current = true;
     setIsSubmittingDistributed(true);
     try {
       const url = editingId ? `/api/operations/distributed-sale/${editingId}` : "/api/operations/distributed-sale";
@@ -357,6 +404,8 @@ export default function OperationsPage() {
       });
 
       if (res.ok) {
+        const saved = await res.json();
+        refreshSavedOperation(saved);
         setIsDistributedModalOpen(false);
         setEditingId(null);
         setDistributedData({
@@ -367,7 +416,6 @@ export default function OperationsPage() {
           observations: "",
           items: [{ clientId: "", exchangeRate: "", amount: "", observations: "", isPaid: true }],
         });
-        fetchData();
       } else {
         const err = await res.json();
         alert(err.error || "Error al crear/actualizar la operación distribuida");
@@ -375,6 +423,7 @@ export default function OperationsPage() {
     } catch (error) {
       alert("Error de conexión al servidor");
     } finally {
+      savingDistributedRef.current = false;
       setIsSubmittingDistributed(false);
     }
   };
@@ -392,8 +441,8 @@ export default function OperationsPage() {
       if (opDate > endDate) return false;
     }
 
-    if (searchTerm.trim() !== "") {
-      const term = searchTerm.toLowerCase();
+    if (debouncedSearch !== "") {
+      const term = debouncedSearch.toLowerCase();
       const matchClient = op.client?.name?.toLowerCase().includes(term);
       const matchProvider = op.provider?.name?.toLowerCase().includes(term);
       const matchNumber = op.operationNumber?.toLowerCase().includes(term);
@@ -407,6 +456,9 @@ export default function OperationsPage() {
 
   return (
     <>
+      {opsError && <p role="alert" style={{ color: "var(--ots-danger)" }}>
+        {opsError.message} <button type="button" className="flowbite-btn flowbite-btn-text" onClick={() => fetchData()}>Reintentar</button>
+      </p>}
       <div className="animate-fade-in" style={{ padding: "1rem 0" }}>
         {/* Page Title & Header */}
         <div style={{ marginBottom: "2rem" }}>
@@ -1338,9 +1390,11 @@ export default function OperationsPage() {
                     <button
                       type="submit"
                       className="flowbite-btn flowbite-btn-primary"
+                      disabled={isSaving}
+                      aria-busy={isSaving}
                       style={{ padding: "9px 24px" }}
                     >
-                      {editingId ? "Actualizar Operación" : "Crear Operación"}
+                      {isSaving ? "Guardando..." : editingId ? "Actualizar Operación" : "Crear Operación"}
                     </button>
                   </div>
                 </form>

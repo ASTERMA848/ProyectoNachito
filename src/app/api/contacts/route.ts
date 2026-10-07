@@ -10,6 +10,14 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "No autenticado" }, { status: 401 });
     }
 
+    if (req.nextUrl.searchParams.get("options") === "1") {
+      const contacts = await prisma.contact.findMany({
+        where: { deletedAt: null, isActive: true },
+        select: { id: true, name: true, document: true, isClient: true, isProvider: true, isActive: true },
+        orderBy: { name: "asc" },
+      });
+      return NextResponse.json({ contacts });
+    }
     const contacts = await prisma.contact.findMany({
       where: { deletedAt: null },
       include: { tags: { include: { tag: true } } },
