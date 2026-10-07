@@ -7,6 +7,8 @@ export type SaleInput = {
   providerId: string; currencyId: string; destCurrencyId: string; currencyCode: string;
   exchangeRate: number; operationDate: Date; observations: string | null; providerIsPaid: boolean; items: SaleItem[];
   operationType?: "DISTRIBUTED_SALE" | "SINGLE_SALE";
+  providerPaymentCurrencyId?: string | null;
+  providerPaymentRate?: number | null;
 };
 export class SaleValidationError extends Error {}
 
@@ -72,14 +74,22 @@ export async function applySaleLedger(tx: Tx, parent: Operation, children: Opera
   await tx.transaction.createMany({ data: transactions });
 
   const paidChildren = children.filter(c => c.isPaid);
+  const payCurrencyId = (input.providerIsPaid && input.providerPaymentCurrencyId)
+    ? input.providerPaymentCurrencyId
+    : input.destCurrencyId;
+  const payRate = payCurrencyId === input.destCurrencyId ? input.exchangeRate : 1;
+  const payAmount = parent.originAmount * payRate;
+
   // Una cuenta por moneda seleccionada una sola vez para todo el lote.
   await tx.$executeRaw`SELECT pg_advisory_xact_lock(72641002)`;
-  const currencyIds = Array.from(new Set([input.currencyId, input.destCurrencyId]));
+  const currencyIds = Array.from(new Set([input.currencyId, input.destCurrencyId, ...(input.providerIsPaid ? [payCurrencyId] : [])]));
   const existing = await tx.treasuryAccount.findMany({ where: { currencyId: { in: currencyIds }, type: "CASH", isActive: true }, orderBy: [{ createdAt: "asc" }, { id: "asc" }] });
   const missing = currencyIds.filter(id => !existing.some(a => a.currencyId === id));
   if (missing.length) {
     const now = new Date();
-    const created = missing.map(currencyId => ({ id: randomUUID(), currencyId, name: currencyId === input.currencyId ? `Caja ${input.currencyCode}` : "Caja Base",
+    const missingCurrencies = await tx.currency.findMany({ where: { id: { in: missing } }, select: { id: true, code: true } });
+    const codeMap = new Map(missingCurrencies.map(c => [c.id, c.code]));
+    const created = missing.map(cId => ({ id: randomUUID(), currencyId: cId, name: cId === input.destCurrencyId ? "Caja Base" : `Caja ${codeMap.get(cId) || ""}`,
       type: "CASH", balance: 0, isActive: true, createdAt: now, updatedAt: now }));
     await tx.treasuryAccount.createMany({ data: created });
     existing.push(...created);
@@ -98,7 +108,7 @@ export async function applySaleLedger(tx: Tx, parent: Operation, children: Opera
     movement(input.currencyId, child, "EXPENSE", child.originAmount, `Entrega divisa a cliente Op ${child.operationNumber}`);
   });
   if (input.providerIsPaid) {
-    movement(input.destCurrencyId, parent, "EXPENSE", parent.destAmount, `Egreso base por Op ${parent.operationNumber}`);
+    movement(payCurrencyId, parent, "EXPENSE", payAmount, `Egreso por pago a proveedor Op ${parent.operationNumber}`);
   }
   paidChildren.forEach(child => {
     movement(input.destCurrencyId, child, "INCOME", child.destAmount, `Ingreso base por venta Op ${child.operationNumber}`);
@@ -128,11 +138,16 @@ export async function saveDistributedSale(tx: Tx, input: SaleInput, parentId?: s
   const total = input.items.reduce((sum, item) => sum + item.amount, 0);
   const paid = input.items.filter(i => i.isPaid).length;
   const operationType = existing?.type || input.operationType || "DISTRIBUTED_SALE";
+  const payCurrencyId = input.providerIsPaid ? (input.providerPaymentCurrencyId || input.destCurrencyId) : null;
+  const payRate = input.providerIsPaid ? (payCurrencyId === input.destCurrencyId ? input.exchangeRate : 1) : null;
+  const payAmount = input.providerIsPaid ? (total * payRate!) : null;
+
   const data = { providerId: input.providerId, clientId: operationType === "SINGLE_SALE" ? input.items[0].clientId : null, originCurrencyId: input.currencyId, destCurrencyId: input.destCurrencyId,
     originAmount: total, destAmount: total * input.exchangeRate, exchangeRate: input.exchangeRate,
     operationDate: input.operationDate, observations: input.observations,
     state: paid === input.items.length && input.providerIsPaid ? "COMPLETED" : paid || input.providerIsPaid ? "PARTIAL" : "PENDING",
-    isPaid: paid === input.items.length, providerIsPaid: input.providerIsPaid };
+    isPaid: paid === input.items.length, providerIsPaid: input.providerIsPaid,
+    providerPaymentCurrencyId: payCurrencyId, providerPaymentRate: payRate, providerPaymentAmount: payAmount };
   const parent = existing
     ? await tx.operation.update({ where: { id: existing.id }, data })
     : await tx.operation.create({ data: { ...data, id: randomUUID(), operationNumber: await nextOperationNumber(tx), type: operationType } });

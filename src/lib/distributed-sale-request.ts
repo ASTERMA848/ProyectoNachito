@@ -9,7 +9,7 @@ export async function handleDistributedSale(req: NextRequest, parentId?: string)
     if (!user) return NextResponse.json({ error: "No autenticado" }, { status: 401 });
     const body = await req.json().catch(() => null);
     if (!body) return NextResponse.json({ error: "Datos inválidos" }, { status: 400 });
-    const { providerId, currencyId, exchangeRate, operationDate, observations, items, providerIsPaid } = body;
+    const { providerId, currencyId, exchangeRate, operationDate, observations, items, providerIsPaid, providerPaymentCurrencyId, providerPaymentRate } = body;
     const operationType = body.operationType ?? "DISTRIBUTED_SALE";
     if (operationType !== "DISTRIBUTED_SALE" && operationType !== "SINGLE_SALE")
       return NextResponse.json({ error: "Tipo de operación inválido" }, { status: 400 });
@@ -42,10 +42,14 @@ export async function handleDistributedSale(req: NextRequest, parentId?: string)
     if (!Number.isFinite(normalized.reduce((sum, item) => sum + item.amount, 0) * rate)) {
       return NextResponse.json({ error: "El total de la operación supera el límite numérico" }, { status: 400 });
     }
+    const payCurrId = providerIsPaid && typeof providerPaymentCurrencyId === "string" && providerPaymentCurrencyId ? providerPaymentCurrencyId : null;
+    const payRateVal = providerIsPaid && providerPaymentRate !== "" && providerPaymentRate != null && Number.isFinite(Number(providerPaymentRate)) && Number(providerPaymentRate) > 0 ? Number(providerPaymentRate) : null;
+
     const ids = Array.from(new Set([providerId, ...normalized.map(i => i.clientId)]));
+    const currencyIdsToFetch = Array.from(new Set([currencyId, ...(payCurrId ? [payCurrId] : [])]));
     const [contacts, currencies, settings] = await Promise.all([
       prisma.contact.findMany({ where: { id: { in: ids }, deletedAt: null }, select: { id: true } }),
-      prisma.currency.findMany({ where: { isActive: true, OR: [{ id: currencyId }, { code: "ARS" }] }, select: { id: true, code: true } }),
+      prisma.currency.findMany({ where: { isActive: true, OR: [{ id: { in: currencyIdsToFetch } }, { code: "ARS" }] }, select: { id: true, code: true } }),
       prisma.settings.findFirst({ select: { accountingBlockDate: true } }),
     ]);
     const origin = currencies.find(c => c.id === currencyId);
@@ -53,13 +57,17 @@ export async function handleDistributedSale(req: NextRequest, parentId?: string)
     if (!origin || contacts.length !== ids.length) {
       return NextResponse.json({ error: "Proveedor, clientes o moneda no encontrados" }, { status: 400 });
     }
+    if (payCurrId && !currencies.some(c => c.id === payCurrId)) {
+      return NextResponse.json({ error: "La moneda seleccionada para el pago al proveedor no existe o está inactiva" }, { status: 400 });
+    }
     if (!destination) return NextResponse.json({ error: "Activá la moneda ARS para registrar los cobros y pagos en pesos" }, { status: 400 });
     if (settings?.accountingBlockDate && date < settings.accountingBlockDate) {
       return NextResponse.json({ error: "La fecha es anterior al bloqueo contable" }, { status: 400 });
     }
     const input: SaleInput = { providerId, currencyId, destCurrencyId: destination.id,
       currencyCode: origin.code, exchangeRate: rate, operationDate: date,
-      observations: observations ? String(observations).slice(0, 2000) : null, providerIsPaid, items: normalized, operationType };
+      observations: observations ? String(observations).slice(0, 2000) : null, providerIsPaid, items: normalized, operationType,
+      providerPaymentCurrencyId: payCurrId, providerPaymentRate: payRateVal };
     const result = await prisma.$transaction(async tx => {
       const result = await saveDistributedSale(tx, input, parentId);
       await tx.auditLog.create({ data: { userId: user.id, action: parentId ? "UPDATE" : "CREATE", entity: "Operation",

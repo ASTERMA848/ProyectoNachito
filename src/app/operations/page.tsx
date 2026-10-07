@@ -18,6 +18,8 @@ import {
   LiquidMenu,
 } from "@liquefy-ui/react";
 
+import TreasuryTransferDialog from "@/components/TreasuryTransferDialog";
+
 const fetcher = async (url: string) => {
   const response = await fetch(url);
   const data = await response.json();
@@ -62,6 +64,7 @@ export default function OperationsPage() {
 
   const [isTypeSelectorOpen, setIsTypeSelectorOpen] = useState(false);
   const [isDistributedModalOpen, setIsDistributedModalOpen] = useState(false);
+  const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
   const [singleClientMode, setSingleClientMode] = useState(false);
   const [isSubmittingDistributed, setIsSubmittingDistributed] = useState(false);
   const [expandedOpIds, setExpandedOpIds] = useState<string[]>([]);
@@ -70,6 +73,8 @@ export default function OperationsPage() {
   const [distributedData, setDistributedData] = useState({
     providerId: "",
     providerIsPaid: false as boolean | null,
+    providerPaymentCurrencyId: "",
+    providerPaymentRate: "",
     currencyId: "",
     exchangeRate: "",
     operationDate: new Date().toISOString().split("T")[0],
@@ -95,6 +100,7 @@ export default function OperationsPage() {
   const needsOptions = isModalOpen || isDistributedModalOpen;
   const { data: contactsData } = useSWR(needsOptions ? "/api/contacts?options=1" : null, fetcher, { keepPreviousData: true });
   const { data: currenciesData } = useSWR(needsOptions ? "/api/currencies" : null, fetcher, { keepPreviousData: true });
+  const { data: treasuryData } = useSWR(isTransferModalOpen ? "/api/treasury" : null, fetcher);
 
   const queryParams = new URLSearchParams({
     page: page.toString(),
@@ -256,6 +262,8 @@ export default function OperationsPage() {
       setDistributedData({
         providerId: op.providerId || "",
         providerIsPaid: op.providerIsPaid ?? null,
+        providerPaymentCurrencyId: op.providerPaymentCurrencyId || "",
+        providerPaymentRate: op.providerPaymentRate ? op.providerPaymentRate.toString() : "",
         currencyId: op.originCurrencyId || "",
         exchangeRate: op.exchangeRate ? op.exchangeRate.toString() : "",
         operationDate: op.operationDate ? new Date(op.operationDate).toISOString().split("T")[0] : new Date().toISOString().split("T")[0],
@@ -434,6 +442,8 @@ export default function OperationsPage() {
         setDistributedData({
           providerId: "",
           providerIsPaid: false,
+          providerPaymentCurrencyId: "",
+          providerPaymentRate: "",
           currencyId: "",
           exchangeRate: "",
           operationDate: new Date().toISOString().split("T")[0],
@@ -898,10 +908,26 @@ export default function OperationsPage() {
                         <LiquidTableCell>{new Date(op.operationDate).toLocaleDateString()}</LiquidTableCell>
                         <LiquidTableCell>
                           <span
-                            className="flowbite-badge flowbite-badge-purple"
+                            className={`flowbite-badge ${
+                              op.type === "TREASURY_TRANSFER"
+                                ? "flowbite-badge-blue"
+                                : op.type === "TREASURY_INCOME" || op.type === "TREASURY_EXPENSE"
+                                ? "flowbite-badge-gray"
+                                : "flowbite-badge-purple"
+                            }`}
                             style={{ fontSize: "11px", fontWeight: 600, padding: "2px 8px" }}
                           >
-                            {op.type === "SINGLE_SALE" ? "Operación 1 a 1" : isDistributed ? "Venta Distribuida" : "Estándar 1 a 1"}
+                            {op.type === "TREASURY_TRANSFER"
+                              ? "Traspaso / Conversión"
+                              : op.type === "TREASURY_INCOME"
+                              ? "Ingreso Tesorería"
+                              : op.type === "TREASURY_EXPENSE"
+                              ? "Extracción Tesorería"
+                              : op.type === "SINGLE_SALE"
+                              ? "Operación 1 a 1"
+                              : isDistributed
+                              ? "Venta Distribuida"
+                              : "Estándar 1 a 1"}
                           </span>
                         </LiquidTableCell>
                         <LiquidTableCell style={{ fontFamily: "monospace", fontWeight: 600 }}>
@@ -912,13 +938,13 @@ export default function OperationsPage() {
                         </LiquidTableCell>
                         <LiquidTableCell>
                           <span
-                            className={`flowbite-badge ${paidBadgeClass}`}
+                            className={`flowbite-badge ${op.type.startsWith("TREASURY") ? "flowbite-badge-green" : paidBadgeClass}`}
                             style={{ fontSize: "11px", fontWeight: 600, padding: "2px 8px" }}
                           >
-                            {paidText}
+                            {op.type.startsWith("TREASURY") ? "Interno / Cajas" : paidText}
                           </span>
                           {isDistributed && <div style={{ fontSize: "11px", marginTop: "4px", color: "var(--text-secondary)" }}>
-                            Proveedor: {op.providerIsPaid == null ? "revisar pago" : op.providerIsPaid ? "pagado" : "pendiente"}
+                            Proveedor: {op.providerIsPaid == null ? "revisar pago" : op.providerIsPaid ? `pagado en ${op.providerPaymentCurrency?.code || op.destCurrency?.code || "ARS"}` : "pendiente"}
                           </div>}
                         </LiquidTableCell>
                         <LiquidTableCell>
@@ -1569,7 +1595,7 @@ export default function OperationsPage() {
                     setSingleClientMode(false);
                     setIsDistributedModalOpen(true);
                     setEditingId(null);
-                    setDistributedData({ providerId: "", providerIsPaid: false, currencyId: "", exchangeRate: "",
+                    setDistributedData({ providerId: "", providerIsPaid: false, providerPaymentCurrencyId: "", providerPaymentRate: "", currencyId: "", exchangeRate: "",
                       operationDate: new Date().toISOString().split("T")[0], observations: "",
                       items: [{ clientId: "", exchangeRate: "", amount: "", observations: "", isPaid: true }] });
                   }}
@@ -1600,7 +1626,7 @@ export default function OperationsPage() {
                     setIsTypeSelectorOpen(false);
                     setEditingId(null);
                     setSingleClientMode(true);
-                    setDistributedData({ providerId: "", providerIsPaid: false, currencyId: "", exchangeRate: "",
+                    setDistributedData({ providerId: "", providerIsPaid: false, providerPaymentCurrencyId: "", providerPaymentRate: "", currencyId: "", exchangeRate: "",
                       operationDate: new Date().toISOString().split("T")[0], observations: "",
                       items: [{ clientId: "", exchangeRate: "", amount: "", observations: "", isPaid: true }] });
                     setIsDistributedModalOpen(true);
@@ -1621,6 +1647,31 @@ export default function OperationsPage() {
                   </span>
                   <p style={{ fontSize: "12.5px", color: "var(--ots-text-secondary)", marginTop: "6px", lineHeight: "1.4" }}>
                     Mismo funcionamiento que la venta múltiple, con un solo movimiento de cliente. Cotizaciones de compra y venta, cobro y pago al proveedor independientes.
+                  </p>
+                </div>
+
+                {/* Opción 3: Traspaso / Conversión de Cajas */}
+                <div
+                  onClick={() => {
+                    setIsTypeSelectorOpen(false);
+                    setIsTransferModalOpen(true);
+                  }}
+                  style={{
+                    backgroundColor: "var(--ots-surface-inset)",
+                    border: "1px solid var(--ots-border)",
+                    borderRadius: "var(--ots-radius-md)",
+                    padding: "16px",
+                    cursor: "pointer",
+                    transition: "all 150ms ease",
+                  }}
+                  onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "var(--ots-surface-2)")}
+                  onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "var(--ots-surface-inset)")}
+                >
+                  <span style={{ fontSize: "15px", fontWeight: 700, color: "var(--ots-text-primary)" }}>
+                    3. Traspaso / Conversión entre Cajas
+                  </span>
+                  <p style={{ fontSize: "12.5px", color: "var(--ots-text-secondary)", marginTop: "6px", lineHeight: "1.4" }}>
+                    Transferir dinero o realizar cambios de divisa directamente entre cajas de tesorería (ej. ARS a USDT para saldar saldos negativos).
                   </p>
                 </div>
               </div>
@@ -1750,17 +1801,50 @@ export default function OperationsPage() {
                         <label className="flowbite-form-label" htmlFor="provider-payment">Pago al proveedor *</label>
                         <select id="provider-payment" className="flowbite-input" required
                           value={distributedData.providerIsPaid == null ? "" : distributedData.providerIsPaid ? "true" : "false"}
-                          onChange={e => setDistributedData({ ...distributedData, providerIsPaid: e.target.value === "true" })}>
+                          onChange={e => {
+                            const isPaid = e.target.value === "true";
+                            const defaultPayCurr = isPaid ? (distributedData.providerPaymentCurrencyId || currencies.find((c: any) => c.code === "ARS")?.id || "") : "";
+                            setDistributedData({
+                              ...distributedData,
+                              providerIsPaid: isPaid,
+                              providerPaymentCurrencyId: defaultPayCurr,
+                              providerPaymentRate: isPaid ? distributedData.providerPaymentRate : "",
+                            });
+                          }}>
                           <option value="" disabled>Revisar pago anterior</option>
-                          <option value="false">Pendiente</option>
-                          <option value="true">Pagado en ARS</option>
+                          <option value="false">Pendiente (A cuenta corriente)</option>
+                          <option value="true">Pagado al contado (Elegir moneda)</option>
                         </select>
                       </div>
                     </div>
 
+                    {distributedData.providerIsPaid && (
+                      <div style={{ marginTop: "14px", padding: "14px", backgroundColor: "rgba(59, 130, 246, 0.08)", borderRadius: "var(--ots-radius-md)", border: "1px solid rgba(59, 130, 246, 0.2)" }}>
+                        <div className="flowbite-form-group" style={{ marginBottom: 0 }}>
+                          <label className="flowbite-form-label">Moneda con la que se paga al Proveedor *</label>
+                          <LiquidSelect
+                            value={distributedData.providerPaymentCurrencyId || (currencies.find((c: any) => c.code === "ARS")?.id || "")}
+                            onChange={(val) => setDistributedData({ ...distributedData, providerPaymentCurrencyId: val })}
+                            placeholder="Seleccionar moneda de pago..."
+                            options={currencies.map((c: any) => ({ value: c.id, label: `${c.code} - ${c.name}` }))}
+                          />
+                        </div>
+                      </div>
+                    )}
+
                     <p style={{ fontSize: "12px", color: "var(--ots-text-secondary)", marginTop: "12px" }}>
-                      El pago al proveedor es independiente de los cobros. Los fiados mantienen deuda en {currencies.find((currency: any) => currency.id === distributedData.currencyId)?.code || "la moneda elegida"}.
-                      Al guardar se registra la recepción y entrega de la divisa; marcar un pago registra su importe en ARS a la cotización indicada.
+                      El pago al proveedor es independiente de los cobros. {distributedData.providerIsPaid ? (
+                        (() => {
+                          const payCur = currencies.find((c: any) => c.id === (distributedData.providerPaymentCurrencyId || currencies.find((cur: any) => cur.code === "ARS")?.id));
+                          const totalOrigin = distributedData.items.reduce((s, i) => s + (parseFloat(i.amount) || 0), 0);
+                          const isArs = payCur?.code === "ARS";
+                          const headerRate = parseFloat(distributedData.exchangeRate) || 0;
+                          const totalPay = isArs ? (totalOrigin * headerRate) : totalOrigin;
+                          return `Se registrará un egreso de tesorería de ${isArs ? "$" : ""}${totalPay.toLocaleString("es-AR", { maximumFractionDigits: 2 })} ${payCur?.code || ""} por el pago al proveedor.`;
+                        })()
+                      ) : (
+                        `Se mantendrá la deuda con el proveedor en ${currencies.find((c: any) => c.id === distributedData.currencyId)?.code || "la moneda elegida"}.`
+                      )}
                     </p>
 
                     {/* Observaciones generales */}
@@ -1960,7 +2044,15 @@ export default function OperationsPage() {
           </div>
         </Portal>
       )}
-
+      {isTransferModalOpen && (
+        <TreasuryTransferDialog
+          accounts={treasuryData?.accounts || []}
+          onClose={() => setIsTransferModalOpen(false)}
+          onSaved={() => {
+            void fetchData();
+          }}
+        />
+      )}
     </>
   );
 }

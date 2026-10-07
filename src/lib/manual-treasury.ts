@@ -1,4 +1,5 @@
 import { Prisma } from "@prisma/client";
+import { nextOperationNumber } from "./distributed-sale";
 
 export class TreasuryError extends Error {
   constructor(message: string, public status = 400) { super(message); }
@@ -34,8 +35,27 @@ export async function recordManualTreasuryMovement(tx: Prisma.TransactionClient,
   });
   if (updated.count !== 1) throw new TreasuryError("Saldo insuficiente para esta extracción. Actualizá el saldo o reducí el importe.", 409);
   const updatedAccount = await tx.treasuryAccount.findUniqueOrThrow({ where: { id: account.id }, include: { currency: true } });
+
+  const opNumber = await nextOperationNumber(tx as any);
+  const operation = await tx.operation.create({
+    data: {
+      operationNumber: opNumber,
+      type: input.type === "INCOME" ? "TREASURY_INCOME" : "TREASURY_EXPENSE",
+      originCurrencyId: account.currencyId,
+      destCurrencyId: account.currencyId,
+      originAmount: input.amount,
+      destAmount: input.amount,
+      exchangeRate: 1,
+      operationDate: new Date(),
+      isPaid: true,
+      providerIsPaid: true,
+      state: "COMPLETED",
+      observations: input.reason,
+    },
+  });
+
   const movement = await tx.treasuryMovement.create({
-    data: { treasuryAccountId: account.id, type: input.type, amount: input.amount, concept: input.reason },
+    data: { treasuryAccountId: account.id, operationId: operation.id, type: input.type, amount: input.amount, concept: input.reason },
     include: { account: { include: { currency: true } }, operation: { select: { operationNumber: true } } },
   });
   await tx.auditLog.create({ data: {

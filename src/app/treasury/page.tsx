@@ -13,6 +13,7 @@ import {
 } from "@liquefy-ui/react";
 import { BriefcaseIcon } from "@liquefy-ui/icons";
 import TreasuryMovementDialog from "@/components/TreasuryMovementDialog";
+import TreasuryTransferDialog from "@/components/TreasuryTransferDialog";
 import TreasuryHistory from "@/components/TreasuryHistory";
 import styles from "./treasury.module.css";
 
@@ -27,6 +28,7 @@ export default function TreasuryPage() {
   const { mutate: refreshHistory } = useSWRConfig();
   const { data, error, isLoading: loading, mutate: fetchTreasury } = useSWR("/api/treasury", fetcher);
   const [movementAccountId, setMovementAccountId] = useState<string | null>(null);
+  const [isTransferOpen, setIsTransferOpen] = useState(false);
   const [historyAccount, setHistoryAccount] = useState<{ id: string; name: string } | null>(null);
 
   const accounts = data?.accounts || [];
@@ -86,18 +88,33 @@ export default function TreasuryPage() {
             Visualiza el dinero real disponible en tus cajas y billeteras.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => {
-            void fetchTreasury().catch(() => {});
-            void refreshHistory(key => typeof key === "string" && key.startsWith("/api/treasury/")).catch(() => {});
-          }}
-          className="flowbite-btn flowbite-btn-secondary"
-          style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px 16px" }}
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 21v-5h5"/></svg>
-          Actualizar
-        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+          {data?.canManage && (
+            <button
+              type="button"
+              onClick={() => setIsTransferOpen(true)}
+              className="flowbite-btn flowbite-btn-primary"
+              style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px 16px" }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M7 16V4M7 4L3 8M7 4L11 8M17 8V20M17 20L21 16M17 20L13 16" />
+              </svg>
+              Traspaso / Conversión
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => {
+              void fetchTreasury().catch(() => {});
+              void refreshHistory(key => typeof key === "string" && key.startsWith("/api/treasury/")).catch(() => {});
+            }}
+            className="flowbite-btn flowbite-btn-secondary"
+            style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px 16px" }}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 21v-5h5"/></svg>
+            Actualizar
+          </button>
+        </div>
       </div>
 
       {/* Cajas (Cards de Cuentas de Tesorería) */}
@@ -260,6 +277,16 @@ export default function TreasuryPage() {
             movements: [result.movement, ...current.movements].slice(0, 100),
           }) : current, { revalidate: false });
         }} />}
+      {isTransferOpen && (
+        <TreasuryTransferDialog
+          accounts={accounts}
+          onClose={() => setIsTransferOpen(false)}
+          onSaved={() => {
+            void fetchTreasury();
+            void refreshHistory(key => typeof key === "string" && key.startsWith("/api/treasury/")).catch(() => {});
+          }}
+        />
+      )}
     </div>
   );
 }

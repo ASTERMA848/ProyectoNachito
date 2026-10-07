@@ -59,6 +59,7 @@ export async function GET(req: NextRequest) {
           provider: { select: { id: true, name: true, document: true } },
           originCurrency: { select: { id: true, code: true, symbol: true, color: true } },
           destCurrency: { select: { id: true, code: true, symbol: true, color: true } },
+          providerPaymentCurrency: { select: { id: true, code: true, symbol: true, color: true } },
           parentOperation: { select: { id: true, operationNumber: true } },
           childOperations: {
             where: { deletedAt: null },

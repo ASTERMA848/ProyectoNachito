@@ -126,6 +126,7 @@ model Currency {
 
   originOps   Operation[]  @relation("OriginCurrency")
   destOps     Operation[]  @relation("DestCurrency")
+  providerPaymentOps Operation[] @relation("ProviderPaymentCurrency")
   accounts    Account[]
   treasuries  TreasuryAccount[]
 }
@@ -145,9 +146,9 @@ model Operation {
   childOperations   Operation[] @relation("ParentChildOps")
 
   clientId         String?
-  providerId       String
+  providerId       String?
   client           Contact?     @relation("ClientOperations", fields: [clientId], references: [id])
-  provider         Contact      @relation("ProviderOperations", fields: [providerId], references: [id])
+  provider         Contact?     @relation("ProviderOperations", fields: [providerId], references: [id])
 
   originCurrencyId String
   destCurrencyId   String
@@ -161,6 +162,10 @@ model Operation {
 
   isPaid           Boolean      @default(false)
   providerIsPaid   Boolean?     @default(false) // NULL: pago de una operación anterior pendiente de revisión
+  providerPaymentCurrencyId String?
+  providerPaymentCurrency   Currency? @relation("ProviderPaymentCurrency", fields: [providerPaymentCurrencyId], references: [id])
+  providerPaymentRate       Float?
+  providerPaymentAmount     Float?
   observations     String?
   state            String       @default("PENDING") // PENDING, PARTIAL, COMPLETED, CANCELED
 
