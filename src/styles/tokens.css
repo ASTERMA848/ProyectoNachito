@@ -5,54 +5,54 @@
 
 :root {
   /* --- Canvas & Surfaces --- */
-  --ots-bg-canvas: #07080C;
-  --ots-surface-1: #0E1017;
-  --ots-surface-2: #141722;
-  --ots-surface-3: #1A1D2B;
-  --ots-surface-inset: #0B0C12;
+  --ots-bg-canvas: #f8fafc;
+  --ots-surface-1: #ffffff;
+  --ots-surface-2: #f1f5f9;
+  --ots-surface-3: #e2e8f0;
+  --ots-surface-inset: #f8fafc;
 
   /* --- Borders & Dividers --- */
-  --ots-border: #1F2433;
-  --ots-border-subtle: rgba(255, 255, 255, 0.07);
-  --ots-border-hover: #334155;
-  --ots-border-focus: #3B82F6;
+  --ots-border: #e2e8f0;
+  --ots-border-subtle: #cbd5e1;
+  --ots-border-hover: #cbd5e1;
+  --ots-border-focus: #4f46e5;
 
   /* --- Brand & Action Colors --- */
-  --ots-primary: #3B82F6;
-  --ots-primary-hover: #2563EB;
-  --ots-primary-active: #1D4ED8;
-  --ots-primary-muted: rgba(59, 130, 246, 0.12);
+  --ots-primary: #4f46e5;
+  --ots-primary-hover: #4338ca;
+  --ots-primary-active: #3730a3;
+  --ots-primary-muted: rgba(79, 70, 229, 0.1);
 
   /* --- Semantic Status Colors --- */
-  --ots-success: #10B981;
-  --ots-success-bg: rgba(16, 185, 129, 0.12);
-  --ots-success-border: rgba(16, 185, 129, 0.3);
+  --ots-success: #059669;
+  --ots-success-bg: #d1fae5;
+  --ots-success-border: #a7f3d0;
 
-  --ots-warning: #F59E0B;
-  --ots-warning-bg: rgba(245, 158, 11, 0.12);
-  --ots-warning-border: rgba(245, 158, 11, 0.3);
+  --ots-warning: #d97706;
+  --ots-warning-bg: #fef3c7;
+  --ots-warning-border: #fde68a;
 
-  --ots-danger: #EF4444;
-  --ots-danger-bg: rgba(239, 68, 68, 0.12);
-  --ots-danger-border: rgba(239, 68, 68, 0.3);
+  --ots-danger: #dc2626;
+  --ots-danger-bg: #fee2e2;
+  --ots-danger-border: #fca5a5;
 
-  --ots-info: #6366F1;
-  --ots-info-bg: rgba(99, 102, 241, 0.12);
+  --ots-info: #2563eb;
+  --ots-info-bg: #dbeafe;
 
   /* --- Typography Colors --- */
-  --ots-text-primary: #F8FAFC;
-  --ots-text-secondary: #94A3B8;
-  --ots-text-muted: #64748B;
-  --ots-text-disabled: #475569;
+  --ots-text-primary: #0f172a;
+  --ots-text-secondary: #475569;
+  --ots-text-muted: #64748b;
+  --ots-text-disabled: #94a3b8;
 
   /* --- Geometry & Spacing --- */
-  --ots-radius-sm: 4px;
-  --ots-radius-md: 6px;
-  --ots-radius-lg: 10px;
+  --ots-radius-sm: 6px;
+  --ots-radius-md: 10px;
+  --ots-radius-lg: 14px;
   --ots-radius-pill: 9999px;
 
   /* --- Typography Families & Scales --- */
-  --ots-font-sans: 'Inter', var(--font-manrope), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --ots-font-sans: 'Plus Jakarta Sans', 'Inter', var(--font-manrope), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --ots-font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 

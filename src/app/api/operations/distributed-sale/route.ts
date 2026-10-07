@@ -94,7 +94,8 @@ export async function POST(req: NextRequest) {
     }
 
     // Ejecución Atómica en Transacción
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(
+      async (tx) => {
       // Calcular totales
       const totalOriginAmount = items.reduce((sum, item) => sum + parseFloat(item.amount), 0);
       const totalDestAmount = totalOriginAmount * parsedRate;
@@ -130,13 +131,92 @@ export async function POST(req: NextRequest) {
         },
       });
 
+      // 2. Registrar Movimiento en Cuenta Corriente del Proveedor (Compra acumulada)
+      let providerAccount = await tx.account.findUnique({
+        where: {
+          contactId_currencyId: {
+            contactId: providerId,
+            currencyId,
+          },
+        },
+      });
+
+      if (!providerAccount) {
+        providerAccount = await tx.account.create({
+          data: {
+            contactId: providerId,
+            currencyId,
+            balance: 0,
+          },
+        });
+      }
+
+      // Proveedor entrega divisa (Nos genera una deuda con el proveedor por el total originAmount en la divisa o ARS)
+      // Usamos la convención del sistema: DEBIT disminuye saldo, CREDIT aumenta saldo.
+      // Como nos endeudamos (net asset decrease), usamos DEBIT.
+      const providerBalanceAfter = providerAccount.balance - totalOriginAmount;
+      await tx.account.update({
+        where: { id: providerAccount.id },
+        data: { balance: providerBalanceAfter },
+      });
+
+      await tx.transaction.create({
+        data: {
+          accountId: providerAccount.id,
+          operationId: parentOp.id,
+          concept: `Compra de divisa (Op Agrupadora: ${parentOpNumber})`,
+          debit: totalOriginAmount,
+          credit: 0,
+          balance: providerBalanceAfter,
+          observations: `Cotización Proveedor: ${parsedRate}. Costo ARS: $${totalDestAmount.toLocaleString("es-AR")}`,
+        },
+      });
+
+      // Si está pagado (Proveedor), liquidamos deuda y movemos cajas.
+      // Como pagamos (net asset increase), usamos CREDIT.
+      if (parentOp.isPaid) {
+         const pBalanceAfterPay = providerBalanceAfter + totalOriginAmount;
+         await tx.account.update({
+           where: { id: providerAccount.id },
+           data: { balance: pBalanceAfterPay }
+         });
+         await tx.transaction.create({
+            data: {
+              accountId: providerAccount.id,
+              operationId: parentOp.id,
+              concept: `Pago al contado registrado (Op: ${parentOpNumber})`,
+              debit: 0,
+              credit: totalOriginAmount,
+              balance: pBalanceAfterPay,
+              observations: "Cancelación de deuda por compra"
+            }
+         });
+
+         // Cajas: Sale Pesos (destCurrency), Entra Divisa (originCurrency)
+         let tAccOrigin = await tx.treasuryAccount.findFirst({ where: { currencyId } });
+         if (!tAccOrigin) tAccOrigin = await tx.treasuryAccount.create({ data: { name: `Caja ${originCurrency.code}`, currencyId, balance: 0, type: "CASH" } });
+         await tx.treasuryAccount.update({ where: { id: tAccOrigin.id }, data: { balance: { increment: totalOriginAmount } } });
+         await tx.treasuryMovement.create({
+           data: { treasuryAccountId: tAccOrigin.id, type: "INCOME", amount: totalOriginAmount, operationId: parentOp.id, concept: `Ingreso divisa por Op ${parentOpNumber}` }
+         });
+
+         let tAccDest = await tx.treasuryAccount.findFirst({ where: { currencyId: destCurrency.id } });
+         if (!tAccDest) tAccDest = await tx.treasuryAccount.create({ data: { name: `Caja Base`, currencyId: destCurrency.id, balance: 0, type: "CASH" } });
+         await tx.treasuryAccount.update({ where: { id: tAccDest.id }, data: { balance: { decrement: totalDestAmount } } });
+         await tx.treasuryMovement.create({
+           data: { treasuryAccountId: tAccDest.id, type: "EXPENSE", amount: totalDestAmount, operationId: parentOp.id, concept: `Egreso base por Op ${parentOpNumber}` }
+         });
+      }
+
       const childOperations = [];
 
-      // 2. Crear Operaciones Hijas por cada línea y sus movimientos en Cuentas Corrientes
+
+      // 3. Crear Operaciones Hijas por cada línea y sus movimientos en Cuentas Corrientes
       for (let i = 0; i < items.length; i++) {
         const item = items[i];
         const itemAmount = parseFloat(item.amount);
-        const itemDestAmount = itemAmount * parsedRate;
+        const itemRate = item.exchangeRate && !isNaN(parseFloat(item.exchangeRate)) ? parseFloat(item.exchangeRate) : parsedRate;
+        const itemDestAmount = itemAmount * itemRate;
         const itemPaid = !!item.isPaid;
         const childOpNumber = `${parentOpNumber}-${i + 1}`;
 
@@ -151,7 +231,7 @@ export async function POST(req: NextRequest) {
             destCurrencyId: destCurrency.id,
             originAmount: itemAmount,
             destAmount: itemDestAmount,
-            exchangeRate: parsedRate,
+            exchangeRate: itemRate,
             operationDate: parsedDate,
             observations: item.observations ? String(item.observations).substring(0, 2000) : null,
             state: itemPaid ? "COMPLETED" : "PENDING",
@@ -181,7 +261,7 @@ export async function POST(req: NextRequest) {
           });
         }
 
-        // Movimiento 1: Débito por entrega de divisa (Aumenta saldo)
+        // Movimiento 1: Venta de divisa (Aumenta saldo adeudado por el cliente, net asset increase -> CREDIT)
         const balanceAfterDebit = clientAccount.balance + itemAmount;
         await tx.account.update({
           where: { id: clientAccount.id },
@@ -192,17 +272,17 @@ export async function POST(req: NextRequest) {
           data: {
             accountId: clientAccount.id,
             operationId: childOp.id,
-            concept: `Venta divisa (Op: ${childOpNumber})`,
-            debit: itemAmount,
-            credit: 0,
+            concept: `Venta divisa a cliente (Op: ${childOpNumber})`,
+            debit: 0,
+            credit: itemAmount,
             balance: balanceAfterDebit,
-            observations: item.observations || null,
+            observations: `Cotización Venta: ${itemRate}. Total ARS: $${itemDestAmount.toLocaleString("es-AR")}. ${item.observations || ""}`,
           },
         });
 
         clientAccount.balance = balanceAfterDebit;
 
-        // Movimiento 2: Si está pagado (Cobro al contado), registrar Crédito que cancela la deuda
+        // Movimiento 2: Si está pagado (Cobro al contado), liquidamos deuda (net asset decrease -> DEBIT)
         if (itemPaid) {
           const balanceAfterCredit = clientAccount.balance - itemAmount;
           await tx.account.update({
@@ -214,17 +294,35 @@ export async function POST(req: NextRequest) {
             data: {
               accountId: clientAccount.id,
               operationId: childOp.id,
-              concept: `Pago al contado (Op: ${childOpNumber})`,
-              debit: 0,
-              credit: itemAmount,
+              concept: `Pago al contado registrado (Op: ${childOpNumber})`,
+              debit: itemAmount,
+              credit: 0,
               balance: balanceAfterCredit,
-              observations: `Pago contado - ${item.observations || ""}`,
+              observations: `Cancelación de deuda por venta cobrada en el acto - ${item.observations || ""}`,
             },
+          });
+
+          // Cajas: Sale Divisa, Entra Pesos (destCurrency)
+          let tAccOrigin = await tx.treasuryAccount.findFirst({ where: { currencyId } });
+          if (!tAccOrigin) tAccOrigin = await tx.treasuryAccount.create({ data: { name: `Caja ${originCurrency.code}`, currencyId, balance: 0, type: "CASH" } });
+          await tx.treasuryAccount.update({ where: { id: tAccOrigin.id }, data: { balance: { decrement: itemAmount } } });
+          await tx.treasuryMovement.create({
+            data: { treasuryAccountId: tAccOrigin.id, type: "EXPENSE", amount: itemAmount, operationId: childOp.id, concept: `Egreso divisa por venta Op ${childOpNumber}` }
+          });
+
+          let tAccDest = await tx.treasuryAccount.findFirst({ where: { currencyId: destCurrency.id } });
+          if (!tAccDest) tAccDest = await tx.treasuryAccount.create({ data: { name: `Caja Base`, currencyId: destCurrency.id, balance: 0, type: "CASH" } });
+          await tx.treasuryAccount.update({ where: { id: tAccDest.id }, data: { balance: { increment: itemDestAmount } } });
+          await tx.treasuryMovement.create({
+            data: { treasuryAccountId: tAccDest.id, type: "INCOME", amount: itemDestAmount, operationId: childOp.id, concept: `Ingreso base por venta Op ${childOpNumber}` }
           });
         }
       }
 
       return { parentOp, childOperations };
+    }, {
+      maxWait: 10000,
+      timeout: 20000,
     });
 
     await logAudit({

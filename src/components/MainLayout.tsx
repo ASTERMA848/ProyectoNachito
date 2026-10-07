@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import Header from "./Header";
+import Sidebar from "./Sidebar";
 import AuditorInspector from "./AuditorInspector";
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
@@ -13,7 +13,6 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
 
   const isAuthPage = pathname === "/login" || pathname === "/logout";
 
-  // Registrar componentes web de LiquidGlass UI en el cliente siempre
   useEffect(() => {
     import("@/lib/liquid-glass/liquid-glass.js").catch(() => {});
   }, []);
@@ -36,15 +35,13 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
           const isAuditorRoute = pathname === "/audit" || pathname === "/sql-console";
           
           if (username === "admin") {
-            // El admin hardcodeado tiene acceso a todo
+            // Admin total
           } else if (role === "AUDITOR") {
-            // AUDITOR solo puede ver auditoria, sql, schema y sus settings (y logout)
             if (!isAuditorRoute && pathname !== "/settings" && pathname !== "/logout") {
               router.push("/audit");
               return;
             }
           } else {
-            // ADMIN y OPERATOR no pueden ver las rutas del auditor
             if (isAuditorRoute) {
               router.push("/");
               return;
@@ -64,7 +61,6 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
     checkAuth();
   }, [pathname, router, isAuthPage]);
 
-  // Aplicar el tema del usuario
   useEffect(() => {
     if (user?.theme) {
       if (user.theme === "DARK") {
@@ -94,17 +90,16 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          backgroundColor: "var(--bg-color)",
-          color: "var(--text-secondary)",
-          fontFamily: "sans-serif",
+          backgroundColor: "var(--ots-bg-canvas)",
+          color: "var(--ots-text-secondary)",
           fontSize: "14px",
         }}
       >
         <div style={{ textAlign: "center" }}>
           <div
             style={{
-              border: "3px solid var(--border-color)",
-              borderTop: "3px solid var(--primary-color)",
+              border: "3px solid var(--ots-border)",
+              borderTop: "3px solid var(--ots-primary)",
               borderRadius: "50%",
               width: "32px",
               height: "32px",
@@ -118,21 +113,22 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
               100% { transform: rotate(360deg); }
             }
           `}</style>
-          <p style={{ fontWeight: 500 }}>Validando sesión...</p>
+          <p style={{ fontWeight: 500 }}>Cargando consola financiera...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="app-layout">
-      <Header user={user} />
-      <main className="main-content">
-        <div className="content-area">
-          {children}
-        </div>
-      </main>
+    <div style={{ display: "flex", minHeight: "100vh", backgroundColor: "var(--ots-bg-canvas)" }}>
+      {/* Sidebar Lateral Fijo (Opción B: Neo-Fintech Minimal) */}
+      <Sidebar user={user} />
       
+      {/* Contenido Principal desplazado 260px */}
+      <main style={{ flex: 1, marginLeft: "260px", minWidth: 0, padding: "32px 40px" }}>
+        {children}
+      </main>
+
       {/* Inspector Global para Auditor */}
       <AuditorInspector user={user} />
     </div>

@@ -86,135 +86,175 @@ export default async function Dashboard() {
   return (
     <div className="animate-fade-in" style={{ padding: "0.5rem 0" }}>
       {/* Title */}
-      <div style={{ marginBottom: "1.75rem" }}>
-        <span className="section-eyebrow">MESA DE CONTROL</span>
-        <h1 className="flowbite-title">Resumen General</h1>
-        <p className="flowbite-page-desc" style={{ color: "var(--text-secondary)", fontSize: "15.5px" }}>
-          Vista consolidada del estado financiero y operaciones activas en la plataforma.
-        </p>
+      <div style={{ marginBottom: "2rem" }}>
+        <span
+          style={{
+            fontSize: "11px",
+            fontWeight: 700,
+            letterSpacing: "0.08em",
+            color: "var(--ots-primary)",
+            backgroundColor: "var(--ots-primary-muted)",
+            padding: "4px 12px",
+            borderRadius: "999px",
+            display: "inline-block",
+            marginBottom: "8px",
+          }}
+        >
+          MESA DE CONTROL
+        </span>
+        <h1 style={{ fontSize: "28px", fontWeight: 700, color: "var(--ots-text-primary)", letterSpacing: "-0.02em", margin: "2px 0 4px 0" }}>
+          Resumen General
+        </h1>
       </div>
+
+      {/* Stats Grid: Neo-Fintech Minimal Metric Cards */}
       
 
-      {/* Stats Grid: Dovetail Metric Cards */}
+      {/* Stats Grid: Neo-Fintech Minimal Metric Cards */}
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 240px), 1fr))",
-          gap: "1.25rem",
+          gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 220px), 1fr))",
+          gap: "1rem",
           marginBottom: "2rem",
         }}
       >
-        <GlassCard style={{ margin: 0, padding: "22px 26px" }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap" }}>
-              <span className="flowbite-badge flowbite-badge-yellow">Pendientes</span>
-              <span style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: "var(--badge-yellow-text)" }} />
-            </div>
-            <div className="flowbite-metric-value" style={{ fontSize: "clamp(24px, 5vw, 32px)", fontWeight: 600, color: "var(--color-snow)", letterSpacing: "-0.6px", lineHeight: 1.15 }}>
-              {stats.pending}
-            </div>
+        {/* Pendientes */}
+        <div
+          style={{
+            backgroundColor: "var(--ots-surface-1)",
+            border: "1px solid var(--ots-border)",
+            borderRadius: "var(--ots-radius-lg)",
+            padding: "20px 24px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "12px",
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--ots-text-secondary)" }}>Pendientes</span>
+            <span style={{ fontSize: "11px", fontWeight: 700, padding: "2px 8px", borderRadius: "999px", backgroundColor: "rgba(245, 158, 11, 0.15)", color: "#f59e0b" }}>
+              Esperando
+            </span>
           </div>
-        </GlassCard>
-        
-        <GlassCard style={{ margin: 0, padding: "22px 26px" }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap" }}>
-              <span className="flowbite-badge flowbite-badge-blue">En Proceso</span>
-              <span style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: "var(--color-blue-cornflower)" }} />
-            </div>
-            <div className="flowbite-metric-value" style={{ fontSize: "clamp(24px, 5vw, 32px)", fontWeight: 600, color: "var(--color-snow)", letterSpacing: "-0.6px", lineHeight: 1.15 }}>
-              {stats.processing}
-            </div>
+          <div style={{ fontFamily: "var(--ots-font-mono)", fontSize: "32px", fontWeight: 700, color: "var(--ots-text-primary)" }}>
+            {stats.pending}
           </div>
-        </GlassCard>
+        </div>
 
-        <GlassCard style={{ margin: 0, padding: "22px 26px" }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap" }}>
-              <span className="flowbite-badge flowbite-badge-green">Completadas</span>
-              <span style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: "var(--badge-green-text)" }} />
-            </div>
-            <div className="flowbite-metric-value" style={{ fontSize: "clamp(24px, 5vw, 32px)", fontWeight: 600, color: "var(--color-snow)", letterSpacing: "-0.6px", lineHeight: 1.15 }}>
-              {stats.completed}
-            </div>
+        {/* En Proceso */}
+        <div
+          style={{
+            backgroundColor: "var(--ots-surface-1)",
+            border: "1px solid var(--ots-border)",
+            borderRadius: "var(--ots-radius-lg)",
+            padding: "20px 24px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "12px",
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--ots-text-secondary)" }}>En Proceso</span>
+            <span style={{ fontSize: "11px", fontWeight: 700, padding: "2px 8px", borderRadius: "999px", backgroundColor: "rgba(59, 130, 246, 0.15)", color: "#3b82f6" }}>
+              Activas
+            </span>
           </div>
-        </GlassCard>
+          <div style={{ fontFamily: "var(--ots-font-mono)", fontSize: "32px", fontWeight: 700, color: "var(--ots-text-primary)" }}>
+            {stats.processing}
+          </div>
+        </div>
 
-        <GlassCard style={{ margin: 0, padding: "22px 26px" }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap" }}>
-              <span className="flowbite-badge flowbite-badge-red">Canceladas</span>
-              <span style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: "var(--badge-red-text)" }} />
-            </div>
-            <div className="flowbite-metric-value" style={{ fontSize: "clamp(24px, 5vw, 32px)", fontWeight: 600, color: "var(--color-snow)", letterSpacing: "-0.6px", lineHeight: 1.15 }}>
-              {stats.canceled}
-            </div>
+        {/* Completadas */}
+        <div
+          style={{
+            backgroundColor: "var(--ots-surface-1)",
+            border: "1px solid var(--ots-border)",
+            borderRadius: "var(--ots-radius-lg)",
+            padding: "20px 24px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "12px",
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--ots-text-secondary)" }}>Completadas</span>
+            <span style={{ fontSize: "11px", fontWeight: 700, padding: "2px 8px", borderRadius: "999px", backgroundColor: "rgba(16, 185, 129, 0.15)", color: "#10b981" }}>
+              Exitosas
+            </span>
           </div>
-        </GlassCard>
+          <div style={{ fontFamily: "var(--ots-font-mono)", fontSize: "32px", fontWeight: 700, color: "var(--ots-text-primary)" }}>
+            {stats.completed}
+          </div>
+        </div>
+
+        {/* Canceladas */}
+        <div
+          style={{
+            backgroundColor: "var(--ots-surface-1)",
+            border: "1px solid var(--ots-border)",
+            borderRadius: "var(--ots-radius-lg)",
+            padding: "20px 24px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "12px",
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--ots-text-secondary)" }}>Canceladas</span>
+            <span style={{ fontSize: "11px", fontWeight: 700, padding: "2px 8px", borderRadius: "999px", backgroundColor: "rgba(239, 68, 68, 0.15)", color: "#ef4444" }}>
+              Inactivas
+            </span>
+          </div>
+          <div style={{ fontFamily: "var(--ots-font-mono)", fontSize: "32px", fontWeight: 700, color: "var(--ots-text-primary)" }}>
+            {stats.canceled}
+          </div>
+        </div>
       </div>
 
-      {/* Two-Column Layout */}
-      <div className="flowbite-grid-2">
-        {/* Current Account Balances */}
-        <div style={{ display: "flex", flexDirection: "column" }}>
-          <h2 className="flowbite-section-title">
-            Saldos Cuentas Corrientes
-          </h2>
-          <LiquidTableContainer style={{ margin: 0, height: "100%" }}>
-            <LiquidTable hover size="md">
-              <LiquidTableHead>
-                <LiquidTableRow>
-                  <LiquidTableHeaderCell style={{ width: "60%" }}>Moneda</LiquidTableHeaderCell>
-                  <LiquidTableHeaderCell align="right">Saldo Acumulado</LiquidTableHeaderCell>
+      {/* Current Account Balances */}
+      <div style={{ marginBottom: "2rem" }}>
+        <h2 className="flowbite-section-title">
+          Saldos Cuentas Corrientes
+        </h2>
+        <LiquidTableContainer style={{ margin: 0 }}>
+          <LiquidTable hover size="md">
+            <LiquidTableHead>
+              <LiquidTableRow>
+                <LiquidTableHeaderCell style={{ width: "60%" }}>Moneda</LiquidTableHeaderCell>
+                <LiquidTableHeaderCell align="right">Saldo Acumulado</LiquidTableHeaderCell>
+              </LiquidTableRow>
+            </LiquidTableHead>
+            <LiquidTableBody>
+              {balances.map((b) => (
+                <LiquidTableRow key={b.currency}>
+                  <LiquidTableCell>
+                    <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                      <span
+                        className={`flowbite-badge ${
+                          b.currency === "USD"
+                            ? "flowbite-badge-green"
+                            : b.currency === "EUR"
+                            ? "flowbite-badge-blue"
+                            : "flowbite-badge-yellow"
+                        }`}
+                        style={{ minWidth: "48px", justifyContent: "center" }}
+                      >
+                        {b.currency}
+                      </span>
+                      <span style={{ fontWeight: 400 }}>
+                        {b.currency === "USD" ? "Dólares" : b.currency === "EUR" ? "Euros" : "Pesos Argentinos"}
+                      </span>
+                    </div>
+                  </LiquidTableCell>
+                  <LiquidTableCell align="right" style={{ fontWeight: 600, fontFamily: "var(--font-jetbrains-mono), monospace", fontSize: "15px" }}>
+                    {new Intl.NumberFormat("es-AR", { style: "currency", currency: b.currency }).format(b.balance)}
+                  </LiquidTableCell>
                 </LiquidTableRow>
-              </LiquidTableHead>
-              <LiquidTableBody>
-                {balances.map((b) => (
-                  <LiquidTableRow key={b.currency}>
-                    <LiquidTableCell>
-                      <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                        <span
-                          className={`flowbite-badge ${
-                            b.currency === "USD"
-                              ? "flowbite-badge-green"
-                              : b.currency === "EUR"
-                              ? "flowbite-badge-blue"
-                              : "flowbite-badge-yellow"
-                          }`}
-                          style={{ minWidth: "48px", justifyContent: "center" }}
-                        >
-                          {b.currency}
-                        </span>
-                        <span style={{ fontWeight: 400 }}>
-                          {b.currency === "USD" ? "Dólares" : b.currency === "EUR" ? "Euros" : "Pesos Argentinos"}
-                        </span>
-                      </div>
-                    </LiquidTableCell>
-                    <LiquidTableCell align="right" style={{ fontWeight: 600, fontFamily: "var(--font-jetbrains-mono), monospace", fontSize: "15px" }}>
-                      {new Intl.NumberFormat("es-AR", { style: "currency", currency: b.currency }).format(b.balance)}
-                    </LiquidTableCell>
-                  </LiquidTableRow>
-                ))}
-              </LiquidTableBody>
-            </LiquidTable>
-          </LiquidTableContainer>
-        </div>
-
-        {/* Upcoming Settlements */}
-        <div style={{ display: "flex", flexDirection: "column" }}>
-          <h2 className="flowbite-section-title">
-            Próximas Liquidaciones
-          </h2>
-          <GlassCard style={{ textAlign: "center", padding: "3rem 2rem", margin: 0, height: "100%" }}>
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%" }}>
-              <div style={{ fontSize: "32px", marginBottom: "12px" }}></div>
-              <h4 style={{ fontWeight: 600, marginBottom: "6px", fontSize: "16px" }}>Sin Liquidaciones Pendientes</h4>
-              <p style={{ color: "var(--text-secondary)", fontSize: "14px", maxWidth: "290px", lineHeight: 1.5 }}>
-                No se registran liquidaciones de operaciones para los próximos 7 días hábiles.
-              </p>
-            </div>
-          </GlassCard>
-        </div>
+              ))}
+            </LiquidTableBody>
+          </LiquidTable>
+        </LiquidTableContainer>
       </div>
 
       {/* Balances by Contact */}

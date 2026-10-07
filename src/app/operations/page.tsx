@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import useSWR from "swr";
 import Portal from "@/components/Portal";
 import LiquidSelect from "@/components/LiquidSelect";
 import {
@@ -15,14 +16,14 @@ import {
   LiquidMenu,
 } from "@liquefy-ui/react";
 
-export default function OperationsPage() {
-  const [operations, setOperations] = useState<any[]>([]);
-  const [contacts, setContacts] = useState<any[]>([]);
-  const [currencies, setCurrencies] = useState<any[]>([]);
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
+export default function OperationsPage() {
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(50);
+  
   const [filterState, setFilterState] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
-  const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
@@ -39,10 +40,15 @@ export default function OperationsPage() {
   const [historyLogs, setHistoryLogs] = useState<any[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
 
+  useEffect(() => {
+    setPage(1);
+  }, [filterState, searchTerm, startDate, endDate]);
+
   const [isTypeSelectorOpen, setIsTypeSelectorOpen] = useState(false);
   const [isDistributedModalOpen, setIsDistributedModalOpen] = useState(false);
   const [isSubmittingDistributed, setIsSubmittingDistributed] = useState(false);
   const [expandedOpIds, setExpandedOpIds] = useState<string[]>([]);
+  const [calcMode, setCalcMode] = useState<"multiply" | "divide">("multiply");
 
   const [distributedData, setDistributedData] = useState({
     providerId: "",
@@ -51,7 +57,7 @@ export default function OperationsPage() {
     operationDate: new Date().toISOString().split("T")[0],
     observations: "",
     items: [
-      { clientId: "", amount: "", observations: "", isPaid: true }
+      { clientId: "", exchangeRate: "", amount: "", observations: "", isPaid: true }
     ],
   });
 
@@ -68,43 +74,42 @@ export default function OperationsPage() {
     state: "PENDING",
   });
 
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      const [resOps, resContacts, resCur] = await Promise.all([
-        fetch("/api/operations"),
-        fetch("/api/contacts"),
-        fetch("/api/currencies"),
-      ]);
-      const dataOps = await resOps.json();
-      const dataContacts = await resContacts.json();
-      const dataCur = await resCur.json();
+  const { data: contactsData } = useSWR("/api/contacts", fetcher);
+  const { data: currenciesData } = useSWR("/api/currencies", fetcher);
 
-      if (dataOps.operations) setOperations(dataOps.operations);
-      if (dataContacts.contacts) setContacts(dataContacts.contacts);
-      if (dataCur.currencies) setCurrencies(dataCur.currencies);
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const queryParams = new URLSearchParams({
+    page: page.toString(),
+    limit: limit.toString(),
+    search: searchTerm,
+    state: filterState,
+    startDate,
+    endDate
+  });
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  const { data: operationsData, error: opsError, isLoading: loading, mutate: fetchData } = useSWR(
+    `/api/operations?${queryParams.toString()}`,
+    fetcher,
+    { keepPreviousData: true }
+  );
+
+  const operations = operationsData?.operations || [];
+  const contacts = contactsData?.contacts || [];
+  const currencies = currenciesData?.currencies || [];
+
 
   // Lógica de cálculo en tiempo real
   useEffect(() => {
     const origin = parseFloat(formData.originAmount);
     const rate = parseFloat(formData.exchangeRate);
     if (!isNaN(origin) && !isNaN(rate) && rate !== 0) {
-      const calculatedDest = (origin * rate).toFixed(2);
+      const calculatedDest = calcMode === "multiply" 
+        ? (origin * rate).toFixed(2)
+        : (origin / rate).toFixed(2);
       if (Math.abs(parseFloat(calculatedDest) - parseFloat(formData.destAmount || "0")) > 0.01) {
         setFormData((prev) => ({ ...prev, destAmount: calculatedDest }));
       }
     }
-  }, [formData.originAmount, formData.exchangeRate]);
+  }, [formData.originAmount, formData.exchangeRate, calcMode]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -163,20 +168,7 @@ export default function OperationsPage() {
         if (pendingAction) {
           if (pendingAction.type === "EDIT") {
             const op = pendingAction.payload;
-            setFormData({
-              clientId: op.clientId,
-              providerId: op.providerId,
-              originCurrencyId: op.originCurrencyId,
-              originAmount: op.originAmount.toString(),
-              destCurrencyId: op.destCurrencyId,
-              destAmount: op.destAmount.toString(),
-              exchangeRate: op.exchangeRate.toString(),
-              operationDate: new Date(op.operationDate).toISOString().split("T")[0],
-              observations: op.observations || "",
-              state: op.state,
-            });
-            setEditingId(op.id);
-            setIsModalOpen(true);
+            handleEdit(op);
           } else if (pendingAction.type === "STATE_CHANGE") {
             const { op, newState } = pendingAction.payload;
             try {
@@ -206,17 +198,39 @@ export default function OperationsPage() {
   };
 
   const handleEdit = (op: any) => {
+    if (op.type === "DISTRIBUTED_SALE" || (op.childOperations && op.childOperations.length > 0)) {
+      setDistributedData({
+        providerId: op.providerId || "",
+        currencyId: op.originCurrencyId || "",
+        exchangeRate: op.exchangeRate ? op.exchangeRate.toString() : "",
+        operationDate: op.operationDate ? new Date(op.operationDate).toISOString().split("T")[0] : new Date().toISOString().split("T")[0],
+        observations: op.observations || "",
+        items: op.childOperations && op.childOperations.length > 0
+          ? op.childOperations.map((child: any) => ({
+              clientId: child.clientId || "",
+              exchangeRate: child.exchangeRate ? child.exchangeRate.toString() : "",
+              amount: child.originAmount ? child.originAmount.toString() : "",
+              observations: child.observations || "",
+              isPaid: child.isPaid ?? true,
+            }))
+          : [{ clientId: "", exchangeRate: "", amount: "", observations: "", isPaid: true }],
+      });
+      setEditingId(op.id);
+      setIsDistributedModalOpen(true);
+      return;
+    }
+
     setFormData({
-      clientId: op.clientId,
-      providerId: op.providerId,
-      originCurrencyId: op.originCurrencyId,
-      originAmount: op.originAmount.toString(),
-      destCurrencyId: op.destCurrencyId,
-      destAmount: op.destAmount.toString(),
-      exchangeRate: op.exchangeRate.toString(),
-      operationDate: new Date(op.operationDate).toISOString().split("T")[0],
+      clientId: op.clientId || "",
+      providerId: op.providerId || "",
+      originCurrencyId: op.originCurrencyId || "",
+      originAmount: op.originAmount ? op.originAmount.toString() : "",
+      destCurrencyId: op.destCurrencyId || "",
+      destAmount: op.destAmount ? op.destAmount.toString() : "",
+      exchangeRate: op.exchangeRate ? op.exchangeRate.toString() : "",
+      operationDate: op.operationDate ? new Date(op.operationDate).toISOString().split("T")[0] : new Date().toISOString().split("T")[0],
       observations: op.observations || "",
-      state: op.state,
+      state: op.state || "PENDING",
     });
     setEditingId(op.id);
     setIsModalOpen(true);
@@ -267,7 +281,7 @@ export default function OperationsPage() {
   const handleAddDistributedItem = () => {
     setDistributedData((prev) => ({
       ...prev,
-      items: [...prev.items, { clientId: "", amount: "", observations: "", isPaid: true }],
+      items: [...prev.items, { clientId: "", exchangeRate: "", amount: "", observations: "", isPaid: true }],
     }));
   };
 
@@ -333,26 +347,30 @@ export default function OperationsPage() {
 
     setIsSubmittingDistributed(true);
     try {
-      const res = await fetch("/api/operations/distributed-sale", {
-        method: "POST",
+      const url = editingId ? `/api/operations/distributed-sale/${editingId}` : "/api/operations/distributed-sale";
+      const method = editingId ? "PUT" : "POST";
+
+      const res = await fetch(url, {
+        method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(distributedData),
       });
 
       if (res.ok) {
         setIsDistributedModalOpen(false);
+        setEditingId(null);
         setDistributedData({
           providerId: "",
           currencyId: "",
           exchangeRate: "",
           operationDate: new Date().toISOString().split("T")[0],
           observations: "",
-          items: [{ clientId: "", amount: "", observations: "", isPaid: true }],
+          items: [{ clientId: "", exchangeRate: "", amount: "", observations: "", isPaid: true }],
         });
         fetchData();
       } else {
         const err = await res.json();
-        alert(err.error || "Error al crear la operación distribuida");
+        alert(err.error || "Error al crear/actualizar la operación distribuida");
       }
     } catch (error) {
       alert("Error de conexión al servidor");
@@ -391,10 +409,26 @@ export default function OperationsPage() {
     <>
       <div className="animate-fade-in" style={{ padding: "1rem 0" }}>
         {/* Page Title & Header */}
-        <div style={{ marginBottom: "1.75rem" }}>
-          <span className="section-eyebrow">REGISTRO DE TRANSACCIONES</span>
-          <h1 className="flowbite-title">Operaciones de Cambio</h1>
-          <p style={{ color: "var(--color-ash)", fontSize: "14px" }}>
+        <div style={{ marginBottom: "2rem" }}>
+          <span
+            style={{
+              fontSize: "11px",
+              fontWeight: 700,
+              letterSpacing: "0.08em",
+              color: "var(--ots-primary)",
+              backgroundColor: "var(--ots-primary-muted)",
+              padding: "4px 12px",
+              borderRadius: "999px",
+              display: "inline-block",
+              marginBottom: "8px",
+            }}
+          >
+            REGISTRO DE TRANSACCIONES
+          </span>
+          <h1 style={{ fontSize: "28px", fontWeight: 700, color: "var(--ots-text-primary)", letterSpacing: "-0.02em", margin: "2px 0 4px 0" }}>
+            Operaciones de Cambio
+          </h1>
+          <p style={{ color: "var(--ots-text-secondary)", fontSize: "14px" }}>
             Registro y control de transacciones de divisas de clientes y proveedores.
           </p>
         </div>
@@ -751,111 +785,131 @@ export default function OperationsPage() {
             <LiquidTable hover size="md">
               <LiquidTableHead>
                 <LiquidTableRow>
-                  <LiquidTableHeaderCell style={{ width: "14%" }}>Nº Operación</LiquidTableHeaderCell>
+                  <LiquidTableHeaderCell style={{ width: "12%" }}>Nº Operación</LiquidTableHeaderCell>
                   <LiquidTableHeaderCell style={{ width: "10%" }}>Fecha</LiquidTableHeaderCell>
-                  <LiquidTableHeaderCell style={{ width: "20%" }}>Cliente</LiquidTableHeaderCell>
-                  <LiquidTableHeaderCell style={{ width: "18%" }}>Monto Origen</LiquidTableHeaderCell>
-                  <LiquidTableHeaderCell style={{ width: "18%" }}>Monto Destino</LiquidTableHeaderCell>
-                  <LiquidTableHeaderCell style={{ width: "12%" }}>Estado</LiquidTableHeaderCell>
-                  <LiquidTableHeaderCell style={{ width: "8%" }} align="right">Acciones</LiquidTableHeaderCell>
+                  <LiquidTableHeaderCell style={{ width: "14%" }}>Tipo</LiquidTableHeaderCell>
+                  <LiquidTableHeaderCell style={{ width: "16%" }}>Monto Origen</LiquidTableHeaderCell>
+                  <LiquidTableHeaderCell style={{ width: "16%" }}>Monto Destino</LiquidTableHeaderCell>
+                  <LiquidTableHeaderCell style={{ width: "10%" }}>Pagado</LiquidTableHeaderCell>
+                  <LiquidTableHeaderCell style={{ width: "10%" }}>Estado</LiquidTableHeaderCell>
+                  <LiquidTableHeaderCell style={{ width: "12%" }} align="right">Acciones</LiquidTableHeaderCell>
                 </LiquidTableRow>
               </LiquidTableHead>
               <LiquidTableBody>
                 {loading ? (
                   <LiquidTableRow>
-                    <LiquidTableCell colSpan={7} align="center" style={{ padding: "24px", color: "var(--text-secondary)" }}>
+                    <LiquidTableCell colSpan={8} align="center" style={{ padding: "24px", color: "var(--text-secondary)" }}>
                       Cargando operaciones...
                     </LiquidTableCell>
                   </LiquidTableRow>
                 ) : filtered.length === 0 ? (
                   <LiquidTableRow>
-                    <LiquidTableCell colSpan={7} align="center" style={{ padding: "24px", color: "var(--text-secondary)" }}>
+                    <LiquidTableCell colSpan={8} align="center" style={{ padding: "24px", color: "var(--text-secondary)" }}>
                       No se encontraron operaciones en esta vista.
                     </LiquidTableCell>
                   </LiquidTableRow>
                 ) : (
-                  filtered.map((op) => (
-                    <LiquidTableRow key={op.id}>
-                      <LiquidTableCell style={{ fontWeight: 700, color: "var(--text-primary)" }}>{op.operationNumber}</LiquidTableCell>
-                      <LiquidTableCell>{new Date(op.operationDate).toLocaleDateString()}</LiquidTableCell>
-                      <LiquidTableCell>
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontWeight: 500 }}>
-                          {op.client?.name}
-                        </span>
-                      </LiquidTableCell>
-                      <LiquidTableCell style={{ fontFamily: "monospace", fontWeight: 600 }}>
-                        {Number(op.originAmount).toLocaleString()} {op.originCurrency?.code}
-                      </LiquidTableCell>
-                      <LiquidTableCell style={{ fontFamily: "monospace", fontWeight: 600 }}>
-                        {Number(op.destAmount).toLocaleString()} {op.destCurrency?.code}
-                      </LiquidTableCell>
-                      <LiquidTableCell>
-                        <div style={{ display: "inline-block" }}>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setActiveStateChangeOp(op);
-                            }}
-                            className={`flowbite-badge ${
-                              op.state === "PENDING"
-                                ? "flowbite-badge-yellow"
-                                : op.state === "COMPLETED"
-                                ? "flowbite-badge-green"
-                                : "flowbite-badge-red"
-                            }`}
-                            style={{
-                              border: "none",
-                              cursor: "pointer",
-                              outline: "none",
-                              padding: "6px 12px",
-                              fontSize: "12px",
-                              fontWeight: 600,
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: "6px",
-                              userSelect: "none"
-                            }}
+                  filtered.map((op) => {
+                    const isDistributed = op.type === "DISTRIBUTED_SALE" || (op.childOperations && op.childOperations.length > 0);
+                    const paidText = isDistributed
+                      ? (op.isPaid ? "Sí" : (op.childOperations?.some((c: any) => c.isPaid) ? "Parcial" : "No"))
+                      : (op.isPaid ? "Sí" : "No");
+                    const paidBadgeClass = paidText === "Sí" ? "flowbite-badge-green" : paidText === "Parcial" ? "flowbite-badge-blue" : "flowbite-badge-yellow";
+
+                    return (
+                      <LiquidTableRow key={op.id}>
+                        <LiquidTableCell style={{ fontWeight: 700, color: "var(--text-primary)" }}>{op.operationNumber}</LiquidTableCell>
+                        <LiquidTableCell>{new Date(op.operationDate).toLocaleDateString()}</LiquidTableCell>
+                        <LiquidTableCell>
+                          <span
+                            className="flowbite-badge flowbite-badge-purple"
+                            style={{ fontSize: "11px", fontWeight: 600, padding: "2px 8px" }}
                           >
-                            {op.state === "PENDING" && "Pendiente"}
-                            {op.state === "COMPLETED" && "Completada"}
-                            {op.state === "CANCELED" && "Cancelada"}
-                            <span style={{ fontSize: "9px", color: "inherit", opacity: 0.8 }}>▼</span>
-                          </button>
-                        </div>
-                      </LiquidTableCell>
-                      <LiquidTableCell align="right">
-                        <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end" }} onClick={(e) => e.stopPropagation()}>
-                          <button
-                            type="button"
-                            onClick={() => handleEdit(op)}
-                            className="flowbite-btn flowbite-btn-text"
-                            style={{ padding: "4px 8px", fontSize: "12px" }}
-                            title="Editar Ficha"
+                            {isDistributed ? "Venta Distribuida" : "Estándar 1 a 1"}
+                          </span>
+                        </LiquidTableCell>
+                        <LiquidTableCell style={{ fontFamily: "monospace", fontWeight: 600 }}>
+                          {Number(op.originAmount).toLocaleString()} {op.originCurrency?.code}
+                        </LiquidTableCell>
+                        <LiquidTableCell style={{ fontFamily: "monospace", fontWeight: 600 }}>
+                          {Number(op.destAmount).toLocaleString()} {op.destCurrency?.code}
+                        </LiquidTableCell>
+                        <LiquidTableCell>
+                          <span
+                            className={`flowbite-badge ${paidBadgeClass}`}
+                            style={{ fontSize: "11px", fontWeight: 600, padding: "2px 8px" }}
                           >
-                            ✏️ Editar
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => openHistoryModal(op)}
-                            className="flowbite-btn flowbite-btn-text"
-                            style={{ padding: "4px 8px", fontSize: "12px" }}
-                            title="Ver Historial"
-                          >
-                            📜 Historial
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteOperation(op)}
-                            className="flowbite-btn flowbite-btn-text"
-                            style={{ padding: "4px 8px", fontSize: "12px", color: "var(--ots-danger)" }}
-                            title="Eliminar Registro y ajustar saldos"
-                          >
-                            🗑️ Eliminar
-                          </button>
-                        </div>
-                      </LiquidTableCell>
-                    </LiquidTableRow>
-                  ))
+                            {paidText}
+                          </span>
+                        </LiquidTableCell>
+                        <LiquidTableCell>
+                          <div style={{ display: "inline-block" }}>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveStateChangeOp(op);
+                              }}
+                              className={`flowbite-badge ${
+                                op.state === "PENDING"
+                                  ? "flowbite-badge-yellow"
+                                  : op.state === "COMPLETED"
+                                  ? "flowbite-badge-green"
+                                  : "flowbite-badge-red"
+                              }`}
+                              style={{
+                                border: "none",
+                                cursor: "pointer",
+                                outline: "none",
+                                padding: "6px 12px",
+                                fontSize: "12px",
+                                fontWeight: 600,
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "6px",
+                                userSelect: "none"
+                              }}
+                            >
+                              {op.state === "PENDING" && "Pendiente"}
+                              {op.state === "COMPLETED" && "Completada"}
+                              {op.state === "CANCELED" && "Cancelada"}
+                              <span style={{ fontSize: "9px", color: "inherit", opacity: 0.8 }}>▼</span>
+                            </button>
+                          </div>
+                        </LiquidTableCell>
+                        <LiquidTableCell align="right">
+                          <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end" }} onClick={(e) => e.stopPropagation()}>
+                            <button
+                              type="button"
+                              onClick={() => handleEdit(op)}
+                              className="flowbite-btn flowbite-btn-text"
+                              style={{ padding: "4px 8px", fontSize: "12px" }}
+                              title="Editar Ficha"
+                            >
+                              ✏️ Editar
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => openHistoryModal(op)}
+                              className="flowbite-btn flowbite-btn-text"
+                              style={{ padding: "4px 8px", fontSize: "12px" }}
+                              title="Ver Historial"
+                            >
+                              📜 Historial
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteOperation(op)}
+                              className="flowbite-btn flowbite-btn-text"
+                              style={{ padding: "4px 8px", fontSize: "12px", color: "var(--ots-danger)" }}
+                              title="Eliminar Registro y ajustar saldos"
+                            >
+                              🗑️ Eliminar
+                            </button>
+                          </div>
+                        </LiquidTableCell>
+                      </LiquidTableRow>
+                    );
+                  })
                 )}
               </LiquidTableBody>
             </LiquidTable>
@@ -1009,18 +1063,59 @@ export default function OperationsPage() {
             ))
           )}
         </div>
+        
+        {/* Pagination Controls */}
+        {operationsData?.pagination && operationsData.pagination.totalPages > 1 && (
+          <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "16px", marginTop: "24px" }}>
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="flowbite-btn"
+              style={{ padding: "8px 16px", fontSize: "13px", opacity: page === 1 ? 0.5 : 1, cursor: page === 1 ? "not-allowed" : "pointer" }}
+            >
+              Anterior
+            </button>
+            <span style={{ fontSize: "14px", color: "var(--text-secondary)" }}>
+              Página <strong style={{ color: "var(--text-primary)" }}>{page}</strong> de {operationsData.pagination.totalPages}
+            </span>
+            <button
+              onClick={() => setPage((p) => Math.min(operationsData.pagination.totalPages, p + 1))}
+              disabled={page === operationsData.pagination.totalPages}
+              className="flowbite-btn"
+              style={{ padding: "8px 16px", fontSize: "13px", opacity: page === operationsData.pagination.totalPages ? 0.5 : 1, cursor: page === operationsData.pagination.totalPages ? "not-allowed" : "pointer" }}
+            >
+              Siguiente
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* Flowbite Drawer (Slide-out Form) */}
+      {/* Flowbite Drawer / Centered Modal for Standard 1-to-1 Operation */}
       {isModalOpen && (
         <Portal>
           <div className="flowbite-drawer-overlay" onClick={() => setIsModalOpen(false)}>
-            <div className="flowbite-drawer" style={{ width: "100%", maxWidth: "500px" }} onClick={(e) => e.stopPropagation()}>
+            <div
+              className="flowbite-drawer"
+              style={{
+                width: "100%",
+                maxWidth: "780px",
+                backgroundColor: "var(--ots-surface-1)",
+                borderRadius: "var(--ots-radius-lg)",
+                boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+                margin: "auto",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
               {/* Header toolbar */}
-              <div className="flowbite-drawer-header">
-                <span style={{ fontSize: "15px", fontWeight: 700, color: "#ffffff", display: "flex", alignItems: "center", gap: "6px" }}>
-                  {editingId ? "Editar Ficha de Operación" : "Nueva Ficha de Operación"}
-                </span>
+              <div className="flowbite-drawer-header" style={{ padding: "1.25rem 1.75rem", backgroundColor: "var(--ots-surface-2)" }}>
+                <div>
+                  <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--ots-primary)", letterSpacing: "0.08em", textTransform: "uppercase" }}>
+                    OPERACIÓN ESTÁNDAR
+                  </span>
+                  <h3 style={{ fontSize: "18px", fontWeight: 700, color: "var(--ots-text-primary)", margin: "2px 0 0 0" }}>
+                    {editingId ? "Editar Ficha de Operación" : "Nueva Operación (1 a 1)"}
+                  </h3>
+                </div>
                 <button
                   onClick={() => {
                     setIsModalOpen(false);
@@ -1032,12 +1127,12 @@ export default function OperationsPage() {
                     border: "none",
                     fontSize: "18px",
                     cursor: "pointer",
-                    color: "var(--text-secondary)",
+                    color: "var(--ots-text-muted)",
                     padding: "6px 10px",
-                    borderRadius: "var(--radius-lg)",
+                    borderRadius: "var(--ots-radius-md)",
                     transition: "background-color 0.15s",
                   }}
-                  onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "var(--hover-bg)")}
+                  onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "var(--ots-surface-3)")}
                   onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
                 >
                   ✕
@@ -1045,130 +1140,153 @@ export default function OperationsPage() {
               </div>
 
               {/* Content Body */}
-              <div className="flowbite-drawer-body">
+              <div className="flowbite-drawer-body" style={{ padding: "1.75rem", maxHeight: "calc(100vh - 180px)", overflowY: "auto" }}>
                 <form onSubmit={handleSave}>
-                  <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-                    {/* Client Property */}
-                    <div className="flowbite-form-group">
-                      <label className="flowbite-form-label">Cliente *</label>
-                      <LiquidSelect
-                        value={formData.clientId}
-                        onChange={(val) => setFormData({ ...formData, clientId: val })}
-                        placeholder="Seleccione Cliente..."
-                        required
-                        options={clients.map((c) => ({
-                          value: c.id,
-                          label: c.name,
-                        }))}
-                      />
+                  <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+                    {/* Fila 1: Contactos (Cliente & Proveedor) */}
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+                      <div className="flowbite-form-group" style={{ marginBottom: 0 }}>
+                        <label className="flowbite-form-label">Cliente *</label>
+                        <LiquidSelect
+                          value={formData.clientId}
+                          onChange={(val) => setFormData({ ...formData, clientId: val })}
+                          placeholder="Seleccione Cliente..."
+                          required
+                          options={clients.map((c) => ({
+                            value: c.id,
+                            label: c.name,
+                          }))}
+                        />
+                      </div>
+
+                      <div className="flowbite-form-group" style={{ marginBottom: 0 }}>
+                        <label className="flowbite-form-label">Proveedor *</label>
+                        <LiquidSelect
+                          value={formData.providerId}
+                          onChange={(val) => setFormData({ ...formData, providerId: val })}
+                          placeholder="Seleccione Proveedor..."
+                          required
+                          options={providers.map((p) => ({
+                            value: p.id,
+                            label: p.name,
+                          }))}
+                        />
+                      </div>
                     </div>
 
-                    {/* Provider Property */}
-                    <div className="flowbite-form-group">
-                      <label className="flowbite-form-label">Proveedor *</label>
-                      <LiquidSelect
-                        value={formData.providerId}
-                        onChange={(val) => setFormData({ ...formData, providerId: val })}
-                        placeholder="Seleccione Proveedor..."
-                        required
-                        options={providers.map((c) => ({
-                          value: c.id,
-                          label: c.name,
-                        }))}
-                      />
+                    {/* Fila 2: Moneda y Monto Origen */}
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+                      <div className="flowbite-form-group" style={{ marginBottom: 0 }}>
+                        <label className="flowbite-form-label">Moneda Origen *</label>
+                        <LiquidSelect
+                          value={formData.originCurrencyId}
+                          onChange={(val) => setFormData({ ...formData, originCurrencyId: val })}
+                          placeholder="Seleccione Moneda..."
+                          required
+                          options={currencies.map((c) => ({
+                            value: c.id,
+                            label: `${c.code} - ${c.name}`,
+                          }))}
+                        />
+                      </div>
+
+                      <div className="flowbite-form-group" style={{ marginBottom: 0 }}>
+                        <label className="flowbite-form-label">Monto Origen *</label>
+                        <input
+                          required
+                          type="number"
+                          step="0.01"
+                          value={formData.originAmount}
+                          onChange={(e) => setFormData({ ...formData, originAmount: e.target.value })}
+                          className="flowbite-input"
+                          placeholder="0.00"
+                          style={{ fontFamily: "var(--ots-font-mono)", fontSize: "15px" }}
+                        />
+                      </div>
                     </div>
 
-                    {/* Origin Currency Property */}
-                    <div className="flowbite-form-group">
-                      <label className="flowbite-form-label">Moneda Origen *</label>
-                      <LiquidSelect
-                        value={formData.originCurrencyId}
-                        onChange={(val) => setFormData({ ...formData, originCurrencyId: val })}
-                        placeholder="Seleccione Moneda..."
-                        required
-                        options={currencies.map((c) => ({
-                          value: c.id,
-                          label: `${c.code} - ${c.name}`,
-                        }))}
-                      />
+                    {/* Fila 3: Moneda Destino y Cotización */}
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+                      <div className="flowbite-form-group" style={{ marginBottom: 0 }}>
+                        <label className="flowbite-form-label">Moneda Destino *</label>
+                        <LiquidSelect
+                          value={formData.destCurrencyId}
+                          onChange={(val) => setFormData({ ...formData, destCurrencyId: val })}
+                          placeholder="Seleccione Moneda..."
+                          required
+                          options={currencies.map((c) => ({
+                            value: c.id,
+                            label: `${c.code} - ${c.name}`,
+                          }))}
+                        />
+                      </div>
+
+                      <div className="flowbite-form-group" style={{ marginBottom: 0 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                          <label className="flowbite-form-label" style={{ marginBottom: 0 }}>Tipo de Cambio (Cotización) *</label>
+                          <button 
+                            type="button"
+                            onClick={() => setCalcMode(prev => prev === "multiply" ? "divide" : "multiply")}
+                            style={{ 
+                              fontSize: "11px", 
+                              fontWeight: 600, 
+                              background: "var(--ots-surface-2)", 
+                              padding: "2px 8px", 
+                              borderRadius: "4px",
+                              border: "1px solid var(--ots-border)",
+                              cursor: "pointer",
+                              color: "var(--ots-text-primary)"
+                            }}
+                            title="Cambiar operador matemático para calcular Monto Destino"
+                          >
+                            {calcMode === "multiply" ? "Operador: (x) Multiplicar" : "Operador: (÷) Dividir"}
+                          </button>
+                        </div>
+                        <input
+                          required
+                          type="number"
+                          step="0.0001"
+                          value={formData.exchangeRate}
+                          onChange={(e) => setFormData({ ...formData, exchangeRate: e.target.value })}
+                          className="flowbite-input"
+                          placeholder="1.0000"
+                          style={{ fontFamily: "var(--ots-font-mono)", fontSize: "15px" }}
+                        />
+                      </div>
                     </div>
 
-                    {/* Origin Amount Property */}
-                    <div className="flowbite-form-group">
-                      <label className="flowbite-form-label">Monto Origen *</label>
-                      <input
-                        required
-                        type="number"
-                        step="0.01"
-                        value={formData.originAmount}
-                        onChange={(e) => setFormData({ ...formData, originAmount: e.target.value })}
-                        className="flowbite-input"
-                        placeholder="0.00"
-                      />
+                    {/* Fila 4: Monto Destino (Auto-calculado) y Fecha */}
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+                      <div className="flowbite-form-group" style={{ marginBottom: 0 }}>
+                        <label className="flowbite-form-label">Monto Destino (Calculado) *</label>
+                        <input
+                          required
+                          type="number"
+                          step="0.01"
+                          value={formData.destAmount}
+                          onChange={(e) => setFormData({ ...formData, destAmount: e.target.value })}
+                          className="flowbite-input"
+                          placeholder="0.00"
+                          style={{ fontFamily: "var(--ots-font-mono)", fontSize: "15px", backgroundColor: "var(--ots-surface-2)" }}
+                        />
+                      </div>
+
+                      <div className="flowbite-form-group" style={{ marginBottom: 0 }}>
+                        <label className="flowbite-form-label">Fecha Operativa *</label>
+                        <input
+                          required
+                          type="date"
+                          value={formData.operationDate}
+                          onChange={(e) => setFormData({ ...formData, operationDate: e.target.value })}
+                          className="flowbite-input"
+                        />
+                      </div>
                     </div>
 
-                    {/* Destination Currency Property */}
-                    <div className="flowbite-form-group">
-                      <label className="flowbite-form-label">Moneda Destino *</label>
-                      <LiquidSelect
-                        value={formData.destCurrencyId}
-                        onChange={(val) => setFormData({ ...formData, destCurrencyId: val })}
-                        placeholder="Seleccione Moneda..."
-                        required
-                        options={currencies.map((c) => ({
-                          value: c.id,
-                          label: `${c.code} - ${c.name}`,
-                        }))}
-                      />
-                    </div>
-
-                    {/* Destination Amount Property */}
-                    <div className="flowbite-form-group">
-                      <label className="flowbite-form-label">🪙 Monto Destino *</label>
-                      <input
-                        required
-                        type="number"
-                        step="0.01"
-                        value={formData.destAmount}
-                        onChange={(e) => setFormData({ ...formData, destAmount: e.target.value })}
-                        className="flowbite-input"
-                        placeholder="0.00"
-                      />
-                    </div>
-
-                    {/* Exchange Rate Property */}
-                    <div className="flowbite-form-group">
-                      <label className="flowbite-form-label">Tipo Cambio *</label>
-                      <input
-                        required
-                        type="number"
-                        step="0.0001"
-                        value={formData.exchangeRate}
-                        onChange={(e) => setFormData({ ...formData, exchangeRate: e.target.value })}
-                        className="flowbite-input"
-                        placeholder="1.0000"
-                      />
-                      <small style={{ display: "block", color: "var(--text-secondary)", marginTop: "4px", fontSize: "11px" }}>
-                        Monto Destino auto-calculado: (Origen × T.C.)
-                      </small>
-                    </div>
-
-                    {/* Date Property */}
-                    <div className="flowbite-form-group">
-                      <label className="flowbite-form-label">Fecha *</label>
-                      <input
-                        required
-                        type="date"
-                        value={formData.operationDate}
-                        onChange={(e) => setFormData({ ...formData, operationDate: e.target.value })}
-                        className="flowbite-input"
-                      />
-                    </div>
-
-                    {/* Status Property (only editing) */}
+                    {/* Fila Estado (solo si está editando) */}
                     {editingId && (
-                      <div className="flowbite-form-group">
-                        <label className="flowbite-form-label">⊙ Estado *</label>
+                      <div className="flowbite-form-group" style={{ marginBottom: 0 }}>
+                        <label className="flowbite-form-label">Estado de la Operación *</label>
                         <LiquidSelect
                           value={formData.state}
                           onChange={(val) => setFormData({ ...formData, state: val })}
@@ -1181,50 +1299,55 @@ export default function OperationsPage() {
                       </div>
                     )}
 
-                  {/* Observations Property */}
-                  <div className="flowbite-form-group">
-                    <label className="flowbite-form-label">Observaciones</label>
-                    <textarea
-                      rows={3}
-                      value={formData.observations}
-                      onChange={(e) => setFormData({ ...formData, observations: e.target.value })}
-                      className="flowbite-input"
-                      placeholder="Agregar notas..."
-                      style={{ fontFamily: "inherit", resize: "vertical" }}
-                    />
+                    {/* Observaciones */}
+                    <div className="flowbite-form-group" style={{ marginBottom: 0 }}>
+                      <label className="flowbite-form-label">Observaciones</label>
+                      <textarea
+                        rows={2}
+                        value={formData.observations}
+                        onChange={(e) => setFormData({ ...formData, observations: e.target.value })}
+                        className="flowbite-input"
+                        placeholder="Notas contables u operativas..."
+                        style={{ fontFamily: "inherit", resize: "vertical", width: "100%", minHeight: "70px" }}
+                      />
+                    </div>
                   </div>
-                </div>
 
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "flex-end",
-                    gap: "10px",
-                    marginTop: "2.5rem",
-                    paddingTop: "1.25rem",
-                    borderTop: "1px solid var(--border-color)",
-                  }}
-                >
-                  <button
-                    type="button"
-                    className="flowbite-btn flowbite-btn-text"
-                    onClick={() => {
-                      setIsModalOpen(false);
-                      setEditingId(null);
-                      setVerifiedAdminPassword("");
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "flex-end",
+                      gap: "12px",
+                      marginTop: "2rem",
+                      paddingTop: "1.25rem",
+                      borderTop: "1px solid var(--ots-border)",
                     }}
                   >
-                    Cancelar
-                  </button>
-                  <button type="submit" className="flowbite-btn flowbite-btn-primary">
-                    {editingId ? "Actualizar Ficha" : "Crear Ficha"}
-                  </button>
-                </div>
-              </form>
+                    <button
+                      type="button"
+                      className="flowbite-btn flowbite-btn-text"
+                      onClick={() => {
+                        setIsModalOpen(false);
+                        setEditingId(null);
+                        setVerifiedAdminPassword("");
+                      }}
+                      style={{ padding: "9px 18px" }}
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      className="flowbite-btn flowbite-btn-primary"
+                      style={{ padding: "9px 24px" }}
+                    >
+                      {editingId ? "Actualizar Operación" : "Crear Operación"}
+                    </button>
+                  </div>
+                </form>
+              </div>
             </div>
           </div>
-        </div>
-      </Portal>
+        </Portal>
       )}
 
       {activeStateChangeOp && (
@@ -1429,17 +1552,20 @@ export default function OperationsPage() {
       {/* --------------------------------------------------------- */}
       {isDistributedModalOpen && (
         <Portal>
-          <div className="flowbite-drawer-overlay" onClick={() => setIsDistributedModalOpen(false)}>
+          <div className="flowbite-drawer-overlay" onClick={() => { setIsDistributedModalOpen(false); setEditingId(null); }}>
             <div
+              className="flowbite-drawer"
               style={{
                 backgroundColor: "var(--ots-surface-1)",
-                borderLeft: "1px solid var(--ots-border)",
-                width: "100%",
-                maxWidth: "850px",
-                height: "100vh",
+                border: "1px solid var(--ots-border)",
+                borderRadius: "var(--ots-radius-lg)",
+                width: "95%",
+                maxWidth: "1150px",
+                maxHeight: "92vh",
                 display: "flex",
                 flexDirection: "column",
-                marginLeft: "auto",
+                margin: "auto",
+                boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
               }}
               onClick={(e) => e.stopPropagation()}
             >
@@ -1464,7 +1590,7 @@ export default function OperationsPage() {
                 </div>
                 <button
                   type="button"
-                  onClick={() => setIsDistributedModalOpen(false)}
+                  onClick={() => { setIsDistributedModalOpen(false); setEditingId(null); }}
                   style={{ background: "none", border: "none", color: "var(--ots-text-muted)", fontSize: "20px", cursor: "pointer" }}
                 >
                   ✕
@@ -1513,9 +1639,9 @@ export default function OperationsPage() {
                         />
                       </div>
 
-                      {/* Cotización */}
+                      {/* Cotización Proveedor */}
                       <div className="flowbite-form-group">
-                        <label className="flowbite-form-label">Cotización (Valor de Venta en ARS) *</label>
+                        <label className="flowbite-form-label">Cotización Proveedor (Costo en ARS) *</label>
                         <input
                           type="number"
                           step="0.01"
@@ -1581,10 +1707,11 @@ export default function OperationsPage() {
                       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
                         <thead>
                           <tr style={{ borderBottom: "1px solid var(--ots-border)", color: "var(--ots-text-muted)", fontSize: "11px", textTransform: "uppercase" }}>
-                            <th style={{ padding: "8px", textAlign: "left", width: "30%" }}>Cliente *</th>
-                            <th style={{ padding: "8px", textAlign: "left", width: "20%" }}>Monto *</th>
-                            <th style={{ padding: "8px", textAlign: "left", width: "30%" }}>Observaciones</th>
-                            <th style={{ padding: "8px", textAlign: "center", width: "12%" }}>Pagado</th>
+                            <th style={{ padding: "8px", textAlign: "left", width: "25%" }}>Cliente *</th>
+                            <th style={{ padding: "8px", textAlign: "left", width: "16%" }}>Cotización Cliente</th>
+                            <th style={{ padding: "8px", textAlign: "left", width: "17%" }}>Monto *</th>
+                            <th style={{ padding: "8px", textAlign: "left", width: "24%" }}>Observaciones</th>
+                            <th style={{ padding: "8px", textAlign: "center", width: "10%" }}>Pagado</th>
                             <th style={{ padding: "8px", textAlign: "center", width: "8%" }}>Acción</th>
                           </tr>
                         </thead>
@@ -1597,6 +1724,17 @@ export default function OperationsPage() {
                                   onChange={(val) => handleDistributedItemChange(index, "clientId", val)}
                                   placeholder="Cliente..."
                                   options={clients.map((c) => ({ value: c.id, label: c.name }))}
+                                />
+                              </td>
+                              <td style={{ padding: "8px" }}>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  value={item.exchangeRate}
+                                  onChange={(e) => handleDistributedItemChange(index, "exchangeRate", e.target.value)}
+                                  className="flowbite-input"
+                                  placeholder={distributedData.exchangeRate || "1500"}
+                                  style={{ fontFamily: "var(--ots-font-mono)" }}
                                 />
                               </td>
                               <td style={{ padding: "8px" }}>
@@ -1673,22 +1811,40 @@ export default function OperationsPage() {
               >
                 <div>
                   {(() => {
+                    const headerRate = parseFloat(distributedData.exchangeRate) || 0;
                     const totalMonto = distributedData.items.reduce((s, i) => s + (parseFloat(i.amount) || 0), 0);
-                    const rate = parseFloat(distributedData.exchangeRate) || 0;
-                    const totalARS = totalMonto * rate;
+                    const costProveedorARS = totalMonto * headerRate;
+                    const totalVentaClientesARS = distributedData.items.reduce((s, i) => {
+                      const amount = parseFloat(i.amount) || 0;
+                      const lineRate = i.exchangeRate && !isNaN(parseFloat(i.exchangeRate)) ? parseFloat(i.exchangeRate) : headerRate;
+                      return s + (amount * lineRate);
+                    }, 0);
                     const selectedCur = currencies.find((c) => c.id === distributedData.currencyId);
+                    const gananciaNetaARS = totalVentaClientesARS - costProveedorARS;
                     return (
-                      <div style={{ display: "flex", gap: "20px" }}>
+                      <div style={{ display: "flex", gap: "24px", alignItems: "center" }}>
                         <div>
-                          <span style={{ fontSize: "11px", color: "var(--ots-text-muted)", textTransform: "uppercase", display: "block" }}>Líneas / Total Moneda</span>
+                          <span style={{ fontSize: "11px", color: "var(--ots-text-muted)", textTransform: "uppercase", display: "block" }}>Total Comprado</span>
                           <strong style={{ fontSize: "15px", fontFamily: "var(--ots-font-mono)", color: "var(--ots-text-primary)" }}>
-                            {distributedData.items.length} líneas | {totalMonto.toLocaleString()} {selectedCur?.code || ""}
+                            {totalMonto.toLocaleString()} {selectedCur?.code || ""}
                           </strong>
                         </div>
                         <div>
-                          <span style={{ fontSize: "11px", color: "var(--ots-text-muted)", textTransform: "uppercase", display: "block" }}>Total Convertido en ARS</span>
+                          <span style={{ fontSize: "11px", color: "var(--ots-text-muted)", textTransform: "uppercase", display: "block" }}>Costo Proveedor ARS</span>
+                          <strong style={{ fontSize: "15px", fontFamily: "var(--ots-font-mono)", color: "var(--ots-warning)" }}>
+                            $ {costProveedorARS.toLocaleString()} ARS
+                          </strong>
+                        </div>
+                        <div>
+                          <span style={{ fontSize: "11px", color: "var(--ots-text-muted)", textTransform: "uppercase", display: "block" }}>Total Ventas Clientes ARS</span>
                           <strong style={{ fontSize: "15px", fontFamily: "var(--ots-font-mono)", color: "var(--ots-success)" }}>
-                            $ {totalARS.toLocaleString()} ARS
+                            $ {totalVentaClientesARS.toLocaleString()} ARS
+                          </strong>
+                        </div>
+                        <div style={{ borderLeft: "1px solid var(--ots-border)", paddingLeft: "24px" }}>
+                          <span style={{ fontSize: "11px", color: "var(--ots-text-muted)", textTransform: "uppercase", display: "block", fontWeight: 700 }}>Ganancia Operativa ARS</span>
+                          <strong style={{ fontSize: "16px", fontFamily: "var(--ots-font-mono)", color: gananciaNetaARS >= 0 ? "var(--ots-success)" : "var(--ots-danger)" }}>
+                            $ {gananciaNetaARS.toLocaleString()} ARS
                           </strong>
                         </div>
                       </div>
@@ -1699,7 +1855,7 @@ export default function OperationsPage() {
                 <div style={{ display: "flex", gap: "10px" }}>
                   <button
                     type="button"
-                    onClick={() => setIsDistributedModalOpen(false)}
+                    onClick={() => { setIsDistributedModalOpen(false); setEditingId(null); }}
                     className="flowbite-btn flowbite-btn-text"
                   >
                     Cancelar

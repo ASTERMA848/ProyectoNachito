@@ -7,32 +7,78 @@ export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   try {
-    // Requiere autenticación en todos los endpoints
     const user = await requireAuth();
     if (!user) {
       return NextResponse.json({ error: "No autenticado" }, { status: 401 });
     }
 
-    const operations = await prisma.operation.findMany({
-      where: { deletedAt: null },
-      include: {
-        client: true,
-        provider: true,
-        originCurrency: true,
-        destCurrency: true,
-        parentOperation: true,
-        childOperations: {
-          include: {
-            client: true,
-            provider: true,
-            originCurrency: true,
-            destCurrency: true,
+    const { searchParams } = new URL(req.url);
+    const page = parseInt(searchParams.get("page") || "1", 10);
+    const limit = parseInt(searchParams.get("limit") || "50", 10);
+    const skip = (page - 1) * limit;
+
+    const search = searchParams.get("search") || "";
+    const state = searchParams.get("state") || "";
+    const startDate = searchParams.get("startDate") || "";
+    const endDate = searchParams.get("endDate") || "";
+
+    const where: any = { deletedAt: null, parentOperationId: null };
+
+    if (state) where.state = state;
+    if (startDate || endDate) {
+      where.operationDate = {};
+      if (startDate) where.operationDate.gte = new Date(startDate);
+      if (endDate) where.operationDate.lte = new Date(endDate);
+    }
+    
+    if (search) {
+      where.OR = [
+        { operationNumber: { contains: search, mode: "insensitive" } },
+        { client: { name: { contains: search, mode: "insensitive" } } },
+        { provider: { name: { contains: search, mode: "insensitive" } } },
+      ];
+    }
+
+    const [operations, totalCount] = await Promise.all([
+      prisma.operation.findMany({
+        where,
+        include: {
+          client: { select: { id: true, name: true, document: true } },
+          provider: { select: { id: true, name: true, document: true } },
+          originCurrency: { select: { id: true, code: true, symbol: true, color: true } },
+          destCurrency: { select: { id: true, code: true, symbol: true, color: true } },
+          parentOperation: { select: { id: true, operationNumber: true } },
+          childOperations: {
+            select: {
+              id: true,
+              operationNumber: true,
+              state: true,
+              originAmount: true,
+              destAmount: true,
+              isPaid: true,
+              clientId: true,
+              exchangeRate: true,
+              observations: true,
+              client: { select: { id: true, name: true } },
+            },
           },
         },
-      },
-      orderBy: { createdAt: "desc" },
-    });
-    return NextResponse.json({ operations }, { status: 200 });
+        orderBy: { createdAt: "desc" },
+        skip,
+        take: limit,
+      }),
+      prisma.operation.count({ where })
+    ]);
+
+    return NextResponse.json({ 
+      operations,
+      pagination: {
+        total: totalCount,
+        page,
+        limit,
+        totalPages: Math.ceil(totalCount / limit)
+      }
+    }, { status: 200 });
   } catch (error: any) {
     console.error("Operations GET error:", error);
     return NextResponse.json({ error: "Error en el servidor" }, { status: 500 });

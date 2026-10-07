@@ -13,9 +13,12 @@ export async function GET() {
     }
 
     const accounts = await prisma.account.findMany({
+      where: {
+        balance: { not: 0 },
+      },
       include: {
-        contact: true,
-        currency: true,
+        contact: { select: { id: true, name: true, document: true, isClient: true, isProvider: true } },
+        currency: { select: { id: true, code: true, symbol: true, color: true } },
       },
       orderBy: [
         { contact: { name: "asc" } },

@@ -171,6 +171,7 @@ model Operation {
   comments         InternalComment[]
   settlements      Settlement[]
   transactions     Transaction[] @relation("OpTransactions")
+  treasuryMovements TreasuryMovement[] @relation("OpTreasuryMovements")
 }
 
 model OperationStateHistory {
@@ -241,27 +242,35 @@ model Transaction {
 // ---------------------------------------------------------
 
 model TreasuryAccount {
-  id          String    @id @default(uuid())
-  name        String
-  type        String    // CASH, BANK, WALLET
-  currencyId  String
-  balance     Float     @default(0.0)
-  isActive    Boolean   @default(true)
+  id               String    @id @default(uuid())
+  name             String
+  type             String    // CASH, BANK, WALLET
+  currencyId       String
+  balance          Float     @default(0.0)
+  
+  isActive         Boolean   @default(true)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
-  currency    Currency  @relation(fields: [currencyId], references: [id])
-  movements   TreasuryMovement[]
+  currency         Currency  @relation(fields: [currencyId], references: [id])
+  movements        TreasuryMovement[]
 }
 
 model TreasuryMovement {
-  id          String    @id @default(uuid())
-  accountId   String
-  date        DateTime  @default(now())
-  type        String    // INCOME, EXPENSE, TRANSFER, ADJUSTMENT
-  amount      Float
-  concept     String
-  reference   String?
+  id               String    @id @default(uuid())
+  treasuryAccountId String
+  operationId      String?
   
-  account     TreasuryAccount @relation(fields: [accountId], references: [id])
+  date             DateTime  @default(now())
+  type             String    // INCOME, EXPENSE, TRANSFER, ADJUSTMENT
+  amount           Float
+  
+  concept          String
+  reference        String?
+  observations     String?
+  
+  account          TreasuryAccount @relation(fields: [treasuryAccountId], references: [id])
+  operation        Operation?      @relation("OpTreasuryMovements", fields: [operationId], references: [id])
 }
 
 // ---------------------------------------------------------

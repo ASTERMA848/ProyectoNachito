@@ -1,0 +1,20 @@
+THESIS:
+Rediseño completo de la interfaz hacia una estética Neo-Fintech Minimal inspirada en Mercury y Stripe. Transición de Liquid Glass recargado a un sistema limpio, pulido, con navegación lateral estructurada, tarjetas elevadas, jerarquía clara y contraste optimizado para la operación de divisas.
+
+OWN-WORLD:
+- Paleta: Fondo Slate profundo (#090d16), tarjetas en Slate 2 (#111827), bordes sutiles (#1f293d). Acentuado en Índigo Cobalto (#6366f1) con hover (#4f46e5). Badges en Esmeralda (#10b981), Ámbar (#f59e0b), Carmín (#ef4444) y Violeta (#8b5cf6).
+- Tipografía: Plus Jakarta Sans / Inter para textos e interfaz, JetBrains Mono para valores numéricos, montos y cotizaciones.
+- Componentes: Sidebar de navegación vertical a la izquierda con estado activo en cápsula sólida indigo, tarjetas elevadas con padding amplio (24px) y radio de 12px, tablas con cabeceras limpias y filas interactivas, drawers laterales de 1100px para formularios masivos.
+
+STORY:
+El operador y administrador navegan por una plataforma financiera moderna donde las métricas de saldo, transacciones y formularios de carga masiva se presentan con máxima legibilidad, velocidad y cero distracciones visuales.
+
+FIRST VIEWPORT:
+Sidebar vertical fijo a la izquierda (260px) con marca "AGENCIA" y accesos de navegación directos. Área principal a pantalla completa con encabezado de bienvenida, métricas clave (KPIs) y tabla de operaciones de cambio amplia y limpia.
+
+FORM:
+Neo-Fintech Minimal — Opción B seleccionada por el usuario.
+
+FINISH:
+unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
+

@@ -138,15 +138,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Datos inválidos" }, { status: 400 });
     }
 
-    const { state, adminPassword } = body;
-
-    // Validar estado contra lista de valores permitidos (nunca confiar en el cliente)
-    if (!state || !VALID_STATES.includes(state)) {
-      return NextResponse.json(
-        { error: `Estado inválido. Valores permitidos: ${VALID_STATES.join(", ")}` },
-        { status: 400 }
-      );
-    }
+    const { state, isPaid, adminPassword } = body;
 
     const oldOperation = await prisma.operation.findFirst({
       where: { id: operationId, deletedAt: null },
@@ -156,8 +148,15 @@ export async function PATCH(
       return NextResponse.json({ error: "Operación no encontrada" }, { status: 404 });
     }
 
-    // Solo el administrador puede modificar operaciones completadas
-    if (oldOperation.state === "COMPLETED" && user.role !== "ADMIN") {
+    // Validar estado si se envió
+    if (state && !VALID_STATES.includes(state)) {
+      return NextResponse.json(
+        { error: `Estado inválido. Valores permitidos: ${VALID_STATES.join(", ")}` },
+        { status: 400 }
+      );
+    }
+
+    if (oldOperation.state === "COMPLETED" && state && state !== "COMPLETED" && user.role !== "ADMIN") {
       return NextResponse.json(
         { error: "Solo el administrador puede modificar operaciones completadas" },
         { status: 403 }
@@ -166,7 +165,10 @@ export async function PATCH(
 
     const updatedOperation = await prisma.operation.update({
       where: { id: operationId },
-      data: { state },
+      data: { 
+        ...(state ? { state } : {}),
+        ...(typeof isPaid === "boolean" ? { isPaid } : {})
+      },
       include: {
         client: true,
         provider: true,
@@ -175,60 +177,121 @@ export async function PATCH(
       },
     });
 
-    // Lógica contable automática al completar una operación
-    if (state === "COMPLETED" && oldOperation.state !== "COMPLETED") {
-      const { clientId, providerId, originCurrencyId, destCurrencyId, originAmount, destAmount, operationNumber } = updatedOperation;
+    const isStateChangingToCompleted = state === "COMPLETED" && oldOperation.state !== "COMPLETED";
+    const isPayingNow = isPaid === true && oldOperation.isPaid === false;
+    const { clientId, providerId, originCurrencyId, destCurrencyId, originAmount, destAmount, operationNumber } = updatedOperation;
 
-      const applyTransaction = async (
-        contactId: string,
-        currencyId: string,
-        amount: number,
-        concept: string
-      ) => {
-        let account = await prisma.account.findUnique({
-          where: { contactId_currencyId: { contactId, currencyId } },
+    const applyTransaction = async (
+      contactId: string,
+      currencyId: string,
+      amount: number,
+      concept: string
+    ) => {
+      let account = await prisma.account.findUnique({
+        where: { contactId_currencyId: { contactId, currencyId } },
+      });
+      if (!account) {
+        account = await prisma.account.create({
+          data: { contactId, currencyId, balance: 0 },
         });
-        if (!account) {
-          account = await prisma.account.create({
-            data: { contactId, currencyId, balance: 0 },
-          });
-        }
-        const isCredit = amount > 0;
-        const newBalance = account.balance + amount;
-        await prisma.$transaction([
-          prisma.account.update({
-            where: { id: account.id },
-            data: { balance: newBalance },
-          }),
-          prisma.transaction.create({
-            data: {
-              accountId: account.id,
-              concept: concept.substring(0, 500),
-              credit: isCredit ? amount : 0,
-              debit: !isCredit ? Math.abs(amount) : 0,
-              balance: newBalance,
-            },
-          }),
-        ]);
-      };
-
-      if (clientId) {
-        await applyTransaction(clientId, originCurrencyId, originAmount, `Operación ${operationNumber} - Entrega Origen`);
-        await applyTransaction(clientId, destCurrencyId, -destAmount, `Operación ${operationNumber} - Recepción Destino`);
       }
-      if (providerId) {
-        await applyTransaction(providerId, originCurrencyId, -originAmount, `Operación ${operationNumber} - Recepción Origen`);
-        await applyTransaction(providerId, destCurrencyId, destAmount, `Operación ${operationNumber} - Entrega Destino`);
+      const isCredit = amount > 0;
+      const newBalance = account.balance + amount;
+      await prisma.$transaction([
+        prisma.account.update({
+          where: { id: account.id },
+          data: { balance: newBalance },
+        }),
+        prisma.transaction.create({
+          data: {
+            accountId: account.id,
+            concept: concept.substring(0, 500),
+            credit: isCredit ? amount : 0,
+            debit: !isCredit ? Math.abs(amount) : 0,
+            balance: newBalance,
+            operationId: updatedOperation.id,
+          },
+        }),
+      ]);
+    };
+
+    if (isStateChangingToCompleted || isPayingNow) {
+      // 1. Deuda Comercial
+      if (isStateChangingToCompleted) {
+        if (clientId) {
+          await applyTransaction(clientId, originCurrencyId, originAmount, `Operación ${operationNumber} - Entrega Origen`);
+          await applyTransaction(clientId, destCurrencyId, -destAmount, `Operación ${operationNumber} - Recepción Destino`);
+        }
+        if (providerId) {
+          await applyTransaction(providerId, originCurrencyId, -originAmount, `Operación ${operationNumber} - Recepción Origen`);
+          await applyTransaction(providerId, destCurrencyId, destAmount, `Operación ${operationNumber} - Entrega Destino`);
+        }
+      }
+
+      // 2. Liquidación y Tesorería
+      // Si se acaba de pagar, o si se pasa a completado y YA estaba marcada como pagada (y no se había procesado el pago porque no estaba completada)
+      const shouldProcessPayment = isPayingNow || (isStateChangingToCompleted && updatedOperation.isPaid);
+
+      if (shouldProcessPayment) {
+        const applyTreasuryAndSettle = async (
+          contactId: string | null,
+          currencyId: string,
+          amount: number,
+          conceptSettlement: string,
+          conceptTreasury: string
+        ) => {
+          if (contactId) {
+            await applyTransaction(contactId, currencyId, -amount, conceptSettlement);
+          }
+
+          let tAccount = await prisma.treasuryAccount.findFirst({
+            where: { currencyId, type: "CASH" }
+          });
+          if (!tAccount) {
+            const curr = await prisma.currency.findUnique({ where: { id: currencyId } });
+            tAccount = await prisma.treasuryAccount.create({
+              data: { name: `Caja Principal ${curr?.code}`, type: "CASH", currencyId, balance: 0 }
+            });
+          }
+
+          const type = amount > 0 ? "INCOME" : "EXPENSE";
+          const absAmount = Math.abs(amount);
+
+          await prisma.$transaction([
+            prisma.treasuryAccount.update({
+              where: { id: tAccount.id },
+              data: { balance: { increment: amount } }
+            }),
+            prisma.treasuryMovement.create({
+              data: {
+                treasuryAccountId: tAccount.id,
+                operationId: updatedOperation.id,
+                type,
+                amount: absAmount,
+                concept: conceptTreasury
+              }
+            })
+          ]);
+        };
+
+        if (clientId) {
+          await applyTreasuryAndSettle(clientId, originCurrencyId, originAmount, `Cobro/Pago Op. ${operationNumber} - Origen`, `Ingreso por Op. ${operationNumber} (Cliente)`);
+          await applyTreasuryAndSettle(clientId, destCurrencyId, -destAmount, `Cobro/Pago Op. ${operationNumber} - Destino`, `Egreso por Op. ${operationNumber} (Cliente)`);
+        }
+        if (providerId) {
+          await applyTreasuryAndSettle(providerId, originCurrencyId, -originAmount, `Cobro/Pago Op. ${operationNumber} - Origen`, `Egreso por Op. ${operationNumber} (Proveedor)`);
+          await applyTreasuryAndSettle(providerId, destCurrencyId, destAmount, `Cobro/Pago Op. ${operationNumber} - Destino`, `Ingreso por Op. ${operationNumber} (Proveedor)`);
+        }
       }
     }
 
     await logAudit({
       userId: user.id,
-      action: "UPDATE_STATE",
+      action: "UPDATE_STATE_OR_PAY",
       entity: "Operation",
       entityId: operationId,
-      oldValues: { state: oldOperation.state },
-      newValues: { state: updatedOperation.state },
+      oldValues: { state: oldOperation.state, isPaid: oldOperation.isPaid },
+      newValues: { state: updatedOperation.state, isPaid: updatedOperation.isPaid },
     });
 
     return NextResponse.json(updatedOperation, { status: 200 });
@@ -263,51 +326,67 @@ export async function DELETE(
 
     const now = new Date();
 
-    await prisma.$transaction(async (tx) => {
-      const opsToDelete = [op, ...(op.childOperations || [])];
+    await prisma.$transaction(
+      async (tx) => {
+        const opsToDelete = [op, ...(op.childOperations || [])];
 
-      for (const currentOp of opsToDelete) {
-        await tx.operation.update({
-          where: { id: currentOp.id },
-          data: { deletedAt: now, state: "CANCELED" },
-        });
-
-        const txs = await tx.transaction.findMany({
-          where: {
-            OR: [
-              { operationId: currentOp.id },
-              { concept: { contains: currentOp.operationNumber } },
-            ],
-          },
-          include: { account: true },
-        });
-
-        for (const transaction of txs) {
-          const account = transaction.account;
-          if (!account) continue;
-
-          const adjustment = transaction.credit - transaction.debit;
-          const newBalance = account.balance + adjustment;
-
-          await tx.account.update({
-            where: { id: account.id },
-            data: { balance: newBalance },
+        for (const currentOp of opsToDelete) {
+          // 1. Desvincular o buscar transacciones asociadas a la operación
+          const txs = await tx.transaction.findMany({
+            where: { operationId: currentOp.id },
+            include: { account: true },
           });
 
-          await tx.transaction.create({
-            data: {
-              accountId: account.id,
-              operationId: currentOp.id,
-              concept: `Reversión por eliminación Op. ${currentOp.operationNumber}`,
-              debit: transaction.credit,
-              credit: transaction.debit,
-              balance: newBalance,
-              observations: "Ajuste automático por eliminación de operación",
-            },
+          // 2. Revertir impacto en cuentas corrientes y eliminar transacciones
+          for (const transaction of txs) {
+            const account = transaction.account;
+            if (!account) continue;
+
+            const adjustment = transaction.debit - transaction.credit;
+            const newBalance = account.balance + adjustment;
+
+            await tx.account.update({
+              where: { id: account.id },
+              data: { balance: newBalance },
+            });
+          }
+          await tx.transaction.deleteMany({ where: { operationId: currentOp.id } });
+
+          // 2.5 Revertir impacto en Cajas (Tesorería) y eliminar movimientos
+          const treasuryMovements = await tx.treasuryMovement.findMany({
+            where: { operationId: currentOp.id }
+          });
+          
+          for (const tmov of treasuryMovements) {
+             const tAcc = await tx.treasuryAccount.findUnique({ where: { id: tmov.treasuryAccountId }});
+             if (tAcc) {
+                const adj = tmov.type === "INCOME" ? -tmov.amount : tmov.amount;
+                await tx.treasuryAccount.update({
+                  where: { id: tAcc.id },
+                  data: { balance: { increment: adj } }
+                });
+             }
+          }
+          await tx.treasuryMovement.deleteMany({ where: { operationId: currentOp.id } });
+
+          // 3. Eliminar o desvincular relaciones secundarias para evitar FK constraints
+          await tx.settlement.deleteMany({ where: { operationId: currentOp.id } });
+          await tx.attachment.deleteMany({ where: { operationId: currentOp.id } });
+          await tx.internalComment.deleteMany({ where: { operationId: currentOp.id } });
+          await tx.operationStateHistory.deleteMany({ where: { operationId: currentOp.id } });
+
+          // 4. Soft delete de la operación
+          await tx.operation.update({
+            where: { id: currentOp.id },
+            data: { deletedAt: now, state: "CANCELED" },
           });
         }
+      },
+      {
+        maxWait: 10000,
+        timeout: 20000,
       }
-    });
+    );
 
     await logAudit({
       userId: user.id,
@@ -320,7 +399,7 @@ export async function DELETE(
     return NextResponse.json({ success: true, message: "Operación eliminada y saldos ajustados" }, { status: 200 });
   } catch (error: any) {
     console.error("Operation DELETE error:", error);
-    return NextResponse.json({ error: "Error al eliminar la operación" }, { status: 500 });
+    return NextResponse.json({ error: error?.message || "Error al eliminar la operación" }, { status: 500 });
   }
 }
 

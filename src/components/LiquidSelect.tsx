@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 export interface LiquidSelectOption {
   value: string;
@@ -30,23 +31,64 @@ export default function LiquidSelect({
   style,
 }: LiquidSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [coords, setCoords] = useState<{ top: number; left: number; width: number }>({ top: 0, left: 0, width: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   const selectedOption = options.find((opt) => opt.value === value);
+
+  // Recalcular posición al abrir
+  const updatePosition = () => {
+    if (triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      setCoords({
+        top: rect.bottom + 4,
+        left: rect.left,
+        width: rect.width,
+      });
+    }
+  };
+
+  const handleToggle = () => {
+    if (disabled) return;
+    if (!isOpen) {
+      updatePosition();
+      setIsOpen(true);
+    } else {
+      setIsOpen(false);
+    }
+  };
 
   // Cerrar al hacer clic afuera
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(target) &&
+        menuRef.current &&
+        !menuRef.current.contains(target)
+      ) {
         setIsOpen(false);
+      }
+    };
+
+    const handleScrollOrResize = () => {
+      if (isOpen) {
+        updatePosition();
       }
     };
 
     if (isOpen) {
       document.addEventListener("mousedown", handleClickOutside);
+      window.addEventListener("scroll", handleScrollOrResize, true);
+      window.addEventListener("resize", handleScrollOrResize);
     }
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
+      window.removeEventListener("scroll", handleScrollOrResize, true);
+      window.removeEventListener("resize", handleScrollOrResize);
     };
   }, [isOpen]);
 
@@ -79,9 +121,10 @@ export default function LiquidSelect({
     >
       {/* Botón Disparador (Trigger) */}
       <button
+        ref={triggerRef}
         type="button"
         disabled={disabled}
-        onClick={() => !disabled && setIsOpen(!isOpen)}
+        onClick={handleToggle}
         className="flowbite-input liquid-select-trigger"
         style={{
           display: "flex",
@@ -91,13 +134,14 @@ export default function LiquidSelect({
           textAlign: "left",
           width: "100%",
           padding: "10px 16px",
-          minHeight: "44px",
-          color: selectedOption ? "#ffffff" : "rgba(255, 255, 255, 0.45)",
-          borderColor: isOpen ? "rgba(103, 152, 255, 0.8)" : "rgba(255, 255, 255, 0.18)",
+          minHeight: "42px",
+          color: selectedOption ? "var(--ots-text-primary)" : "var(--ots-text-muted)",
+          backgroundColor: "var(--ots-surface-1)",
+          borderColor: isOpen ? "var(--ots-primary)" : "var(--ots-border)",
           boxShadow: isOpen
-            ? "0 0 0 3px rgba(103, 152, 255, 0.25), inset 0 1px 2px rgba(0, 0, 0, 0.2)"
-            : "inset 0 1px 2px rgba(0, 0, 0, 0.2)",
-          transition: "all 0.18s cubic-bezier(0.16, 1, 0.3, 1)",
+            ? "0 0 0 3px rgba(79, 70, 229, 0.15)"
+            : "0 1px 2px rgba(0, 0, 0, 0.03)",
+          transition: "all 150ms ease",
         }}
       >
         <span
@@ -106,7 +150,8 @@ export default function LiquidSelect({
             textOverflow: "ellipsis",
             whiteSpace: "nowrap",
             marginRight: "8px",
-            fontSize: "15px",
+            fontSize: "14px",
+            fontWeight: selectedOption ? 500 : 400,
           }}
         >
           {selectedOption ? selectedOption.label : placeholder}
@@ -119,9 +164,9 @@ export default function LiquidSelect({
             width: "16px",
             height: "16px",
             flexShrink: 0,
-            color: "rgba(255, 255, 255, 0.65)",
+            color: "var(--ots-text-muted)",
             transform: isOpen ? "rotate(180deg)" : "rotate(0deg)",
-            transition: "transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
+            transition: "transform 150ms ease",
           }}
         >
           <path
@@ -132,30 +177,29 @@ export default function LiquidSelect({
         </svg>
       </button>
 
-      {/* Menú Desplegable LiquidGlass */}
-      {isOpen && (
+      {/* Menú Desplegable Renderizado en Portal Flotante (Anti-Clipping) */}
+      {isOpen && typeof document !== "undefined" && createPortal(
         <div
+          ref={menuRef}
           className="liquid-select-menu"
           style={{
-            position: "absolute",
-            top: "calc(100% + 6px)",
-            left: 0,
-            right: 0,
-            zIndex: 9999,
-            background: "linear-gradient(160deg, rgba(16, 22, 48, 0.78) 0%, rgba(8, 12, 30, 0.88) 100%)",
-            WebkitBackdropFilter: "blur(32px) saturate(160%) brightness(110%)",
-            backdropFilter: "blur(32px) saturate(160%) brightness(110%)",
-            border: "1px solid rgba(255, 255, 255, 0.25)",
-            borderRadius: "16px",
+            position: "fixed",
+            top: `${coords.top}px`,
+            left: `${coords.left}px`,
+            width: `${coords.width}px`,
+            zIndex: 999999,
+            background: "var(--ots-surface-1)",
+            border: "1px solid var(--ots-border)",
+            borderRadius: "var(--ots-radius-md)",
             padding: "6px",
             boxShadow:
-              "0 20px 48px rgba(0, 0, 0, 0.65), 0 0 35px rgba(103, 152, 255, 0.16), inset 0 1px 1px rgba(255, 255, 255, 0.38)",
+              "0 20px 35px -5px rgba(0, 0, 0, 0.15), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
             maxHeight: "260px",
             overflowY: "auto",
             display: "flex",
             flexDirection: "column",
-            gap: "3px",
-            animation: "selectMenuIn 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards",
+            gap: "2px",
+            animation: "selectMenuIn 0.15s ease forwards",
           }}
         >
           {options.length === 0 ? (
@@ -163,7 +207,7 @@ export default function LiquidSelect({
               style={{
                 padding: "10px 14px",
                 fontSize: "14px",
-                color: "rgba(255, 255, 255, 0.45)",
+                color: "var(--ots-text-muted)",
                 textAlign: "center",
               }}
             >
@@ -177,37 +221,37 @@ export default function LiquidSelect({
                   key={opt.value}
                   onClick={() => handleSelect(opt.value)}
                   style={{
-                    padding: "10px 14px",
-                    borderRadius: "10px",
+                    padding: "9px 12px",
+                    borderRadius: "var(--ots-radius-sm)",
                     cursor: "pointer",
-                    fontSize: "14.5px",
+                    fontSize: "14px",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "space-between",
                     background: isSelected
-                      ? "linear-gradient(135deg, rgba(103, 152, 255, 0.28) 0%, rgba(70, 110, 220, 0.18) 100%)"
+                      ? "var(--ots-primary-muted)"
                       : "transparent",
-                    color: isSelected ? "#ffffff" : "rgba(255, 255, 255, 0.85)",
-                    border: isSelected ? "1px solid rgba(103, 152, 255, 0.45)" : "1px solid transparent",
-                    transition: "all 0.15s ease",
+                    color: isSelected ? "var(--ots-primary)" : "var(--ots-text-primary)",
+                    fontWeight: isSelected ? 600 : 400,
+                    transition: "all 120ms ease",
                   }}
                   onMouseOver={(e) => {
                     if (!isSelected) {
-                      e.currentTarget.style.background = "rgba(255, 255, 255, 0.08)";
-                      e.currentTarget.style.color = "#ffffff";
+                      e.currentTarget.style.background = "var(--ots-surface-2)";
+                      e.currentTarget.style.color = "var(--ots-text-primary)";
                     }
                   }}
                   onMouseOut={(e) => {
                     if (!isSelected) {
                       e.currentTarget.style.background = "transparent";
-                      e.currentTarget.style.color = "rgba(255, 255, 255, 0.85)";
+                      e.currentTarget.style.color = "var(--ots-text-primary)";
                     }
                   }}
                 >
                   <div style={{ display: "flex", flexDirection: "column", gap: "2px", overflow: "hidden" }}>
-                    <span style={{ fontWeight: isSelected ? 500 : 400 }}>{opt.label}</span>
+                    <span>{opt.label}</span>
                     {opt.sublabel && (
-                      <span style={{ fontSize: "12.5px", color: "rgba(255, 255, 255, 0.5)" }}>
+                      <span style={{ fontSize: "12px", color: "var(--ots-text-muted)" }}>
                         {opt.sublabel}
                       </span>
                     )}
@@ -217,7 +261,7 @@ export default function LiquidSelect({
                       xmlns="http://www.w3.org/2000/svg"
                       viewBox="0 0 20 20"
                       fill="currentColor"
-                      style={{ width: "16px", height: "16px", color: "#6798ff", flexShrink: 0, marginLeft: "8px" }}
+                      style={{ width: "16px", height: "16px", color: "var(--ots-primary)", flexShrink: 0, marginLeft: "8px" }}
                     >
                       <path
                         fillRule="evenodd"
@@ -230,7 +274,8 @@ export default function LiquidSelect({
               );
             })
           )}
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Input oculto para validación de form HTML5 */}

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import useSWR from "swr";
 import Portal from "@/components/Portal";
 import LiquidSelect from "@/components/LiquidSelect";
 import {
@@ -14,12 +15,9 @@ import {
   GlassCard,
 } from "@liquefy-ui/react";
 
-export default function AccountsPage() {
-  const [accounts, setAccounts] = useState<any[]>([]);
-  const [contacts, setContacts] = useState<any[]>([]);
-  const [currencies, setCurrencies] = useState<any[]>([]);
+const fetcher = (url: string) => fetch(url).then(res => res.json());
 
-  const [loading, setLoading] = useState(true);
+export default function AccountsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<any>(null);
@@ -36,31 +34,13 @@ export default function AccountsPage() {
     observations: "",
   });
 
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      const [resAcc, resContacts, resCur] = await Promise.all([
-        fetch("/api/accounts"),
-        fetch("/api/contacts"),
-        fetch("/api/currencies"),
-      ]);
-      const dataAcc = await resAcc.json();
-      const dataContacts = await resContacts.json();
-      const dataCur = await resCur.json();
+  const { data: accountsData, isLoading: loading, mutate: fetchData } = useSWR("/api/accounts", fetcher);
+  const { data: contactsData } = useSWR("/api/contacts", fetcher);
+  const { data: currenciesData } = useSWR("/api/currencies", fetcher);
 
-      if (dataAcc.accounts) setAccounts(dataAcc.accounts);
-      if (dataContacts.contacts) setContacts(dataContacts.contacts);
-      if (dataCur.currencies) setCurrencies(dataCur.currencies);
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchData();
-  }, []);
+  const accounts = accountsData?.accounts || [];
+  const contacts = contactsData?.contacts || [];
+  const currencies = currenciesData?.currencies || [];
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -225,22 +205,22 @@ export default function AccountsPage() {
                           {acc.currency?.code}
                         </span>
                       </LiquidTableCell>
-                      <LiquidTableCell
-                        align="right"
-                        style={{
-                          fontWeight: 700,
-                          fontFamily: "monospace",
-                          fontSize: "15px",
-                          color: acc.balance >= 0 ? "var(--badge-green-text)" : "var(--badge-red-text)",
-                          backgroundColor: acc.balance >= 0 ? "var(--badge-green-bg)" : "var(--badge-red-bg)",
-                          padding: "2px 8px",
-                          borderRadius: "var(--radius-sm)",
-                          display: "inline-block",
-                          marginTop: "10px",
-                          marginBottom: "10px",
-                        }}
-                      >
-                        {new Intl.NumberFormat("es-AR", { style: "currency", currency: acc.currency?.code }).format(acc.balance)}
+                      <LiquidTableCell align="right">
+                        <span
+                          style={{
+                            fontWeight: 700,
+                            fontFamily: "var(--font-jetbrains-mono), monospace",
+                            fontSize: "14.5px",
+                            color: acc.balance >= 0 ? "var(--badge-green-text)" : "var(--badge-red-text)",
+                            backgroundColor: acc.balance >= 0 ? "var(--badge-green-bg)" : "var(--badge-red-bg)",
+                            padding: "4px 10px",
+                            borderRadius: "var(--ots-radius-sm)",
+                            display: "inline-flex",
+                            alignItems: "center",
+                          }}
+                        >
+                          {new Intl.NumberFormat("es-AR", { style: "currency", currency: acc.currency?.code }).format(acc.balance)}
+                        </span>
                       </LiquidTableCell>
                       <LiquidTableCell align="right">
                         <button
@@ -342,14 +322,30 @@ export default function AccountsPage() {
       </div>
 
       {/* Slide-out Peek Modal for manual movement registration */}
+      {/* Slide-out Peek Modal for manual movement registration */}
       {isModalOpen && (
         <Portal>
           <div className="flowbite-drawer-overlay" onClick={() => setIsModalOpen(false)}>
-            <div className="flowbite-drawer" style={{ width: "100%", maxWidth: "500px" }} onClick={(e) => e.stopPropagation()}>
-              <div className="flowbite-drawer-header">
-                <span style={{ fontSize: "15px", fontWeight: 700, color: "#ffffff", display: "flex", alignItems: "center", gap: "6px" }}>
-                  Registrar Ajuste Contable
-                </span>
+            <div
+              className="flowbite-drawer"
+              style={{
+                width: "100%",
+                maxWidth: "680px",
+                backgroundColor: "#ffffff",
+                borderRadius: "var(--ots-radius-lg)",
+                boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flowbite-drawer-header" style={{ padding: "1.25rem 1.75rem" }}>
+                <div>
+                  <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--ots-primary)", letterSpacing: "0.08em", textTransform: "uppercase" }}>
+                    CUENTAS CORRIENTES
+                  </span>
+                  <h3 style={{ fontSize: "18px", fontWeight: 700, color: "var(--ots-text-primary)", margin: "2px 0 0 0" }}>
+                    Registrar Ajuste Contable
+                  </h3>
+                </div>
                 <button
                   onClick={() => setIsModalOpen(false)}
                   style={{
@@ -357,67 +353,68 @@ export default function AccountsPage() {
                     border: "none",
                     fontSize: "18px",
                     cursor: "pointer",
-                    color: "var(--text-secondary)",
+                    color: "var(--ots-text-muted)",
                     padding: "6px 10px",
-                    borderRadius: "var(--radius-lg)",
+                    borderRadius: "var(--ots-radius-md)",
                     transition: "background-color 0.15s",
                   }}
-                  onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "var(--hover-bg)")}
+                  onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "var(--ots-surface-2)")}
                   onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
                 >
                   ✕
                 </button>
               </div>
 
-              <div className="flowbite-drawer-body">
+              <div className="flowbite-drawer-body" style={{ padding: "1.75rem" }}>
                 <form onSubmit={handleSave}>
-                  <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
                     {/* Contact Property */}
-                    <div className="flowbite-form-group">
-                      <label className="flowbite-form-label">Contacto *</label>
+                    <div className="flowbite-form-group" style={{ marginBottom: 0 }}>
+                      <label className="flowbite-form-label">Contacto / Entidad *</label>
                       <LiquidSelect
                         value={formData.contactId}
                         onChange={(val) => setFormData({ ...formData, contactId: val })}
-                        placeholder="Seleccione Contacto..."
+                        placeholder="Seleccione un cliente o proveedor..."
                         required
                         options={contacts.map((c) => ({
                           value: c.id,
                           label: c.name,
+                          sublabel: c.isClient && c.isProvider ? "Cliente / Proveedor" : c.isClient ? "Cliente" : c.isProvider ? "Proveedor" : undefined,
                         }))}
                       />
                     </div>
 
                     {/* Currency and Type in Grid */}
-                    <div className="flowbite-grid-2" style={{ gap: "1.5rem" }}>
-                      <div className="flowbite-form-group">
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+                      <div className="flowbite-form-group" style={{ marginBottom: 0 }}>
                         <label className="flowbite-form-label">Moneda *</label>
                         <LiquidSelect
                           value={formData.currencyId}
                           onChange={(val) => setFormData({ ...formData, currencyId: val })}
-                          placeholder="Moneda..."
+                          placeholder="Seleccione moneda..."
                           required
                           options={currencies.map((c) => ({
                             value: c.id,
-                            label: c.code,
+                            label: `${c.code} (${c.name || c.symbol})`,
                           }))}
                         />
                       </div>
-                      <div className="flowbite-form-group">
-                        <label className="flowbite-form-label">⊙ Movimiento *</label>
+                      <div className="flowbite-form-group" style={{ marginBottom: 0 }}>
+                        <label className="flowbite-form-label">Tipo de Movimiento *</label>
                         <LiquidSelect
                           value={formData.type}
                           onChange={(val) => setFormData({ ...formData, type: val })}
                           options={[
-                            { value: "DEBIT", label: "Débito (+)" },
-                            { value: "CREDIT", label: "Crédito (-)" },
+                            { value: "DEBIT", label: "Débito (+) / Incrementa Saldo" },
+                            { value: "CREDIT", label: "Crédito (-) / Reduce Saldo" },
                           ]}
                         />
                       </div>
                     </div>
 
                     {/* Amount Property */}
-                    <div className="flowbite-form-group">
-                      <label className="flowbite-form-label">Monto *</label>
+                    <div className="flowbite-form-group" style={{ marginBottom: 0 }}>
+                      <label className="flowbite-form-label">Monto a Ajustar *</label>
                       <input
                         required
                         type="number"
@@ -426,17 +423,17 @@ export default function AccountsPage() {
                         onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
                         className="flowbite-input"
                         placeholder="0.00"
-                        style={{ width: "100%" }}
+                        style={{ width: "100%", fontSize: "15px" }}
                       />
                     </div>
 
                     {/* Concept Property */}
-                    <div className="flowbite-form-group">
-                      <label className="flowbite-form-label">Concepto *</label>
+                    <div className="flowbite-form-group" style={{ marginBottom: 0 }}>
+                      <label className="flowbite-form-label">Concepto del Movimiento *</label>
                       <input
                         required
                         type="text"
-                        placeholder="Ej: Ajuste de saldo, Pago a cuenta..."
+                        placeholder="Ej: Ajuste de saldo manual, Pago a cuenta, Saldo inicial..."
                         value={formData.concept}
                         onChange={(e) => setFormData({ ...formData, concept: e.target.value })}
                         className="flowbite-input"
@@ -445,15 +442,15 @@ export default function AccountsPage() {
                     </div>
 
                     {/* Observations Property */}
-                    <div className="flowbite-form-group">
-                      <label className="flowbite-form-label">Observaciones</label>
+                    <div className="flowbite-form-group" style={{ marginBottom: 0 }}>
+                      <label className="flowbite-form-label">Observaciones o Notas Adicionales</label>
                       <textarea
                         rows={3}
                         value={formData.observations}
                         onChange={(e) => setFormData({ ...formData, observations: e.target.value })}
                         className="flowbite-input"
-                        placeholder="Notas contables..."
-                        style={{ fontFamily: "inherit", resize: "vertical", width: "100%" }}
+                        placeholder="Detalles complementarios de la transacción..."
+                        style={{ fontFamily: "inherit", resize: "vertical", width: "100%", minHeight: "80px" }}
                       />
                     </div>
                   </div>
@@ -462,16 +459,25 @@ export default function AccountsPage() {
                     style={{
                       display: "flex",
                       justifyContent: "flex-end",
-                      gap: "10px",
-                      marginTop: "2.5rem",
+                      gap: "12px",
+                      marginTop: "2rem",
                       paddingTop: "1.25rem",
-                      borderTop: "1px solid var(--border-color)",
+                      borderTop: "1px solid var(--ots-border)",
                     }}
                   >
-                    <button type="button" className="flowbite-btn flowbite-btn-text" onClick={() => setIsModalOpen(false)}>
+                    <button
+                      type="button"
+                      className="flowbite-btn flowbite-btn-text"
+                      onClick={() => setIsModalOpen(false)}
+                      style={{ padding: "9px 18px" }}
+                    >
                       Cancelar
                     </button>
-                    <button type="submit" className="flowbite-btn flowbite-btn-primary">
+                    <button
+                      type="submit"
+                      className="flowbite-btn flowbite-btn-primary"
+                      style={{ padding: "9px 22px" }}
+                    >
                       Registrar Movimiento
                     </button>
                   </div>

@@ -9,7 +9,7 @@
 @import "../styles/liquid-glass.css";
 
 :root, .dark, .light {
-  color-scheme: dark;
+  color-scheme: light;
 
   /* --- LiquidGlass & OTS Shared Mappings --- */
   --bg-color: var(--ots-bg-canvas);
@@ -20,6 +20,7 @@
   --text-primary: var(--ots-text-primary);
   --text-secondary: var(--ots-text-secondary);
   --text-light: var(--ots-text-muted);
+  --color-ash: var(--ots-text-secondary);
 
   --border-color: var(--ots-border);
   --border-color-medium: var(--ots-border-hover);
@@ -28,36 +29,37 @@
   /* Vivid Accents */
   --primary-color: var(--ots-primary);
   --primary-hover: var(--ots-primary-hover);
-  --hover-bg: rgba(255, 255, 255, 0.04);
+  --hover-bg: rgba(0, 0, 0, 0.03);
   --selected-bg: var(--ots-primary-muted);
 
-  /* --- Liquid Glass Badge Colors (Frosted Tint Pills) --- */
-  --badge-green-bg: rgba(52, 211, 153, 0.16);
-  --badge-green-text: #34d399;
-  --badge-green-border: rgba(52, 211, 153, 0.35);
+  /* --- Liquid Glass Badge Colors (Light Theme Pills) --- */
+  --badge-green-bg: #d1fae5;
+  --badge-green-text: #047857;
+  --badge-green-border: #a7f3d0;
 
-  --badge-yellow-bg: rgba(251, 191, 36, 0.16);
-  --badge-yellow-text: #fbbf24;
-  --badge-yellow-border: rgba(251, 191, 36, 0.35);
+  --badge-yellow-bg: #fef3c7;
+  --badge-yellow-text: #b45309;
+  --badge-yellow-border: #fde68a;
 
-  --badge-red-bg: rgba(248, 113, 113, 0.16);
-  --badge-red-text: #f87171;
-  --badge-red-border: rgba(248, 113, 113, 0.35);
+  --badge-red-bg: #fee2e2;
+  --badge-red-text: #b91c1c;
+  --badge-red-border: #fca5a5;
 
-  --badge-blue-bg: rgba(103, 152, 255, 0.16);
-  --badge-blue-text: #70a1ff;
-  --badge-blue-border: rgba(103, 152, 255, 0.35);
+  --badge-blue-bg: #dbeafe;
+  --badge-blue-text: #1d4ed8;
+  --badge-blue-border: #bfdbfe;
 
-  --badge-purple-bg: rgba(192, 132, 252, 0.16);
-  --badge-purple-text: #c084fc;
-  --badge-purple-border: rgba(192, 132, 252, 0.35);
+  --badge-purple-bg: #f3e8ff;
+  --badge-purple-text: #6b21a8;
+  --badge-purple-border: #e9d5ff;
 
-  --badge-indigo-bg: rgba(129, 140, 248, 0.16);
-  --badge-indigo-text: #9bb0ff;
-  --badge-indigo-border: rgba(129, 140, 248, 0.35);
+  --badge-indigo-bg: #e0e7ff;
+  --badge-indigo-text: #3730a3;
+  --badge-indigo-border: #c7d2fe;
 
-  --badge-gray-bg: rgba(255, 255, 255, 0.1);
-  --badge-gray-text: rgba(255, 255, 255, 0.85);
+  --badge-gray-bg: #f1f5f9;
+  --badge-gray-text: #334155;
+  --badge-gray-border: #cbd5e1;
   --badge-gray-border: rgba(255, 255, 255, 0.2);
 
   /* --- Geometry --- */
@@ -98,21 +100,18 @@ ul, ol {
 }
 
 body {
-  font-family: var(--font-manrope), -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: var(--ots-font-sans);
   color: var(--text-primary);
   min-height: 100vh;
-  /* Deep, luminous ambient mesh backdrop for Liquid Glass refraction */
-  background-color: #04060d;
+  /* Neo-Fintech Minimal Slate Canvas */
+  background-color: var(--ots-bg-canvas);
   background-image:
-    radial-gradient(55% 65% at 16% 16%, rgba(56, 82, 195, 0.12) 0%, transparent 65%),
-    radial-gradient(60% 70% at 84% 18%, rgba(20, 169, 209, 0.10) 0%, transparent 65%),
-    radial-gradient(45% 55% at 76% 82%, rgba(56, 82, 195, 0.08) 0%, transparent 65%),
-    radial-gradient(50% 60% at 20% 85%, rgba(106, 92, 255, 0.06) 0%, transparent 65%),
-    linear-gradient(180deg, #070913 0%, #030408 100%);
+    radial-gradient(40% 40% at 20% 10%, rgba(99, 102, 241, 0.07) 0%, transparent 80%),
+    radial-gradient(50% 50% at 80% 90%, rgba(59, 130, 246, 0.05) 0%, transparent 80%);
   background-attachment: fixed;
   background-size: 100% 100%;
   line-height: 1.55;
-  font-size: 20px;
+  font-size: 14px;
   font-weight: 400;
   -webkit-font-smoothing: antialiased;
 }
@@ -162,46 +161,45 @@ code, kbd, samp, pre, .font-mono {
 .content-area {
   flex: 1;
   padding: 1.5rem 1rem;
-  max-width: 1220px;
+  max-width: 100%;
   width: 100%;
   margin: 0 auto;
 }
 @media (min-width: 768px) {
   .content-area {
-    padding: 2.5rem 2rem;
+    padding: 2.5rem 3rem;
   }
 }
 
-/* Headings with Specular Gradient & Refined Weight */
+/* Headings with Crisp Dark Slate Typography */
 h1, .flowbite-title, h1.flowbite-title {
-  font-family: var(--font-manrope), sans-serif;
-  font-size: 30px !important;
-  font-weight: 600 !important;
+  font-family: var(--ots-font-sans);
+  font-size: 28px !important;
+  font-weight: 700 !important;
   letter-spacing: -0.025em;
-  color: #ffffff;
-  background: linear-gradient(180deg, #ffffff 40%, rgba(255, 255, 255, 0.78) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--ots-text-primary) !important;
+  -webkit-text-fill-color: initial !important;
+  background: none !important;
   margin-bottom: 0.45rem;
   line-height: 1.25;
 }
 
 h2, .flowbite-section-title, h2.flowbite-section-title {
-  font-family: var(--font-manrope), sans-serif;
-  font-size: 20px !important;
-  font-weight: 600 !important;
+  font-family: var(--ots-font-sans);
+  font-size: 19px !important;
+  font-weight: 700 !important;
   letter-spacing: -0.015em;
-  color: #ffffff;
+  color: var(--ots-text-primary) !important;
   margin-bottom: 1.15rem;
   line-height: 1.35;
 }
 
 h3, .flowbite-subtitle, .flowbite-section-subtitle, .section-subtitle, h4 {
-  font-family: var(--font-manrope), sans-serif;
-  font-size: 16px !important;
-  font-weight: 500 !important;
+  font-family: var(--ots-font-sans);
+  font-size: 15.5px !important;
+  font-weight: 600 !important;
   letter-spacing: -0.01em;
-  color: #ffffff;
+  color: var(--ots-text-primary) !important;
   line-height: 1.45;
 }
 
@@ -209,16 +207,17 @@ h3, .flowbite-subtitle, .flowbite-section-subtitle, .section-subtitle, h4 {
 .flowbite-title + p,
 .page-subtitle,
 .flowbite-page-desc {
-  font-size: 15.5px !important;
+  font-size: 14.5px !important;
   font-weight: 400 !important;
-  color: var(--text-secondary) !important;
+  color: var(--ots-text-secondary) !important;
   line-height: 1.55;
   margin-top: 0.25rem;
 }
 
 p, li {
-  font-size: 20px;
+  font-size: 14px;
   font-weight: 400;
+  color: var(--ots-text-primary);
   line-height: 1.55;
 }
 
@@ -229,9 +228,9 @@ small,
 .flowbite-secondary-text,
 .flowbite-card-subtitle,
 .flowbite-hint {
-  font-size: 14px !important;
+  font-size: 13.5px !important;
   font-weight: 400 !important;
-  color: var(--text-secondary) !important;
+  color: var(--ots-text-secondary) !important;
   line-height: 1.5;
 }
 
@@ -240,81 +239,57 @@ small,
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 5px 14px;
+  padding: 4px 12px;
   border-radius: 999px;
-  font-size: 12.5px !important;
-  font-weight: 500 !important;
-  letter-spacing: 0.5px;
+  font-size: 11.5px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  -webkit-backdrop-filter: blur(14px) saturate(140%);
-  backdrop-filter: blur(14px) saturate(140%);
-  color: #ffffff;
-  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.35), 0 2px 6px rgba(0, 0, 0, 0.15);
+  background: var(--badge-indigo-bg);
+  border: 1px solid var(--badge-indigo-border);
+  color: var(--badge-indigo-text) !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
   margin-bottom: 8px;
 }
 
-/* Financial & Metric Values (KPIs, Stat cards) */
 .flowbite-metric-value,
 .stat-metric-value,
 .metric-value {
-  font-family: var(--font-manrope), var(--font-jetbrains-mono), sans-serif;
+  font-family: var(--ots-font-mono);
   font-size: 32px !important;
-  font-weight: 600 !important;
-  color: #ffffff !important;
+  font-weight: 700 !important;
+  color: var(--ots-text-primary) !important;
   letter-spacing: -0.02em;
   line-height: 1.15;
 }
 
 /* ==========================================================================
-   LIQUID GLASS CARDS & SURFACES
+   NEO-FINTECH CARDS & SURFACES
    ========================================================================== */
 
 .flowbite-card {
-  background: linear-gradient(
-    155deg,
-    rgba(255, 255, 255, 0.055) 0%,
-    rgba(255, 255, 255, 0.025) 55%,
-    rgba(255, 255, 255, 0.01) 100%
-  );
-  -webkit-backdrop-filter: blur(28px) saturate(155%) brightness(105%);
-  backdrop-filter: blur(28px) saturate(155%) brightness(105%);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: var(--radius-cards);
+  background: var(--ots-surface-1);
+  border: 1px solid var(--ots-border);
+  border-radius: var(--ots-radius-lg);
   padding: 1.5rem;
-  box-shadow:
-    0 1px 3px rgba(0, 0, 0, 0.1),
-    0 12px 30px rgba(0, 0, 0, 0.2),
-    inset 0 1px 1px rgba(255, 255, 255, 0.32),
-    inset 0 -1px 1px rgba(0, 0, 0, 0.16);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
   margin-bottom: 1.5rem;
-  transition: transform var(--lg-duration) var(--lg-ease),
-              box-shadow var(--lg-duration) var(--lg-ease),
-              border-color var(--lg-duration) var(--lg-ease);
+  transition: border-color 150ms ease;
 }
 .flowbite-card:hover {
-  border-color: rgba(255, 255, 255, 0.3);
+  border-color: var(--ots-border-hover);
 }
 
 /* ==========================================================================
-   LIQUID GLASS TABLES
+   NEO-FINTECH TABLES
    ========================================================================== */
 
 .flowbite-table-wrapper {
   overflow-x: auto;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: var(--radius-cards);
-  background: linear-gradient(
-    155deg,
-    rgba(255, 255, 255, 0.045) 0%,
-    rgba(255, 255, 255, 0.015) 100%
-  );
-  -webkit-backdrop-filter: blur(28px) saturate(150%);
-  backdrop-filter: blur(28px) saturate(150%);
-  box-shadow:
-    0 8px 24px rgba(0, 0, 0, 0.18),
-    inset 0 1px 1px rgba(255, 255, 255, 0.28);
+  border: 1px solid var(--ots-border);
+  border-radius: var(--ots-radius-lg);
+  background: var(--ots-surface-1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
   margin-bottom: 1.5rem;
 }
 
@@ -322,33 +297,34 @@ small,
   width: 100%;
   border-collapse: collapse;
   text-align: left;
-  font-size: 14.5px !important;
+  font-size: 14px !important;
   line-height: 1.5;
 }
 
 .flowbite-table th {
-  background: rgba(255, 255, 255, 0.05);
-  color: rgba(255, 255, 255, 0.72);
-  font-family: var(--font-manrope), sans-serif;
+  background: var(--ots-surface-2);
+  color: var(--ots-text-muted);
+  font-family: var(--ots-font-sans);
   font-weight: 600 !important;
-  font-size: 12.5px !important;
+  font-size: 11.5px !important;
   text-transform: uppercase;
-  letter-spacing: 0.65px;
-  padding: 14px 18px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+  letter-spacing: 0.05em;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--ots-border);
 }
 
 .flowbite-table td {
-  padding: 16px 18px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
-  color: #ffffff;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--ots-border);
+  color: var(--ots-text-primary);
   vertical-align: middle;
-  font-size: 14.5px !important;
+  font-size: 14px !important;
   font-weight: 400;
 }
 
 .flowbite-table td strong {
-  font-weight: 500 !important;
+  font-weight: 600 !important;
+  color: var(--ots-text-primary);
 }
 
 .flowbite-table tr:last-child td {
@@ -356,49 +332,51 @@ small,
 }
 
 .flowbite-table tr:hover {
-  background: rgba(255, 255, 255, 0.045);
+  background: var(--ots-surface-2);
 }
 
 /* Liquefy UI Table System */
 .lq-table-container {
   width: 100%;
   margin-bottom: 1.5rem;
-  border-radius: var(--radius-cards);
+  border-radius: var(--ots-radius-lg);
+  border: 1px solid var(--ots-border);
+  background: var(--ots-surface-1);
 }
 
 .lq-table {
   width: 100%;
-  font-family: var(--font-manrope), sans-serif;
-  font-size: 14.5px;
+  font-family: var(--ots-font-sans);
+  font-size: 14px;
 }
 
 .lq-table__header-cell {
-  background: rgba(255, 255, 255, 0.04);
-  color: rgba(255, 255, 255, 0.75);
-  font-family: var(--font-manrope), sans-serif;
+  background: var(--ots-surface-2);
+  color: var(--ots-text-muted);
+  font-family: var(--ots-font-sans);
   font-weight: 600;
-  font-size: 12.5px;
+  font-size: 11.5px;
   text-transform: uppercase;
-  letter-spacing: 0.65px;
-  padding: 14px 18px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+  letter-spacing: 0.05em;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--ots-border);
 }
 
 .lq-table__cell {
-  padding: 16px 18px;
-  font-family: var(--font-manrope), sans-serif;
-  font-size: 14.5px;
-  color: #ffffff;
+  padding: 14px 18px;
+  font-family: var(--ots-font-sans);
+  font-size: 14px;
+  color: var(--ots-text-primary);
   vertical-align: middle;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  border-bottom: 1px solid var(--ots-border);
 }
 
 .lq-table[data-hover='true'] .lq-table__body .lq-table__row {
-  transition: background 180ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition: background 150ms ease;
 }
 
 .lq-table[data-hover='true'] .lq-table__body .lq-table__row:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--ots-surface-2);
 }
 
 /* Liquefy UI GlassCard System */
@@ -415,21 +393,15 @@ small,
 .flowbite-table-header {
   position: relative;
   z-index: 30;
-  background: linear-gradient(
-    155deg,
-    rgba(255, 255, 255, 0.08) 0%,
-    rgba(255, 255, 255, 0.04) 100%
-  );
-  -webkit-backdrop-filter: blur(18px) saturate(135%);
-  backdrop-filter: blur(18px) saturate(135%);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: var(--radius-cards);
-  padding: 1.15rem 1.4rem;
+  background: var(--ots-surface-1);
+  border: 1px solid var(--ots-border);
+  border-radius: var(--ots-radius-lg);
+  padding: 1rem 1.25rem;
   margin-bottom: 1rem;
   display: flex;
   flex-direction: column;
   gap: 12px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18), inset 0 1px 1px rgba(255, 255, 255, 0.28);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
 }
 @media (min-width: 768px) {
   .flowbite-table-header:not(.flowbite-table-header-stacked) {
@@ -456,7 +428,7 @@ small,
 .flowbite-filter-panel {
   width: 100%;
   padding-top: 14px;
-  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  border-top: 1px solid var(--ots-border);
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -475,13 +447,14 @@ small,
 }
 
 input[type="date"] {
-  color-scheme: dark;
-  font-size: 14.5px !important;
+  color-scheme: light;
+  font-size: 14px !important;
+  color: var(--ots-text-primary);
 }
 input[type="date"]::-webkit-calendar-picker-indicator {
   cursor: pointer;
-  filter: invert(0.8) brightness(1.2);
-  opacity: 0.85;
+  filter: none;
+  opacity: 0.7;
   transition: opacity 0.2s;
 }
 input[type="date"]::-webkit-calendar-picker-indicator:hover {
@@ -498,37 +471,37 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
   }
 }
 
-.flowbite-search-input {
+.flowbite-search-input,
+input[type="search"].flowbite-search-input {
   width: 100%;
-  padding: 10px 16px 10px 44px;
+  padding: 9px 16px 9px 42px !important;
   min-height: 42px;
-  font-size: 15px !important;
+  font-size: 14px !important;
   font-weight: 400 !important;
-  border-radius: var(--radius-pill);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: rgba(255, 255, 255, 0.05);
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
-  color: #ffffff;
+  border-radius: var(--ots-radius-pill);
+  border: 1px solid var(--ots-border);
+  background: var(--ots-surface-1);
+  color: var(--ots-text-primary);
   outline: none;
-  transition: all var(--lg-duration-fast) var(--lg-ease);
-  font-family: var(--font-manrope), sans-serif;
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.2);
+  transition: all 150ms ease;
+  font-family: var(--ots-font-sans);
 }
-.flowbite-search-input:focus {
-  background: rgba(255, 255, 255, 0.09);
-  border-color: rgba(103, 152, 255, 0.8);
-  box-shadow: 0 0 0 3px rgba(103, 152, 255, 0.25), inset 0 1px 2px rgba(0, 0, 0, 0.2);
+.flowbite-search-input:focus,
+input[type="search"].flowbite-search-input:focus {
+  background: #ffffff;
+  border-color: var(--ots-primary);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
 }
 .flowbite-search-icon {
   position: absolute;
-  left: 15px;
+  left: 14px;
   top: 50%;
   transform: translateY(-50%);
-  color: rgba(255, 255, 255, 0.6);
-  width: 17px;
-  height: 17px;
+  color: var(--ots-text-muted);
+  width: 18px;
+  height: 18px;
   pointer-events: none;
+  z-index: 2;
 }
 
 .flowbite-actions-bar {
@@ -546,7 +519,7 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
 }
 
 /* ==========================================================================
-   LIQUID GLASS BUTTONS (Pill controls with specular top sheen & lift)
+   BUTTONS
    ========================================================================== */
 
 .flowbite-btn {
@@ -554,57 +527,53 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
   align-items: center;
   justify-content: center;
   gap: 7px;
-  padding: 9px 20px;
-  min-height: 42px;
-  border-radius: var(--radius-buttons);
-  font-size: 14.5px !important;
-  font-weight: 500 !important;
+  padding: 8px 18px;
+  min-height: 40px;
+  border-radius: var(--ots-radius-pill);
+  font-size: 13.5px !important;
+  font-weight: 600 !important;
   cursor: pointer;
-  transition: transform var(--lg-duration) var(--lg-ease),
-              box-shadow var(--lg-duration) var(--lg-ease),
-              background var(--lg-duration) var(--lg-ease),
-              border-color var(--lg-duration) var(--lg-ease);
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  background: rgba(255, 255, 255, 0.08);
-  -webkit-backdrop-filter: blur(14px) saturate(135%);
-  backdrop-filter: blur(14px) saturate(135%);
-  color: #ffffff;
+  transition: all 150ms ease;
+  border: 1px solid var(--ots-border);
+  background: var(--ots-surface-1);
+  color: var(--ots-text-primary);
   outline: none;
   user-select: none;
-  font-family: var(--font-manrope), sans-serif;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15), inset 0 1px 1px rgba(255, 255, 255, 0.35);
+  font-family: var(--ots-font-sans);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 .flowbite-btn:hover {
-  transform: translateY(-2px);
-  background: rgba(255, 255, 255, 0.14);
-  border-color: rgba(255, 255, 255, 0.4);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25), inset 0 1px 1px rgba(255, 255, 255, 0.45);
-  color: #ffffff;
+  background: var(--ots-surface-2);
+  border-color: var(--ots-border-hover);
+  color: var(--ots-text-primary);
 }
 .flowbite-btn:active {
-  transform: translateY(0);
+  transform: translateY(1px);
 }
 
-/* Primary Button: Luminous Specular Liquid Glass */
+/* Primary Button */
 .flowbite-btn-primary {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(240, 244, 255, 0.85) 100%);
-  color: #0b0e1b !important;
-  border: 1px solid rgba(255, 255, 255, 0.95);
-  font-weight: 500 !important;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2), 0 0 20px rgba(255, 255, 255, 0.25), inset 0 1px 1px #fff;
+  background: var(--ots-primary);
+  color: #ffffff !important;
+  border: 1px solid var(--ots-primary);
+  font-weight: 600 !important;
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.25);
 }
 .flowbite-btn-primary:hover {
-  background: #ffffff;
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3), 0 0 28px rgba(255, 255, 255, 0.45), inset 0 1px 1px #fff;
-  color: #0b0e1b !important;
+  background: var(--ots-primary-hover);
+  border-color: var(--ots-primary-hover);
+  color: #ffffff !important;
 }
 
 .flowbite-btn-text {
   background: transparent;
   border-color: transparent;
   box-shadow: none;
-  color: rgba(255, 255, 255, 0.75);
+  color: var(--ots-text-secondary);
+}
+.flowbite-btn-text:hover {
+  background: var(--ots-surface-2);
+  color: var(--ots-text-primary);
 }
 .flowbite-btn-text:hover {
   background: rgba(255, 255, 255, 0.08);
@@ -627,7 +596,7 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
 }
 
 /* ==========================================================================
-   INPUTS & FORMS
+   INPUTS & FORMS (Neo-Fintech Light Minimal)
    ========================================================================== */
 
 .flowbite-input,
@@ -636,7 +605,6 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
 .liquid-select-trigger,
 input[type="text"],
 input[type="number"],
-input[type="search"],
 input[type="password"],
 input[type="email"],
 select.flowbite-input,
@@ -644,26 +612,24 @@ select {
   width: 100%;
   padding: 10px 16px;
   min-height: 42px;
-  font-size: 15px !important;
+  font-size: 14.5px !important;
   font-weight: 400 !important;
-  border-radius: var(--radius-inputs);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: rgba(255, 255, 255, 0.05);
-  -webkit-backdrop-filter: blur(14px);
-  backdrop-filter: blur(14px);
-  color: #ffffff;
+  border-radius: var(--ots-radius-md);
+  border: 1px solid var(--ots-border);
+  background: var(--ots-surface-1);
+  color: var(--ots-text-primary);
   outline: none;
-  transition: all var(--lg-duration-fast) var(--lg-ease);
-  font-family: var(--font-manrope), sans-serif;
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.2);
+  transition: all 150ms ease;
+  font-family: var(--ots-font-sans);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
 }
 .flowbite-input:focus,
 .flowbite-form-input:focus,
 .flowbite-form-select:focus,
 select:focus {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(103, 152, 255, 0.8);
-  box-shadow: 0 0 0 3px rgba(103, 152, 255, 0.25), inset 0 1px 2px rgba(0, 0, 0, 0.2);
+  background: #ffffff;
+  border-color: var(--ots-primary);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
 }
 
 .flowbite-form-group {
@@ -672,8 +638,8 @@ select:focus {
 .flowbite-form-label {
   display: block;
   font-size: 13px !important;
-  font-weight: 500 !important;
-  color: rgba(255, 255, 255, 0.8);
+  font-weight: 600 !important;
+  color: var(--ots-text-primary);
   margin-bottom: 0.5rem;
   letter-spacing: -0.01em;
 }
@@ -690,11 +656,9 @@ select:focus {
   font-size: 12.5px !important;
   font-weight: 500 !important;
   line-height: 1.3;
-  font-family: var(--font-manrope), var(--font-jetbrains-mono), sans-serif;
+  font-family: var(--ots-font-sans);
   letter-spacing: 0.2px;
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
-  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.25), 0 1px 3px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 .flowbite-badge-green  { background: var(--badge-green-bg); color: var(--badge-green-text); border: 1px solid var(--badge-green-border); }
 .flowbite-badge-yellow { background: var(--badge-yellow-bg); color: var(--badge-yellow-text); border: 1px solid var(--badge-yellow-border); }
@@ -710,41 +674,39 @@ select:focus {
 
 .flowbite-alert {
   padding: 1.15rem 1.4rem;
-  border-radius: var(--radius-cards);
+  border-radius: var(--ots-radius-lg);
   font-size: 14.5px !important;
   display: flex;
   gap: 12px;
   margin-bottom: 1.5rem;
   align-items: flex-start;
   line-height: 1.5;
-  -webkit-backdrop-filter: blur(18px) saturate(135%);
-  backdrop-filter: blur(18px) saturate(135%);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15), inset 0 1px 1px rgba(255, 255, 255, 0.28);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
 }
 .flowbite-alert-info {
-  background: rgba(103, 152, 255, 0.1);
-  color: rgba(255, 255, 255, 0.85);
-  border: 1px solid rgba(103, 152, 255, 0.3);
+  background: var(--badge-indigo-bg);
+  color: var(--badge-indigo-text);
+  border: 1px solid var(--badge-indigo-border);
 }
 .flowbite-alert-info strong {
-  color: #ffffff;
+  color: var(--ots-text-primary);
 }
 .flowbite-alert-warning {
-  background: rgba(251, 191, 36, 0.12);
-  color: #fef08a;
-  border: 1px solid rgba(251, 191, 36, 0.35);
+  background: var(--badge-yellow-bg);
+  color: var(--badge-yellow-text);
+  border: 1px solid var(--badge-yellow-border);
 }
 
 /* ==========================================================================
-   FLOATING LIQUID GLASS MODAL WINDOWS (Centered)
+   FLOATING MODAL WINDOWS (Neo-Fintech Minimal)
    ========================================================================== */
 
 .flowbite-drawer-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(2, 4, 12, 0.48);
-  -webkit-backdrop-filter: blur(14px);
-  backdrop-filter: blur(14px);
+  background: rgba(15, 23, 42, 0.45);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
   z-index: 99999;
   display: flex;
   align-items: center;
@@ -762,20 +724,10 @@ select:focus {
   width: 100%;
   max-width: 580px;
   max-height: calc(100vh - 3rem);
-  background: linear-gradient(
-    160deg,
-    rgba(18, 24, 52, 0.52) 0%,
-    rgba(8, 12, 28, 0.62) 100%
-  );
-  -webkit-backdrop-filter: blur(40px) saturate(170%) brightness(108%);
-  backdrop-filter: blur(40px) saturate(170%) brightness(108%);
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  border-radius: 22px;
-  box-shadow:
-    0 28px 72px rgba(0, 0, 0, 0.55),
-    0 0 45px rgba(103, 152, 255, 0.18),
-    inset 0 1px 1px rgba(255, 255, 255, 0.45),
-    inset 0 -1px 1px rgba(0, 0, 0, 0.2);
+  background: #ffffff;
+  border: 1px solid var(--ots-border);
+  border-radius: var(--ots-radius-lg);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -786,7 +738,7 @@ select:focus {
 @keyframes modalScaleIn {
   from {
     opacity: 0;
-    transform: scale(0.94) translateY(12px);
+    transform: scale(0.96) translateY(8px);
   }
   to {
     opacity: 1;
@@ -795,48 +747,49 @@ select:focus {
 }
 
 .flowbite-drawer-header {
-  min-height: 68px;
-  padding: 1.25rem 1.75rem;
+  min-height: 64px;
+  padding: 1.25rem 1.5rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.035);
+  border-bottom: 1px solid var(--ots-border);
+  background: var(--ots-surface-2);
   flex-shrink: 0;
 }
 .flowbite-drawer-header h3,
 .flowbite-drawer-header .flowbite-modal-title,
 .flowbite-modal-title {
-  font-family: var(--font-manrope), sans-serif;
-  font-size: 20px !important;
-  font-weight: 600 !important;
+  font-family: var(--ots-font-sans);
+  font-size: 18px !important;
+  font-weight: 700 !important;
   letter-spacing: -0.015em;
   margin: 0;
-  color: #ffffff;
+  color: var(--ots-text-primary) !important;
 }
 .flowbite-drawer-body {
   flex: 1;
   overflow-y: auto;
-  padding: 1.75rem;
+  padding: 1.5rem;
   max-height: calc(100vh - 12rem);
-  font-size: 15px;
+  font-size: 14.5px;
+  color: var(--ots-text-primary);
 }
 
 /* Dropdown native styling & animations */
 select.flowbite-input, select {
   cursor: pointer;
-  font-size: 15px !important;
+  font-size: 14.5px !important;
 }
 select.flowbite-input option, select option {
-  background-color: #0b0f24 !important;
-  color: #f1f5f9 !important;
-  padding: 12px 16px !important;
-  font-size: 14.5px !important;
-  font-family: var(--font-manrope), sans-serif;
+  background-color: #ffffff !important;
+  color: var(--ots-text-primary) !important;
+  padding: 10px 14px !important;
+  font-size: 14px !important;
+  font-family: var(--ots-font-sans);
 }
 select.flowbite-input option:checked, select option:checked {
-  background-color: #1e2850 !important;
-  color: #ffffff !important;
+  background-color: var(--ots-surface-2) !important;
+  color: var(--ots-primary) !important;
 }
 
 @keyframes selectMenuIn {
@@ -1080,12 +1033,10 @@ select.flowbite-input option:checked, select option:checked {
   top: 100%;
   left: 50%;
   transform: translateX(-50%);
-  background: rgba(15, 19, 36, 0.88);
-  -webkit-backdrop-filter: blur(28px) saturate(140%);
-  backdrop-filter: blur(28px) saturate(140%);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: var(--radius-md);
-  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.35);
+  background: var(--ots-surface-1);
+  border: 1px solid var(--ots-border);
+  border-radius: var(--ots-radius-md);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
   min-width: 200px;
   padding: 6px;
   z-index: 100;
@@ -1108,21 +1059,21 @@ select.flowbite-input option:checked, select option:checked {
   align-items: center;
   gap: 8px;
   padding: 10px 16px;
-  color: rgba(255, 255, 255, 0.78);
+  color: var(--ots-text-secondary);
   text-decoration: none;
-  border-radius: var(--radius-sm);
+  border-radius: var(--ots-radius-sm);
   font-size: 14px !important;
-  font-weight: 400 !important;
-  transition: all var(--lg-duration-fast) var(--lg-ease);
+  font-weight: 500 !important;
+  transition: all 150ms ease;
 }
 .flowbite-nav-dropdown-item:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: #ffffff;
+  background: var(--ots-surface-2);
+  color: var(--ots-text-primary);
 }
 .flowbite-nav-dropdown-item.active {
-  background: rgba(103, 152, 255, 0.18);
-  color: var(--primary-color);
-  font-weight: 500 !important;
+  background: var(--ots-primary-muted);
+  color: var(--ots-primary);
+  font-weight: 600 !important;
 }
 
 /* Animations */
@@ -1344,6 +1295,42 @@ img {
   .flowbite-desktop-nav {
     display: none !important;
   }
+}
+
+/* ==========================================================================
+   SIDEBAR NAVIGATION ITEMS
+   ========================================================================== */
+.sidebar-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: var(--ots-radius-md);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ots-text-secondary);
+  background-color: transparent;
+  text-decoration: none;
+  transition: all 150ms ease;
+}
+
+.sidebar-nav-item:hover {
+  background-color: var(--ots-surface-2);
+  color: var(--ots-text-primary);
+}
+
+.sidebar-nav-item:hover .sidebar-icon {
+  color: var(--ots-text-primary) !important;
+}
+
+.sidebar-nav-item.active {
+  background-color: var(--ots-primary-muted);
+  color: var(--ots-primary);
+  font-weight: 600;
+}
+
+.sidebar-nav-item.active .sidebar-icon {
+  color: var(--ots-primary) !important;
 }
 
 /* Touch-friendly target sizes on mobile */

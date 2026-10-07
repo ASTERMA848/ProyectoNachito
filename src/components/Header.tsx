@@ -67,7 +67,27 @@ export default function Header({ user }: { user?: { username: string; role: stri
   });
 
   return (
-    <header className="flowbite-header">
+    <header
+      style={{
+        position: "sticky",
+        top: "12px",
+        zIndex: 50,
+        margin: "0 auto",
+        width: "calc(100% - 32px)",
+        maxWidth: "1400px",
+        height: "64px",
+        backgroundColor: "rgba(17, 24, 39, 0.85)",
+        backdropFilter: "blur(16px)",
+        WebkitBackdropFilter: "blur(16px)",
+        border: "1px solid var(--ots-border)",
+        borderRadius: "var(--ots-radius-lg)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        padding: "0 20px",
+        boxShadow: "0 10px 30px rgba(0, 0, 0, 0.35)",
+      }}
+    >
       {/* Left section: Workspace Logo */}
       <div className="flowbite-header-left">
         <Link
@@ -75,36 +95,48 @@ export default function Header({ user }: { user?: { username: string; role: stri
           style={{
             display: "flex",
             alignItems: "center",
-            gap: "8px",
+            gap: "10px",
             textDecoration: "none",
-            color: "var(--text-primary)",
-            fontWeight: 600,
-            fontSize: "20px",
+            color: "var(--ots-text-primary)",
+            fontWeight: 700,
+            fontSize: "19px",
             letterSpacing: "-0.025em",
           }}
         >
           {/* SVG Bank Icon */}
-          <svg
-            className="w-6 h-6"
-            style={{ width: "22px", height: "22px", color: "var(--primary-color)" }}
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.5"
-            viewBox="0 0 24 24"
-            xmlns="http://www.w3.org/2000/svg"
+          <div
+            style={{
+              width: "32px",
+              height: "32px",
+              borderRadius: "8px",
+              backgroundColor: "rgba(99, 102, 241, 0.15)",
+              border: "1px solid rgba(99, 102, 241, 0.3)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
-            />
-          </svg>
+            <svg
+              style={{ width: "18px", height: "18px", color: "var(--ots-primary)" }}
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+              />
+            </svg>
+          </div>
           <span>Agencia</span>
         </Link>
       </div>
 
-      {/* Center section: Institutional OTS Navigation Tabs */}
-      <div className="flowbite-desktop-nav" style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+      {/* Center section: Institutional Neo-Fintech Navigation Tabs */}
+      <div className="flowbite-desktop-nav" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
         {allowedNavItems.map((item) => {
           const isActive = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
           return (
@@ -115,19 +147,19 @@ export default function Header({ user }: { user?: { username: string; role: stri
                 display: "inline-flex",
                 alignItems: "center",
                 gap: "8px",
-                padding: "6px 14px",
-                height: "36px",
+                padding: "8px 16px",
+                height: "38px",
                 borderRadius: "var(--ots-radius-md)",
                 fontSize: "13.5px",
                 fontWeight: isActive ? 600 : 500,
-                color: isActive ? "var(--ots-text-primary)" : "var(--ots-text-secondary)",
-                backgroundColor: isActive ? "var(--ots-surface-2)" : "transparent",
-                borderBottom: isActive ? "2px solid var(--ots-primary)" : "2px solid transparent",
+                color: isActive ? "#ffffff" : "var(--ots-text-secondary)",
+                backgroundColor: isActive ? "var(--ots-primary)" : "transparent",
                 textDecoration: "none",
-                transition: "all 150ms cubic-bezier(0.16, 1, 0.3, 1)",
+                transition: "all 150ms ease-in-out",
+                boxShadow: isActive ? "0 4px 12px rgba(99, 102, 241, 0.35)" : "none",
               }}
             >
-              <span style={{ display: "inline-flex", opacity: isActive ? 1 : 0.7 }}>
+              <span style={{ display: "inline-flex", opacity: isActive ? 1 : 0.75 }}>
                 {item.icon}
               </span>
               <span>{item.label}</span>
