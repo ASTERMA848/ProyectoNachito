@@ -3,6 +3,8 @@ import prisma from "@/lib/prisma";
 import { requireAuth } from "@/lib/session";
 import { verifyPassword } from "@/lib/auth-utils";
 import { logAudit } from "@/lib/audit";
+import { Prisma, Operation } from "@prisma/client";
+import { reverseSaleLedger } from "@/lib/distributed-sale";
 
 const VALID_STATES = ["PENDING", "PROCESSING", "COMPLETED", "CANCELED"];
 
@@ -125,6 +127,88 @@ export async function PUT(
   }
 }
 
+class PatchError extends Error {
+  constructor(message: string, public status: number) {
+    super(message);
+  }
+}
+
+// Qué impacto contable corresponde a cada combinación de estado y pago.
+// Una operación solo mueve cuentas corrientes al completarse, y tesorería si además está pagada.
+function ledgerLevel(state: string, isPaid: boolean) {
+  if (state !== "COMPLETED") return "NONE";
+  return isPaid ? "PAID" : "COMMERCIAL";
+}
+
+async function applyOperationLedger(tx: Prisma.TransactionClient, op: Operation, withPayment: boolean) {
+  const { id, clientId, providerId, originCurrencyId, destCurrencyId, originAmount, destAmount, operationNumber } = op;
+
+  // Incremento atómico: el saldo resultante sale de la base, no de una lectura previa.
+  const applyTransaction = async (contactId: string, currencyId: string, amount: number, concept: string) => {
+    const account = await tx.account.upsert({
+      where: { contactId_currencyId: { contactId, currencyId } },
+      create: { contactId, currencyId, balance: amount },
+      update: { balance: { increment: amount } },
+    });
+    await tx.transaction.create({
+      data: {
+        accountId: account.id,
+        concept: concept.substring(0, 500),
+        credit: amount > 0 ? amount : 0,
+        debit: amount < 0 ? Math.abs(amount) : 0,
+        balance: account.balance,
+        operationId: id,
+      },
+    });
+  };
+
+  const applyTreasuryAndSettle = async (contactId: string, currencyId: string, amount: number, conceptSettlement: string, conceptTreasury: string) => {
+    await applyTransaction(contactId, currencyId, -amount, conceptSettlement);
+
+    let tAccount = await tx.treasuryAccount.findFirst({ where: { currencyId, type: "CASH" } });
+    if (!tAccount) {
+      const curr = await tx.currency.findUnique({ where: { id: currencyId } });
+      tAccount = await tx.treasuryAccount.create({
+        data: { name: `Caja Principal ${curr?.code}`, type: "CASH", currencyId, balance: 0 },
+      });
+    }
+    await tx.treasuryAccount.update({
+      where: { id: tAccount.id },
+      data: { balance: { increment: amount } },
+    });
+    await tx.treasuryMovement.create({
+      data: {
+        treasuryAccountId: tAccount.id,
+        operationId: id,
+        type: amount > 0 ? "INCOME" : "EXPENSE",
+        amount: Math.abs(amount),
+        concept: conceptTreasury,
+      },
+    });
+  };
+
+  // 1. Deuda Comercial
+  if (clientId) {
+    await applyTransaction(clientId, originCurrencyId, originAmount, `Operación ${operationNumber} - Entrega Origen`);
+    await applyTransaction(clientId, destCurrencyId, -destAmount, `Operación ${operationNumber} - Recepción Destino`);
+  }
+  if (providerId) {
+    await applyTransaction(providerId, originCurrencyId, -originAmount, `Operación ${operationNumber} - Recepción Origen`);
+    await applyTransaction(providerId, destCurrencyId, destAmount, `Operación ${operationNumber} - Entrega Destino`);
+  }
+
+  // 2. Liquidación y Tesorería
+  if (!withPayment) return;
+  if (clientId) {
+    await applyTreasuryAndSettle(clientId, originCurrencyId, originAmount, `Cobro/Pago Op. ${operationNumber} - Origen`, `Ingreso por Op. ${operationNumber} (Cliente)`);
+    await applyTreasuryAndSettle(clientId, destCurrencyId, -destAmount, `Cobro/Pago Op. ${operationNumber} - Destino`, `Egreso por Op. ${operationNumber} (Cliente)`);
+  }
+  if (providerId) {
+    await applyTreasuryAndSettle(providerId, originCurrencyId, -originAmount, `Cobro/Pago Op. ${operationNumber} - Origen`, `Egreso por Op. ${operationNumber} (Proveedor)`);
+    await applyTreasuryAndSettle(providerId, destCurrencyId, destAmount, `Cobro/Pago Op. ${operationNumber} - Destino`, `Ingreso por Op. ${operationNumber} (Proveedor)`);
+  }
+}
+
 export async function PATCH(
   req: NextRequest,
   { params }: { params: { id: string } }
@@ -141,18 +225,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Datos inválidos" }, { status: 400 });
     }
 
-    const { state, isPaid, adminPassword } = body;
-
-    const oldOperation = await prisma.operation.findFirst({
-      where: { id: operationId, deletedAt: null },
-    });
-
-    if (!oldOperation) {
-      return NextResponse.json({ error: "Operación no encontrada" }, { status: 404 });
-    }
-    if (oldOperation.type.startsWith("DISTRIBUTED_SALE") || oldOperation.type === "SINGLE_SALE") {
-      return NextResponse.json({ error: "Actualizá los cobros y el pago al proveedor desde Editar venta distribuida" }, { status: 400 });
-    }
+    const { state, isPaid } = body;
 
     // Validar estado si se envió
     if (state && !VALID_STATES.includes(state)) {
@@ -161,135 +234,61 @@ export async function PATCH(
         { status: 400 }
       );
     }
-
-    if (oldOperation.state === "COMPLETED" && state && state !== "COMPLETED" && user.role !== "ADMIN") {
-      return NextResponse.json(
-        { error: "Solo el administrador puede modificar operaciones completadas" },
-        { status: 403 }
-      );
+    if (isPaid !== undefined && typeof isPaid !== "boolean") {
+      return NextResponse.json({ error: "Valor de pago inválido" }, { status: 400 });
     }
 
-    const updatedOperation = await prisma.operation.update({
-      where: { id: operationId },
-      data: { 
-        ...(state ? { state } : {}),
-        ...(typeof isPaid === "boolean" ? { isPaid } : {})
-      },
-      include: {
-        client: true,
-        provider: true,
-        originCurrency: true,
-        destCurrency: true,
-      },
-    });
-
-    const isStateChangingToCompleted = state === "COMPLETED" && oldOperation.state !== "COMPLETED";
-    const isPayingNow = isPaid === true && oldOperation.isPaid === false;
-    const { clientId, providerId, originCurrencyId, destCurrencyId, originAmount, destAmount, operationNumber } = updatedOperation;
-
-    const applyTransaction = async (
-      contactId: string,
-      currencyId: string,
-      amount: number,
-      concept: string
-    ) => {
-      let account = await prisma.account.findUnique({
-        where: { contactId_currencyId: { contactId, currencyId } },
+    // Todo en una transacción: o se aplica el cambio completo o no se aplica nada.
+    const { oldOperation, updatedOperation } = await prisma.$transaction(async (tx) => {
+      // Bloquear la fila serializa pedidos concurrentes (doble clic, dos pestañas):
+      // el segundo espera y lee el estado ya actualizado, así no se contabiliza dos veces.
+      await tx.$queryRaw`SELECT id FROM "Operation" WHERE id = ${operationId} FOR UPDATE`;
+      const oldOperation = await tx.operation.findFirst({
+        where: { id: operationId, deletedAt: null },
       });
-      if (!account) {
-        account = await prisma.account.create({
-          data: { contactId, currencyId, balance: 0 },
+
+      if (!oldOperation) {
+        throw new PatchError("Operación no encontrada", 404);
+      }
+      if (oldOperation.type.startsWith("DISTRIBUTED_SALE") || oldOperation.type === "SINGLE_SALE") {
+        throw new PatchError("Actualizá los cobros y el pago al proveedor desde Editar venta distribuida", 400);
+      }
+      if (oldOperation.state === "COMPLETED" && state && state !== "COMPLETED" && user.role !== "ADMIN") {
+        throw new PatchError("Solo el administrador puede modificar operaciones completadas", 403);
+      }
+
+      const newState: string = state || oldOperation.state;
+      const newIsPaid: boolean = typeof isPaid === "boolean" ? isPaid : oldOperation.isPaid;
+
+      const updatedOperation = await tx.operation.update({
+        where: { id: operationId },
+        data: { state: newState, isPaid: newIsPaid },
+        include: {
+          client: true,
+          provider: true,
+          originCurrency: true,
+          destCurrency: true,
+        },
+      });
+
+      if (newState !== oldOperation.state) {
+        await tx.operationStateHistory.create({
+          data: { operationId, oldState: oldOperation.state, newState, changedBy: user.id },
         });
       }
-      const isCredit = amount > 0;
-      const newBalance = account.balance + amount;
-      await prisma.$transaction([
-        prisma.account.update({
-          where: { id: account.id },
-          data: { balance: newBalance },
-        }),
-        prisma.transaction.create({
-          data: {
-            accountId: account.id,
-            concept: concept.substring(0, 500),
-            credit: isCredit ? amount : 0,
-            debit: !isCredit ? Math.abs(amount) : 0,
-            balance: newBalance,
-            operationId: updatedOperation.id,
-          },
-        }),
-      ]);
-    };
 
-    if (isStateChangingToCompleted || isPayingNow) {
-      // 1. Deuda Comercial
-      if (isStateChangingToCompleted) {
-        if (clientId) {
-          await applyTransaction(clientId, originCurrencyId, originAmount, `Operación ${operationNumber} - Entrega Origen`);
-          await applyTransaction(clientId, destCurrencyId, -destAmount, `Operación ${operationNumber} - Recepción Destino`);
-        }
-        if (providerId) {
-          await applyTransaction(providerId, originCurrencyId, -originAmount, `Operación ${operationNumber} - Recepción Origen`);
-          await applyTransaction(providerId, destCurrencyId, destAmount, `Operación ${operationNumber} - Entrega Destino`);
+      // Si cambia el impacto contable, se revierte lo registrado para esta operación
+      // y se vuelve a aplicar según el estado final. Reabrir una operación completada
+      // deja sus saldos como antes de completarla.
+      if (ledgerLevel(oldOperation.state, oldOperation.isPaid) !== ledgerLevel(newState, newIsPaid)) {
+        await reverseSaleLedger(tx, [operationId]);
+        if (newState === "COMPLETED") {
+          await applyOperationLedger(tx, updatedOperation, newIsPaid);
         }
       }
 
-      // 2. Liquidación y Tesorería
-      // Si se acaba de pagar, o si se pasa a completado y YA estaba marcada como pagada (y no se había procesado el pago porque no estaba completada)
-      const shouldProcessPayment = isPayingNow || (isStateChangingToCompleted && updatedOperation.isPaid);
-
-      if (shouldProcessPayment) {
-        const applyTreasuryAndSettle = async (
-          contactId: string | null,
-          currencyId: string,
-          amount: number,
-          conceptSettlement: string,
-          conceptTreasury: string
-        ) => {
-          if (contactId) {
-            await applyTransaction(contactId, currencyId, -amount, conceptSettlement);
-          }
-
-          let tAccount = await prisma.treasuryAccount.findFirst({
-            where: { currencyId, type: "CASH" }
-          });
-          if (!tAccount) {
-            const curr = await prisma.currency.findUnique({ where: { id: currencyId } });
-            tAccount = await prisma.treasuryAccount.create({
-              data: { name: `Caja Principal ${curr?.code}`, type: "CASH", currencyId, balance: 0 }
-            });
-          }
-
-          const type = amount > 0 ? "INCOME" : "EXPENSE";
-          const absAmount = Math.abs(amount);
-
-          await prisma.$transaction([
-            prisma.treasuryAccount.update({
-              where: { id: tAccount.id },
-              data: { balance: { increment: amount } }
-            }),
-            prisma.treasuryMovement.create({
-              data: {
-                treasuryAccountId: tAccount.id,
-                operationId: updatedOperation.id,
-                type,
-                amount: absAmount,
-                concept: conceptTreasury
-              }
-            })
-          ]);
-        };
-
-        if (clientId) {
-          await applyTreasuryAndSettle(clientId, originCurrencyId, originAmount, `Cobro/Pago Op. ${operationNumber} - Origen`, `Ingreso por Op. ${operationNumber} (Cliente)`);
-          await applyTreasuryAndSettle(clientId, destCurrencyId, -destAmount, `Cobro/Pago Op. ${operationNumber} - Destino`, `Egreso por Op. ${operationNumber} (Cliente)`);
-        }
-        if (providerId) {
-          await applyTreasuryAndSettle(providerId, originCurrencyId, -originAmount, `Cobro/Pago Op. ${operationNumber} - Origen`, `Egreso por Op. ${operationNumber} (Proveedor)`);
-          await applyTreasuryAndSettle(providerId, destCurrencyId, destAmount, `Cobro/Pago Op. ${operationNumber} - Destino`, `Ingreso por Op. ${operationNumber} (Proveedor)`);
-        }
-      }
-    }
+      return { oldOperation, updatedOperation };
+    }, { maxWait: 10000, timeout: 20000 });
 
     await logAudit({
       userId: user.id,
@@ -302,6 +301,9 @@ export async function PATCH(
 
     return NextResponse.json(updatedOperation, { status: 200 });
   } catch (error: any) {
+    if (error instanceof PatchError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     console.error("Operation PATCH error:", error);
     return NextResponse.json({ error: "Error en el servidor" }, { status: 400 });
   }
