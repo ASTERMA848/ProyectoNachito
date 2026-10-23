@@ -889,7 +889,7 @@ export default function SettingsPage() {
                       <LiquidTableCell align="right">
                         <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end", alignItems: "center" }}>
                           <Link
-                            href={`/audit?userId=${user.id}`}
+                            href={`/audit?filter=user:${user.id}`}
                             className="flowbite-btn flowbite-btn-secondary"
                             style={{ padding: "4px 8px", fontSize: "12px", display: "inline-flex", alignItems: "center", textDecoration: "none", height: "auto" }}
                           >
@@ -971,7 +971,7 @@ export default function SettingsPage() {
                   onClick={(e) => e.stopPropagation()}
                 >
                   <Link
-                    href={`/audit?userId=${user.id}`}
+                    href={`/audit?filter=user:${user.id}`}
                     className="flowbite-btn flowbite-btn-secondary"
                     style={{ padding: "6px 12px", fontSize: "12px", display: "inline-flex", alignItems: "center", textDecoration: "none", height: "auto" }}
                   >

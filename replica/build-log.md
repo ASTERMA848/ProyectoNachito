@@ -11,13 +11,13 @@ Rama `feat/interfaz-azul`. Nada subido al remoto.
 | S06, S08 | Contactos: tarjetas, lista, ficha | 2026-10-23 | hecho | Pestaña de contactos hijos, auditoría de cambios de etiquetas, archivar en lote con permiso por fila | El PUT viejo borra las etiquetas si no recibe `tagIds`: la ficha siempre las manda |
 | S03, S04 (cuentas) | Cuentas corrientes: saldos y estado de cuenta | 2026-10-23 | hecho | Agrupar por contacto con subtotales por moneda | El saldo guardado en cada movimiento queda viejo cuando se edita una venta y sus asientos se vuelven a cargar: el saldo corrido ahora se calcula desde el saldo actual |
 | S13 | Tablero de tesorería y movimientos por caja | 2026-10-23 | hecho | Filtros y búsqueda en los movimientos de una caja | La serie del gráfico se arma hacia atrás desde el saldo actual para que siempre cierre; los traspasos dejaban la caja de origen en negativo y ahora controlan el saldo como las extracciones |
-| S14 | Auditoría | — | pendiente | todo | — |
+| S14 | Auditoría | 2026-10-23 | hecho | Agrupar por día; bloqueo de borrado de registros auditados (función aparte) | Los `createdAt` son instantes reales: los filtros de fecha necesitaron rangos en la hora de la agencia, distintos de los de `operationDate`; las etiquetas de acciones tuvieron que salir a un módulo propio para no llevar Prisma al navegador |
 | S15, S16, S17 | Ajustes, usuarios y monedas | — | pendiente | todo | — |
 | S01, S02 | Inicio de sesión e inicio | — | pendiente | todo | — |
 
 ## Notas
 
-- Solo las rutas de `NEW_UI_PATHS` (`src/components/shell/apps.ts`) usan la interfaz nueva: operaciones, contactos, cuentas corrientes y tesorería. El resto sigue con la anterior hasta migrarse.
+- Solo las rutas de `NEW_UI_PATHS` (`src/components/shell/apps.ts`) usan la interfaz nueva: operaciones, contactos, cuentas corrientes, tesorería y auditoría. El resto sigue con la anterior hasta migrarse.
 - Capturas para replica-diff: pendientes. El recon se hizo solo con fuentes públicas y no hay capturas de referencia en `replica/screens/`, así que no hay contra qué comparar todavía.
 - `replica/schema.sql` no se aplicó: ninguna pantalla hecha hasta ahora necesitó cambiar el esquema.
 - Arreglo transversal en esta tanda: las migas ya no se aplastan en formularios sin buscador (`ControlPanel` sin columna de búsqueda).

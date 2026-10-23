@@ -1,0 +1,135 @@
+.page {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.listArea {
+  flex: 1;
+  min-width: 0;
+  background: var(--ui-surface);
+}
+
+.nowrap {
+  white-space: nowrap;
+}
+
+.summary {
+  display: -webkit-box;
+  max-width: 60ch;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.selection {
+  font-size: var(--ui-fs-sm);
+  color: var(--ui-text-muted);
+  white-space: nowrap;
+}
+
+.alert {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ui-space-12);
+  padding: var(--ui-space-8) var(--ui-space-16);
+  border-bottom: 1px solid var(--ui-border);
+  background: var(--ui-danger-bg);
+  color: var(--ui-danger-text);
+}
+
+.detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ui-space-16);
+  min-width: 0;
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+  gap: var(--ui-space-8) var(--ui-space-16);
+  margin: 0;
+}
+
+.facts dt {
+  font-size: var(--ui-fs-sm);
+  color: var(--ui-text-muted);
+}
+
+.facts dd {
+  margin: 0;
+  color: var(--ui-text-strong);
+  overflow-wrap: anywhere;
+}
+
+.changes {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--ui-fs-md);
+}
+
+.changes th,
+.changes td {
+  padding: var(--ui-space-6) var(--ui-space-8);
+  border-bottom: 1px solid var(--ui-border);
+  text-align: start;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+.changes thead th {
+  font-weight: var(--ui-fw-semibold);
+  color: var(--ui-text-muted);
+}
+
+.changes tbody th {
+  font-weight: var(--ui-fw-medium);
+  color: var(--ui-text-strong);
+}
+
+.blockTitle {
+  margin-bottom: var(--ui-space-4);
+  font-size: var(--ui-fs-sm);
+  font-weight: var(--ui-fw-semibold);
+  color: var(--ui-text-muted);
+}
+
+.code {
+  max-height: 16rem;
+  margin: 0;
+  padding: var(--ui-space-8);
+  overflow: auto;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-bg);
+  font-family: var(--ui-font-mono);
+  font-size: var(--ui-fs-sm);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.raw summary {
+  cursor: pointer;
+  color: var(--ui-action);
+}
+
+.rawGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+  gap: var(--ui-space-12);
+  margin-top: var(--ui-space-8);
+}
+
+.link {
+  color: var(--ui-action);
+  text-decoration: underline;
+}
+
+.mono {
+  font-family: var(--ui-font-mono);
+  font-size: var(--ui-fs-sm);
+}

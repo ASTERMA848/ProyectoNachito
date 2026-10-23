@@ -80,3 +80,32 @@ export function dayLabel(key: string, now = new Date()) {
   const [year, month, day] = key.split("-").map(Number);
   return new Intl.DateTimeFormat("es-AR", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }).format(utcMidnight(year, month, day));
 }
+
+// Diferencia en minutos entre la hora local de la agencia y UTC en un instante.
+function agencyOffsetMinutes(at: Date) {
+  const parts = new Intl.DateTimeFormat("en-US", { timeZone: AGENCY_TIME_ZONE, hourCycle: "h23", year: "numeric", month: "numeric", day: "numeric", hour: "numeric", minute: "numeric" })
+    .formatToParts(at)
+    .reduce<Record<string, number>>((acc, part) => (part.type === "literal" ? acc : { ...acc, [part.type]: Number(part.value) }), {});
+  return (Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute) - Math.floor(at.getTime() / 60_000) * 60_000) / 60_000;
+}
+
+// Instante en que empieza un día local de la agencia (para filtrar createdAt, que son instantes reales).
+export function agencyDayStart({ year, month, day }: DateParts) {
+  const guess = new Date(Date.UTC(year, month - 1, day));
+  return new Date(guess.getTime() - agencyOffsetMinutes(guess) * 60_000);
+}
+
+export type InstantPreset = "today" | "last_7" | "this_month";
+
+// Rangos de instantes para "hoy", "últimos 7 días" y "este mes" en la hora de la agencia.
+export function instantRange(preset: InstantPreset, at = new Date()) {
+  const { year, month, day } = agencyToday(at);
+  switch (preset) {
+    case "today":
+      return { gte: agencyDayStart({ year, month, day }), lt: agencyDayStart({ year, month, day: day + 1 }) };
+    case "last_7":
+      return { gte: agencyDayStart({ year, month, day: day - 6 }), lt: agencyDayStart({ year, month, day: day + 1 }) };
+    case "this_month":
+      return { gte: agencyDayStart({ year, month, day: 1 }), lt: agencyDayStart({ year, month: month + 1, day: 1 }) };
+  }
+}

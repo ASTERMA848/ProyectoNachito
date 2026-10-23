@@ -40,6 +40,11 @@ const NOUNS: Record<string, { article: string; noun: string }> = {
   TreasuryAccount: { article: "la", noun: "caja" },
   User: { article: "el", noun: "usuario" },
   Currency: { article: "la", noun: "moneda" },
+  Tag: { article: "la", noun: "etiqueta" },
+  Transaction: { article: "el", noun: "movimiento de cuenta" },
+  TreasuryMovement: { article: "el", noun: "movimiento de caja" },
+  TreasuryTransfer: { article: "el", noun: "traspaso entre cajas" },
+  Settings: { article: "la", noun: "configuración" },
 };
 const nounOf = (entity: string | null) => NOUNS[entity ?? ""] ?? { article: "el", noun: "registro" };
 
@@ -74,8 +79,14 @@ export function describeAuditLog(log: LogWithUser, detailed: boolean): HistoryEn
   const { article, noun } = nounOf(log.entity);
   const reference = typeof after?.operationNumber === "string" ? ` ${after.operationNumber}` : typeof after?.name === "string" ? ` ${after.name}` : "";
 
+  if (log.action === "LOGIN") return { ...base, kind: "event", text: "Inició sesión." };
+  if (log.action === "SQL_QUERY") {
+    const blocked = log.query?.startsWith("[BLOQUEADO]");
+    return { ...base, kind: "event", text: blocked ? "Intentó una consulta SQL que se bloqueó." : "Ejecutó una consulta en la consola SQL." };
+  }
+
   if (log.action === "CREATE") {
-    const amount = after?.totalAmount ?? after?.originAmount;
+    const amount = after?.totalAmount ?? after?.originAmount ?? after?.amount;
     const suffix = detailed && typeof amount === "number" ? ` por ${formatMoney(amount)}` : "";
     return { ...base, kind: "event", text: `Registró ${article} ${noun}${reference}${suffix}.` };
   }

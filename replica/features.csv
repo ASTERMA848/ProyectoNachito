@@ -67,7 +67,7 @@ Pantalla de ajustes con secciones y bloques de opciones,ajustes,must,yes,no,Conf
 Buscador de ajustes,ajustes,could,yes,no,A confirmar con capturas
 "Usuarios en lista y formulario con rol, archivar y cambiar contraseña",ajustes,must,yes,no,"Roles ADMIN, AUDITOR y OPERATOR"
 Monedas en lista con interruptor de activa,ajustes,must,yes,no,Gestión de monedas
-"Registro de auditoría con fecha, usuario, tipo de cambio y valores anterior y nuevo",auditoría,must,yes,no,Logs de Auditoría
+"Registro de auditoría con fecha, usuario, tipo de cambio y valores anterior y nuevo",auditoría,must,yes,yes,"Logs de Auditoría; Lista con filtros por fecha, acción, registro y usuario, agrupación y detalle de antes y después"
 Bloqueo de borrado de registros auditados,auditoría,should,yes,no,Patrón Audit Trail restrictivo (solo cancelar o archivar); hoy se puede eliminar una operación
 "Notificaciones emergentes de éxito, aviso y error",general,must,yes,yes,Hoy FeedbackProvider; posición a confirmar
 Diálogos con pie de botones,general,must,yes,yes,Odoo 20 rediseñó los diálogos
