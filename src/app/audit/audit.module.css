@@ -93,9 +93,9 @@
 
 .blockTitle {
   margin-bottom: var(--ui-space-4);
-  font-size: var(--ui-fs-sm);
-  font-weight: var(--ui-fw-semibold);
-  color: var(--ui-text-muted);
+  --ui-heading-size: var(--ui-fs-sm);
+  --ui-heading-weight: var(--ui-fw-semibold);
+  --ui-heading-color: var(--ui-text-muted);
 }
 
 .code {

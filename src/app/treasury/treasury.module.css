@@ -28,9 +28,9 @@
 }
 
 .sectionTitle {
-  font-size: var(--ui-fs-lg);
-  font-weight: var(--ui-fw-semibold);
-  color: var(--ui-text-strong);
+  --ui-heading-size: var(--ui-fs-lg);
+  --ui-heading-weight: var(--ui-fw-semibold);
+  --ui-heading-color: var(--ui-text-strong);
 }
 
 .tableBox {

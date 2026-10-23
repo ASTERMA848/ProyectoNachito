@@ -127,7 +127,7 @@ export default function AccountDetail({ id }: { id: string }) {
         </FormGroups>
 
         <div className={styles.movementsHeader}>
-          <h2 className={styles.strong}>Movimientos</h2>
+          <h2 className={styles.sectionTitle}>Movimientos</h2>
           {movements.data && <Pager offset={offset} limit={PAGE_SIZE} total={movements.data.total} onChange={setOffset} />}
         </div>
         <div className={styles.movements}>

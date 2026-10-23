@@ -30,7 +30,10 @@ export function middleware(request: NextRequest) {
               { status: 401 }
             );
           }
-          return NextResponse.redirect(new URL("/login", request.url));
+          // Después de iniciar sesión se vuelve a la pantalla pedida (la página de login valida que sea interna).
+          const login = new URL("/login", request.url);
+          if (pathname !== "/" && pathname !== "/logout") login.searchParams.set("next", `${pathname}${request.nextUrl.search}`);
+          return NextResponse.redirect(login);
         }
         return NextResponse.next();
       })();

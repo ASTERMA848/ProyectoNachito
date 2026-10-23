@@ -2,6 +2,8 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { Spinner } from "@/components/ui";
+import styles from "./logout.module.css";
 
 export default function LogoutPage() {
   const router = useRouter();
@@ -13,7 +15,7 @@ export default function LogoutPage() {
       } catch (e) {
         console.error("Logout request failed:", e);
       } finally {
-        router.push("/login");
+        router.replace("/login");
         router.refresh();
       }
     };
@@ -21,19 +23,9 @@ export default function LogoutPage() {
   }, [router]);
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        backgroundColor: "var(--bg-color)",
-        color: "var(--text-secondary)",
-      }}
-    >
-      <div style={{ textAlign: "center" }}>
-        <p style={{ fontSize: "16px", fontWeight: 600 }}>Cerrando sesión...</p>
-      </div>
-    </div>
+    <main className={`ui-app ${styles.page}`} aria-busy="true">
+      <Spinner label="Cerrando sesión" size="lg" />
+      <p>Cerrando sesión...</p>
+    </main>
   );
 }

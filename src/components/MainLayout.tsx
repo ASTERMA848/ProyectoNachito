@@ -40,13 +40,15 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
           // Qué pantallas ve cada rol: matriz de permisos (src/components/shell/apps.ts).
           const role = data.user.role;
           if (!canVisit(role, pathname)) {
-            router.push(role === "AUDITOR" ? "/audit" : "/");
+            router.push("/");
             return;
           }
 
           setLoading(false);
         } else {
-          router.push("/login");
+          // Sesión vencida: después de entrar de nuevo se vuelve a esta pantalla.
+          const next = `${window.location.pathname}${window.location.search}`;
+          router.push(next === "/" ? "/login" : `/login?next=${encodeURIComponent(next)}`);
         }
       } catch (err) {
         console.error("Auth check failed:", err);
@@ -74,7 +76,8 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
     return <>{children}</>;
   }
 
-  if (loading) {
+  // Sin usuario todavía (por ejemplo, recién llegado desde /login, donde no se consulta la sesión) se espera.
+  if (loading || !user) {
     return (
       <div
         style={{

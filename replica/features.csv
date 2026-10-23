@@ -1,9 +1,9 @@
 feature,area,priority,original,clone,notes
-Barra superior con menú de apps y app activa,navegación,must,yes,yes,"Reemplaza Sidebar.tsx y Header.tsx; AppShell + TopBar en operaciones, contactos y cuentas"
+Barra superior con menú de apps y app activa,navegación,must,yes,yes,Reemplaza Sidebar.tsx y Header.tsx; AppShell + TopBar en todas las pantallas salvo consola SQL y manual
 Menús de sección de cada app en la barra superior,navegación,must,yes,yes,"Ej.: Operaciones > Todas, Ventas distribuidas"
 Migas de pan para volver al nivel anterior,navegación,must,yes,yes,
 Menú de usuario con perfil y cerrar sesión,navegación,must,yes,partial,Contenido exacto del menú a confirmar con capturas; Cambiar contraseña y cerrar sesión; falta perfil
-Pantalla de inicio con acceso a cada app,navegación,should,yes,no,Hoy el Dashboard muestra saldos por contacto
+Pantalla de inicio con acceso a cada app,navegación,should,yes,yes,Hoy el Dashboard muestra saldos por contacto; Accesos por rol y operaciones para atender
 Atajos de teclado con superposición al mantener Alt,navegación,should,yes,no,"Nuevo, guardar, descartar, página anterior y siguiente, volver"
 Paleta de comandos con Ctrl+K,navegación,could,yes,no,Prefijo / para menús y @ para usuarios
 Contador de actividades en la barra superior,navegación,could,yes,no,Depende de las actividades programadas
@@ -73,7 +73,7 @@ Bloqueo de borrado de registros auditados,auditoría,should,yes,no,Patrón Audit
 Diálogos con pie de botones,general,must,yes,yes,Odoo 20 rediseñó los diálogos
 Estados vacíos con ayuda y botón de crear,general,must,yes,yes,
 Indicador de carga,general,should,yes,yes,Esqueletos en tablas
-Inicio de sesión en tarjeta centrada,acceso,must,yes,no,
+Inicio de sesión en tarjeta centrada,acceso,must,yes,yes,Vuelve a la pantalla pedida después de entrar
 Llave de acceso (passkey) para iniciar sesión,acceso,could,yes,no,Mejora de seguridad opcional
 Diseño adaptable con kanban por defecto en móvil,móvil,must,yes,partial,Contactos abren en tarjetas; operaciones en lista
 Tema claro y oscuro,general,should,no,no,Ya existe en tu web; no verifiqué si Odoo lo tiene
