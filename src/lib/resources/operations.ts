@@ -2,12 +2,19 @@ import type { Prisma } from "@prisma/client";
 import prisma from "@/lib/prisma";
 import { dateOnlyRange, monthKey, monthLabel, monthRange, type DatePreset } from "@/lib/agency-time";
 import { combineFilters, ListError, type CurrencySum, type ListParams } from "@/lib/list-query";
-import { OPERATION_STATES, OPERATION_TYPES } from "@/lib/operation-labels";
+import { OPERATION_STATES, OPERATION_TYPES, TREASURY_TYPES } from "@/lib/operation-labels";
 
 type Where = Prisma.OperationWhereInput;
 
 const STATE_ORDER = Object.keys(OPERATION_STATES);
-const TYPE_PARAM: Record<string, string> = { single: "SINGLE_SALE", distributed: "DISTRIBUTED_SALE", standard: "STANDARD" };
+const TYPE_PARAM: Record<string, string> = {
+  single: "SINGLE_SALE",
+  distributed: "DISTRIBUTED_SALE",
+  standard: "STANDARD",
+  treasury_income: "TREASURY_INCOME",
+  treasury_expense: "TREASURY_EXPENSE",
+  treasury_transfer: "TREASURY_TRANSFER",
+};
 
 export const SORT_KEYS = ["number", "date", "created", "client", "provider", "origin", "dest", "state"] as const;
 export const GROUP_KEYS = ["state", "originCurrency", "client", "provider", "type", "month"] as const;
@@ -23,6 +30,8 @@ function resolveFilter(group: string, value: string): Where | null {
       return state in OPERATION_STATES ? { state } : null;
     }
     case "type":
+      // "treasury" junta los tres tipos que genera Tesorería.
+      if (value === "treasury") return { type: { in: TREASURY_TYPES } };
       return TYPE_PARAM[value] ? { type: TYPE_PARAM[value] } : null;
     case "date":
       return DATE_PRESETS.includes(value) ? { operationDate: dateOnlyRange(value as DatePreset) } : null;
@@ -49,14 +58,22 @@ function resolveFilter(group: string, value: string): Where | null {
   }
 }
 
-const termWhere = (term: string): Where => ({
+// Nombre o apellido del contacto: "Benítez" encuentra a Carlos Benítez.
+const contactMatch = (term: string): Prisma.ContactWhereInput => ({
+  OR: [{ name: { contains: term, mode: "insensitive" } }, { lastname: { contains: term, mode: "insensitive" } }],
+});
+
+const wordWhere = (word: string): Where => ({
   OR: [
-    { operationNumber: { contains: term, mode: "insensitive" } },
-    { client: { name: { contains: term, mode: "insensitive" } } },
-    { provider: { name: { contains: term, mode: "insensitive" } } },
-    { childOperations: { some: { deletedAt: null, client: { name: { contains: term, mode: "insensitive" } } } } },
+    { operationNumber: { contains: word, mode: "insensitive" } },
+    { client: contactMatch(word) },
+    { provider: contactMatch(word) },
+    { childOperations: { some: { deletedAt: null, client: contactMatch(word) } } },
   ],
 });
+
+// Cada palabra tiene que aparecer en algún campo: "Carlos Benítez" junta nombre y apellido.
+const termWhere = (term: string): Where => ({ AND: term.split(/\s+/).filter(Boolean).slice(0, 6).map(wordWhere) });
 
 export function operationsWhere(params: Pick<ListParams, "terms" | "filters">): Where {
   const and = combineFilters<Where>(params.filters, resolveFilter);
@@ -127,7 +144,7 @@ async function groupLabels(group: string, keys: (string | null)[], codes: Map<st
 
 const filterValue = (group: string, key: string | null) => {
   if (group === "state") return (key ?? "").toLowerCase();
-  if (group === "type") return Object.keys(TYPE_PARAM).find((param) => TYPE_PARAM[param] === key) ?? "standard";
+  if (group === "type") return Object.keys(TYPE_PARAM).find((param) => TYPE_PARAM[param] === key) ?? (key ?? "").toLowerCase();
   return key ?? "none";
 };
 

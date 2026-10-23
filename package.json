@@ -17,7 +17,8 @@
     "db:repair-provider-payments": "node scripts/migrate-provider-payments.cjs --repair",
     "test:operations": "node scripts/operations-performance.cjs",
     "test:treasury": "node scripts/treasury-movements.cjs",
-    "bench:operations": "node scripts/operations-performance.cjs --compare"
+    "bench:operations": "node scripts/operations-performance.cjs --compare",
+    "test:e2e": "playwright test"
   },
   "prisma": {
     "seed": "node prisma/seed.js"
@@ -40,6 +41,8 @@
     "swr": "^2.5.1"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.10.1",
+    "@playwright/test": "^1.48.2",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",

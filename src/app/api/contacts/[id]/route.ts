@@ -137,12 +137,17 @@ export async function PUT(
         observations: observations ? String(observations).trim().substring(0, 2000) : null,
         isClient: Boolean(isClient),
         isProvider: Boolean(isProvider),
-        tags: {
-          deleteMany: {},
-          create: sanitizedTagIds.map((tagId) => ({
-            tag: { connect: { id: tagId } },
-          })),
-        },
+        // Las etiquetas se reemplazan solo si vienen en el pedido: sin tagIds quedan como estaban.
+        ...(Array.isArray(tagIds)
+          ? {
+              tags: {
+                deleteMany: {},
+                create: sanitizedTagIds.map((tagId) => ({
+                  tag: { connect: { id: tagId } },
+                })),
+              },
+            }
+          : {}),
       },
     });
 

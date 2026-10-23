@@ -4,6 +4,7 @@ import { requireAuth } from "@/lib/session";
 import { verifyPassword } from "@/lib/auth-utils";
 import { logAudit } from "@/lib/audit";
 import { can } from "@/lib/permissions";
+import { isTreasury, TREASURY_LOCKED_MESSAGE } from "@/lib/operation-labels";
 import { Prisma, Operation } from "@prisma/client";
 import { reverseSaleLedger } from "@/lib/distributed-sale";
 
@@ -121,6 +122,9 @@ export async function PUT(
     }
     if (oldOperation.type.startsWith("DISTRIBUTED_SALE") || oldOperation.type === "SINGLE_SALE") {
       return NextResponse.json({ error: "Editá la venta distribuida desde su formulario para actualizar pagos y saldos juntos" }, { status: 400 });
+    }
+    if (isTreasury(oldOperation.type)) {
+      return NextResponse.json({ error: TREASURY_LOCKED_MESSAGE }, { status: 400 });
     }
 
     // Validar Bloqueo Contable
@@ -303,6 +307,10 @@ export async function PATCH(
       }
       if (oldOperation.type.startsWith("DISTRIBUTED_SALE") || oldOperation.type === "SINGLE_SALE") {
         throw new PatchError("Actualizá los cobros y el pago al proveedor desde Editar venta distribuida", 400);
+      }
+      // Reabrir revertiría sus movimientos de caja y completarla de nuevo no los vuelve a cargar.
+      if (isTreasury(oldOperation.type)) {
+        throw new PatchError(TREASURY_LOCKED_MESSAGE, 400);
       }
       if (oldOperation.state === "COMPLETED" && state && state !== "COMPLETED" && !can(user, "operations.reopen")) {
         throw new PatchError("Solo el administrador puede modificar operaciones completadas", 403);

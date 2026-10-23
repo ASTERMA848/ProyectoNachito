@@ -71,6 +71,7 @@ const FILTER_GROUPS: FilterGroup[] = [
       { id: "type:single", label: "Ventas 1 a 1" },
       { id: "type:distributed", label: "Ventas distribuidas" },
       { id: "type:standard", label: "Estándar" },
+      { id: "type:treasury", label: "Tesorería" },
     ],
   },
   {

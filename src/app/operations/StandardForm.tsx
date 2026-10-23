@@ -27,7 +27,7 @@ import { useUiFeedback } from "@/components/shell/UiFeedback";
 import { can } from "@/lib/permissions";
 import { formatAmount } from "@/lib/format-currency";
 import { parseLocaleNumber } from "@/lib/parse-number";
-import { OPERATION_STATES } from "@/lib/operation-labels";
+import { isTreasury, OPERATION_STATES, OPERATION_TYPES, TREASURY_LOCKED_MESSAGE } from "@/lib/operation-labels";
 import { AdminConfirmDialog } from "@/components/shell/AdminConfirmDialog";
 import { FormPage, Notice } from "@/components/shell/FormPage";
 import { contactLabel, decimalText, type ContactOption, type Currency, type OperationDetailResponse } from "./types";
@@ -81,7 +81,8 @@ export function StandardForm({ detail, contacts, currencies, history, onSaved }:
   const completed = op.state === "COMPLETED";
   const canWrite = can(user, "operations.write");
   const canReopen = can(user, "operations.reopen");
-  const editable = canWrite && (!completed || canReopen);
+  const treasury = isTreasury(op.type);
+  const editable = canWrite && !treasury && (!completed || canReopen);
   const set = (key: keyof Values, value: string) => setValues((current) => ({ ...current, [key]: value }));
 
   const steps = [
@@ -184,12 +185,20 @@ export function StandardForm({ detail, contacts, currencies, history, onSaved }:
       dirty={dirty}
       actions={can(user, "operations.delete") ? <Button variant="ghost" size="sm" icon={<Trash2 size={iconSize.sm} />} onClick={remove}>Eliminar</Button> : null}
       header={header}
-      notice={!canWrite ? <Notice>Tu rol puede consultar las operaciones pero no modificarlas.</Notice> : completed && !canReopen ? <Notice>Esta operación está completada. Solo un administrador puede modificarla.</Notice> : null}
+      notice={
+        treasury ? (
+          <Notice>{TREASURY_LOCKED_MESSAGE}</Notice>
+        ) : !canWrite ? (
+          <Notice>Tu rol puede consultar las operaciones pero no modificarlas.</Notice>
+        ) : completed && !canReopen ? (
+          <Notice>Esta operación está completada. Solo un administrador puede modificarla.</Notice>
+        ) : null
+      }
       aside={history}
     >
       <Sheet>
         <SheetTitle
-          eyebrow="Operación estándar"
+          eyebrow={treasury ? OPERATION_TYPES[op.type] : "Operación estándar"}
           aside={
             <SmartButtons>
               <SmartButton icon={<BookOpen size={iconSize.md} />} value={detail.counts.transactions} label="Movimientos de cuenta" href="/accounts" />

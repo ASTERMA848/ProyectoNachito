@@ -27,7 +27,7 @@ export function FormPage({ breadcrumbs, actions, dirty = false, header, notice, 
         }
         end={dirty ? <Badge tone="warning">Cambios sin guardar</Badge> : undefined}
       />
-      <div className={styles.layout}>
+      <div className={aside ? `${styles.layout} ${styles.withAside}` : styles.layout}>
         <div className={styles.main}>
           {header}
           {notice}

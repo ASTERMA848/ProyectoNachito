@@ -23,8 +23,9 @@
   background: var(--ui-surface);
 }
 
+/* La columna del historial se reserva solo si hay historial (un registro nuevo no lo tiene). */
 @media (min-width: 1400px) {
-  .layout {
+  .layout.withAside {
     grid-template-columns: minmax(0, 1fr) var(--ui-chatter-w);
   }
 

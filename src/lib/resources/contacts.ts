@@ -36,9 +36,12 @@ function resolveFilter(group: string, value: string): Where | null {
   }
 }
 
-const termWhere = (term: string): Where => ({
-  OR: ["name", "lastname", "document", "cuitCuil", "email", "phone"].map((field) => ({ [field]: { contains: term, mode: "insensitive" } })),
+const wordWhere = (word: string): Where => ({
+  OR: ["name", "lastname", "document", "cuitCuil", "email", "phone"].map((field) => ({ [field]: { contains: word, mode: "insensitive" } })),
 });
+
+// Cada palabra tiene que aparecer en algún campo: "Carlos Benítez" junta nombre y apellido.
+const termWhere = (term: string): Where => ({ AND: term.split(/\s+/).filter(Boolean).slice(0, 6).map(wordWhere) });
 
 export function contactsWhere(params: Pick<ListParams, "terms" | "filters">): Where {
   const and = combineFilters<Where>(params.filters, resolveFilter);
