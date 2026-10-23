@@ -2,25 +2,19 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireAuth } from "@/lib/session";
 import { recordManualTreasuryMovement, TreasuryError } from "@/lib/manual-treasury";
-import { ensureCurrencyTreasuryAccounts } from "@/lib/treasury-accounts";
+import { can } from "@/lib/permissions";
+import { MAX_SERIES_DAYS, treasuryDashboard } from "@/lib/resources/treasury";
 
 export const dynamic = "force-dynamic";
 
+// Tablero de tesorería: ?days=30 (máximo 90) para la serie de saldos de cada caja.
 export async function GET(req: NextRequest) {
   try {
     const user = await requireAuth();
     if (!user) return NextResponse.json({ error: "No autenticado" }, { status: 401 });
 
-    const [accounts, movements] = await Promise.all([prisma.$transaction(ensureCurrencyTreasuryAccounts), prisma.treasuryMovement.findMany({
-      take: 100,
-      orderBy: { date: "desc" },
-      include: {
-        account: { include: { currency: true } },
-        operation: { select: { operationNumber: true } }
-      }
-    })]);
-
-    return NextResponse.json({ accounts, movements, canManage: user.role === "ADMIN" || user.role === "OPERATOR" }, { status: 200 });
+    const days = Math.min(MAX_SERIES_DAYS, Math.max(2, Math.trunc(Number(req.nextUrl.searchParams.get("days")) || 30)));
+    return NextResponse.json(await treasuryDashboard(days), { status: 200 });
   } catch (error) {
     console.error("Treasury GET error:", error);
     return NextResponse.json({ error: "Error de servidor" }, { status: 500 });
@@ -31,7 +25,7 @@ export async function POST(req: NextRequest) {
   try {
     const user = await requireAuth();
     if (!user) return NextResponse.json({ error: "No autenticado" }, { status: 401 });
-    if (user.role !== "ADMIN" && user.role !== "OPERATOR")
+    if (!can(user, "treasury.write"))
       return NextResponse.json({ error: "No tenés permiso para registrar movimientos." }, { status: 403 });
     let body: unknown;
     try { body = await req.json(); }

@@ -59,9 +59,9 @@ Adjuntos en el registro,historial,should,yes,no,Hoy solo en operaciones
 Filtro del historial entre notas y cambios,historial,could,yes,no,Novedad de Odoo 20
 Fijar mensajes importantes en el historial,historial,could,yes,no,Novedad de Odoo 20
 Actividades programadas con vencimiento y colores,actividades,could,yes,no,"Verde planificada, naranja hoy, rojo vencida"
-Tablero con una tarjeta por caja y su saldo,tablero,must,yes,no,Tesorería
-Menú de la tarjeta con las acciones de la caja,tablero,must,yes,no,"Nuevo movimiento, transferencia, ver movimientos"
-Gráfico chico de evolución en la tarjeta,tablero,should,yes,no,Contenido exacto de la tarjeta de Odoo a confirmar
+Tablero con una tarjeta por caja y su saldo,tablero,must,yes,yes,Tesorería
+Menú de la tarjeta con las acciones de la caja,tablero,must,yes,yes,"Nuevo movimiento, transferencia, ver movimientos; Movimiento, traspaso y ver movimientos"
+Gráfico chico de evolución en la tarjeta,tablero,should,yes,yes,"Contenido exacto de la tarjeta de Odoo a confirmar; Saldo al cierre de cada día, últimos 30 días"
 Movimientos de cuenta agrupados por contacto y moneda con subtotales,cuentas,must,yes,partial,"El saldo acumulado ya existe en tu web; Saldos por contacto y moneda, agrupados por moneda o situación, con estado de cuenta"
 Pantalla de ajustes con secciones y bloques de opciones,ajustes,must,yes,no,Configuración general
 Buscador de ajustes,ajustes,could,yes,no,A confirmar con capturas

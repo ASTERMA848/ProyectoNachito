@@ -1,10 +1,97 @@
-.accounts { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr)); gap: 12px; margin-bottom: 28px; }
-.account { display: flex; flex-direction: column; justify-content: space-between; gap: 12px; padding: 16px; min-width: 0; background: var(--ots-surface-1); border: 1px solid var(--ots-border); border-radius: 14px; }
-.accountHeading { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
-.accountHeading > :last-child { flex-shrink: 0; }
-.accountName { font-size: 12px; font-weight: 700; color: var(--ots-text-secondary); overflow-wrap: anywhere; }
-.balance { font-family: var(--ots-font-mono); font-size: 21px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
-.accountActions { display: flex; flex-wrap: wrap; gap: 6px; }
-.accountActions button { display: inline-flex; align-items: center; gap: 5px; padding: 6px 8px; font-size: 11px; min-height: 32px; }
-.accountActions button:disabled { opacity: 0.5; cursor: default; }
-.accountActions button:focus-visible { outline: 2px solid var(--ots-primary); outline-offset: 3px; }
+.page {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.board {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--ui-space-24);
+  padding: var(--ui-space-16);
+  background: var(--ui-bg);
+}
+
+/* Una tarjeta por caja; la grilla se adapta al ancho. */
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--ui-dashboard-card-min)), 1fr));
+  gap: var(--ui-space-16);
+}
+
+.recent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ui-space-8);
+}
+
+.sectionTitle {
+  font-size: var(--ui-fs-lg);
+  font-weight: var(--ui-fw-semibold);
+  color: var(--ui-text-strong);
+}
+
+.tableBox {
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-surface);
+}
+
+.movementsHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ui-space-8);
+  margin: var(--ui-space-16) 0 var(--ui-space-8);
+}
+
+.concept {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ui-space-2);
+  min-width: 0;
+}
+
+.truncate {
+  max-width: 40ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.link {
+  color: var(--ui-action);
+  text-decoration: underline;
+}
+
+.amount {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.positive {
+  color: var(--ui-success-text);
+}
+
+.negative {
+  color: var(--ui-danger-text);
+}
+
+.muted {
+  color: var(--ui-text-muted);
+}
+
+.bigBalance {
+  font-size: var(--ui-fs-xl);
+  font-weight: var(--ui-fw-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+.dialogForm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ui-space-12);
+}

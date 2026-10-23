@@ -3,6 +3,7 @@ import prisma from "@/lib/prisma";
 import { requireAuth } from "@/lib/session";
 import { TreasuryError } from "@/lib/manual-treasury";
 import { nextOperationNumber } from "@/lib/distributed-sale";
+import { can } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
 
@@ -10,7 +11,7 @@ export async function POST(req: NextRequest) {
   try {
     const user = await requireAuth();
     if (!user) return NextResponse.json({ error: "No autenticado" }, { status: 401 });
-    if (user.role !== "ADMIN" && user.role !== "OPERATOR")
+    if (!can(user, "treasury.write"))
       return NextResponse.json({ error: "No tenés permiso para registrar traspasos." }, { status: 403 });
 
     let body: unknown;
@@ -65,13 +66,13 @@ export async function POST(req: NextRequest) {
         throw new TreasuryError("La caja de destino ya no está disponible.");
       }
 
-      // Decrement origin balance
+      // Igual que en las extracciones: la condición de saldo y el descuento son atómicos.
       const updatedOriginCount = await tx.treasuryAccount.updateMany({
-        where: { id: originAccountId, isActive: true },
+        where: { id: originAccountId, isActive: true, balance: { gte: originAmount } },
         data: { balance: { decrement: originAmount } },
       });
       if (updatedOriginCount.count !== 1) {
-        throw new TreasuryError("No se pudo actualizar el saldo de la caja de origen.");
+        throw new TreasuryError("La caja de origen no tiene saldo suficiente para este traspaso.", 409);
       }
 
       // Increment dest balance

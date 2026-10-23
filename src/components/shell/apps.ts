@@ -39,7 +39,7 @@ export const APPS: AppDef[] = [
 ];
 
 // Pantallas que ya usan la interfaz nueva. Las demás siguen con la anterior hasta migrarlas.
-const NEW_UI_PATHS = ["/operations", "/contacts", "/accounts"];
+const NEW_UI_PATHS = ["/operations", "/contacts", "/accounts", "/treasury"];
 
 const matches = (pathname: string, base: string) => pathname === base || pathname.startsWith(`${base}/`);
 
