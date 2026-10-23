@@ -8,7 +8,7 @@ import { describeAuditLog, type HistoryEntry } from "@/lib/history";
 export const dynamic = "force-dynamic";
 
 // Entidades con historial en la interfaz nueva; se suman a medida que se migra cada pantalla.
-const ENTITIES = new Set(["Operation"]);
+const ENTITIES = new Set(["Operation", "Contact"]);
 const MAX_ENTRIES = 200;
 
 // GET /api/history?entity=Operation&id=<id>: historial agrupado por día local de la agencia.

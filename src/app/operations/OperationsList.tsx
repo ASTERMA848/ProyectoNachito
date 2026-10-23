@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import useSWR from "swr";
-import { Download, Filter, Inbox, Layers, List, Plus, Settings as SettingsIcon, SquareKanban, Trash2 } from "lucide-react";
+import { Download, Inbox, List, Plus, Settings as SettingsIcon, SquareKanban, Trash2 } from "lucide-react";
 import {
   Avatar,
   Badge,
@@ -23,13 +23,12 @@ import {
   ViewSwitcher,
   iconSize,
   type Column,
-  type Facet,
-  type PanelSection,
   type SortState,
   type TableGroup,
 } from "@/components/ui";
 import { useShellUser } from "@/components/shell/AppShell";
 import { useUiFeedback } from "@/components/shell/UiFeedback";
+import { buildFacets, buildPanel, facetRemoval, fetchList, toggleFilter, useListUrlState, type FilterGroup, type GroupOption } from "@/components/shell/list-state";
 import { can } from "@/lib/permissions";
 import { formatAmount, formatMoney } from "@/lib/format-currency";
 import { formatDateOnly } from "@/lib/agency-time";
@@ -45,8 +44,7 @@ type Op = OperationListResult["operations"][number];
 const PAGE_SIZE = 80;
 const DEFAULT_SORT: SortState = { key: "date", dir: "desc" };
 
-// Filtros del panel: los del mismo grupo se combinan con O.
-const FILTER_GROUPS: { id: string; label: string; options: { id: string; label: string }[] }[] = [
+const FILTER_GROUPS: FilterGroup[] = [
   {
     id: "state",
     label: "Estado",
@@ -77,7 +75,8 @@ const FILTER_GROUPS: { id: string; label: string; options: { id: string; label: 
   },
   {
     id: "date",
-    label: "Fecha",
+    label: "Fecha de operación",
+    collapsible: true,
     options: [
       { id: "date:today", label: "Hoy" },
       { id: "date:this_month", label: "Este mes" },
@@ -87,7 +86,7 @@ const FILTER_GROUPS: { id: string; label: string; options: { id: string; label: 
   },
 ];
 
-const GROUP_OPTIONS = [
+const GROUP_OPTIONS: GroupOption[] = [
   { id: "state", label: "Estado" },
   { id: "type", label: "Tipo" },
   { id: "originCurrency", label: "Moneda" },
@@ -96,11 +95,8 @@ const GROUP_OPTIONS = [
   { id: "month", label: "Mes" },
 ];
 
-const FILTER_LABELS = new Map(FILTER_GROUPS.flatMap((group) => group.options.map((option) => [option.id, option.label] as const)));
 const groupLabel = (id: string | null) => GROUP_OPTIONS.find((option) => option.id === id)?.label ?? id ?? "";
-
 const joinSums = (sums: CurrencySum[]) => sums.map((sum) => formatAmount(sum.sum, sum.code)).join(" · ");
-
 const contactName = (contact: { name: string; lastname?: string | null } | null | undefined) =>
   contact ? [contact.name, contact.lastname].filter(Boolean).join(" ") : "";
 
@@ -110,75 +106,30 @@ function clientLabel(op: Op) {
   return clients ? `${clients} ${clients === 1 ? "cliente" : "clientes"}` : "—";
 }
 
-const fetcher = async (url: string): Promise<OperationListResult> => {
-  const response = await fetch(url);
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.error || "No se pudieron cargar las operaciones");
-  return data;
-};
-
 export default function OperationsList() {
   const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
   const user = useShellUser();
   const { notify, confirm } = useUiFeedback();
 
-  // La URL es la fuente de verdad: filtros, búsqueda, agrupación, orden, página y vista.
-  const filters = searchParams.getAll("filter");
-  const terms = searchParams.getAll("q");
-  const groupBy = searchParams.get("groupBy");
-  const [sortKey, sortDir] = (searchParams.get("sort") ?? "").split(":");
-  const sort: SortState = sortKey ? { key: sortKey, dir: sortDir === "asc" ? "asc" : "desc" } : DEFAULT_SORT;
-  const offset = Math.max(0, Number(searchParams.get("offset")) || 0);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
+  // Otra búsqueda cierra los grupos y limpia la selección.
+  const resetLocal = useCallback(() => {
+    setOpenGroups(new Set());
+    setSelected(new Set());
+  }, []);
+  const list = useListUrlState(DEFAULT_SORT, resetLocal);
+  const { filters, terms, groupBy, sort, offset, update, baseQuery } = list;
 
   // En teléfono la vista por defecto es kanban.
   const [isPhone, setIsPhone] = useState(false);
   useEffect(() => setIsPhone(window.matchMedia("(max-width: 767px)").matches), []);
-  const view = searchParams.get("view") ?? (isPhone ? "kanban" : "list");
+  const view = list.view ?? (isPhone ? "kanban" : "list");
   const kanbanGroup = groupBy ?? "state";
 
   const [query, setQuery] = useState("");
   const [panelOpen, setPanelOpen] = useState(false);
-  const [dateOpen, setDateOpen] = useState(true);
-  const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
-
-  const update = (changes: { filter?: string[]; q?: string[]; groupBy?: string | null; sort?: string | null; offset?: number; view?: string }) => {
-    const next = new URLSearchParams(searchParams.toString());
-    const setList = (key: string, values: string[]) => {
-      next.delete(key);
-      values.forEach((value) => next.append(key, value));
-    };
-    const setOne = (key: string, value: string | null | undefined) => {
-      if (value) next.set(key, value);
-      else next.delete(key);
-    };
-    if (changes.filter) setList("filter", changes.filter);
-    if (changes.q) setList("q", changes.q);
-    if (changes.groupBy !== undefined) setOne("groupBy", changes.groupBy);
-    if (changes.sort !== undefined) setOne("sort", changes.sort);
-    if (changes.view) next.set("view", changes.view);
-    // Cambiar qué se busca vuelve a la primera página y cierra los grupos.
-    const searchChanged = changes.filter || changes.q || changes.groupBy !== undefined || changes.sort !== undefined;
-    if (searchChanged) {
-      next.delete("offset");
-      setOpenGroups(new Set());
-      setSelected(new Set());
-    }
-    if (changes.offset !== undefined) setOne("offset", changes.offset ? String(changes.offset) : null);
-    const text = next.toString();
-    router.replace(text ? `${pathname}?${text}` : pathname, { scroll: false });
-  };
-
-  // Lo que se busca, sin página ni agrupación: base de las filas de cada grupo.
-  const baseQuery = useMemo(() => {
-    const params = new URLSearchParams();
-    terms.forEach((term) => params.append("q", term));
-    filters.forEach((filter) => params.append("filter", filter));
-    params.set("sort", `${sort.key}:${sort.dir}`);
-    return params.toString();
-  }, [terms, filters, sort.key, sort.dir]);
+  const [openPanelGroups, setOpenPanelGroups] = useState(new Set(["date"]));
 
   const activeGroup = view === "kanban" ? kanbanGroup : groupBy;
   const listUrl = useMemo(() => {
@@ -189,7 +140,7 @@ export default function OperationsList() {
     return `/api/operations?${params}`;
   }, [baseQuery, activeGroup, offset]);
 
-  const { data, error, isLoading, mutate } = useSWR(listUrl, fetcher, { keepPreviousData: true });
+  const { data, error, isLoading, mutate } = useSWR(listUrl, fetchList<OperationListResult>, { keepPreviousData: true });
   const groups = data?.groups ?? null;
 
   // En kanban todas las columnas cargan sus tarjetas; en lista, solo los grupos abiertos.
@@ -200,50 +151,19 @@ export default function OperationsList() {
   const canDelete = can(user, "operations.delete");
   const hasSearch = filters.length > 0 || terms.length > 0;
 
-  const facets: Facet[] = [
-    ...terms.map((term) => ({ id: `q:${term}`, kind: "field" as const, values: [term] })),
-    ...FILTER_GROUPS.filter((group) => filters.some((filter) => filter.startsWith(`${group.id}:`))).map((group) => ({
-      id: `filter:${group.id}`,
-      kind: "filter" as const,
-      values: filters.filter((filter) => filter.startsWith(`${group.id}:`)).map((filter) => FILTER_LABELS.get(filter) ?? filter),
-    })),
-    ...(groupBy ? [{ id: "groupBy", kind: "group" as const, values: [groupLabel(groupBy)] }] : []),
-  ];
-
-  const removeFacet = (id: string) => {
-    if (id === "groupBy") return update({ groupBy: null });
-    if (id.startsWith("q:")) return update({ q: terms.filter((term) => `q:${term}` !== id) });
-    const group = id.replace("filter:", "");
-    update({ filter: filters.filter((filter) => !filter.startsWith(`${group}:`)) });
-  };
-
-  const toggleFilter = (id: string) => update({ filter: filters.includes(id) ? filters.filter((filter) => filter !== id) : [...filters, id] });
-
-  const panelSections: PanelSection[] = [
-    {
-      id: "filters",
-      title: "Filtros",
-      icon: <Filter size={iconSize.sm} />,
-      iconTone: "accent",
-      groups: FILTER_GROUPS.map((group) =>
-        group.id === "date"
-          ? [{ id: "date", label: "Fecha de operación", expanded: dateOpen, options: group.options.map((option) => ({ ...option, active: filters.includes(option.id) })) }]
-          : group.options.map((option) => ({ ...option, active: filters.includes(option.id) })),
-      ),
-    },
-    {
-      id: "groupBy",
-      title: "Agrupar por",
-      icon: <Layers size={iconSize.sm} />,
-      iconTone: "action",
-      groups: [GROUP_OPTIONS.map((option) => ({ ...option, active: groupBy === option.id }))],
-    },
-  ];
-
+  const facets = buildFacets(list, FILTER_GROUPS, GROUP_OPTIONS);
+  const panelSections = buildPanel(list, FILTER_GROUPS, GROUP_OPTIONS, openPanelGroups);
   const onPanelToggle = (sectionId: string, optionId: string) => {
     if (sectionId === "groupBy") return update({ groupBy: groupBy === optionId ? null : optionId });
-    toggleFilter(optionId);
+    update({ filter: toggleFilter(filters, optionId) });
   };
+  const onPanelExpand = (_sectionId: string, groupId: string) =>
+    setOpenPanelGroups((current) => {
+      const next = new Set(current);
+      if (next.has(groupId)) next.delete(groupId);
+      else next.add(groupId);
+      return next;
+    });
 
   const visibleRows: Op[] = activeGroup ? Object.values(byKey).flatMap((group) => group.rows) : data?.operations ?? [];
   const selectedOps = visibleRows.filter((op) => selected.has(op.id));
@@ -384,12 +304,12 @@ export default function OperationsList() {
               if (text && !terms.includes(text)) update({ q: [...terms, text] });
               setQuery("");
             }}
-            onRemoveFacet={removeFacet}
+            onRemoveFacet={(id) => update(facetRemoval(id, list))}
             panelOpen={panelOpen}
             onTogglePanel={() => setPanelOpen((value) => !value)}
             label="Buscar operaciones"
             placeholder="Buscar número, cliente o proveedor..."
-            panel={<FilterPanel sections={panelSections} onToggle={onPanelToggle} onExpand={() => setDateOpen((value) => !value)} />}
+            panel={<FilterPanel sections={panelSections} onToggle={onPanelToggle} onExpand={onPanelExpand} />}
           />
         }
         end={

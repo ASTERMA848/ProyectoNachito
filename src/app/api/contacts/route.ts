@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireAuth } from "@/lib/session";
 import { logAudit } from "@/lib/audit";
+import { can } from "@/lib/permissions";
+import { ListError, parseListParams } from "@/lib/list-query";
+import { GROUP_KEYS, listContacts, SORT_KEYS } from "@/lib/resources/contacts";
 
 export async function GET(req: NextRequest) {
   try {
@@ -18,19 +21,13 @@ export async function GET(req: NextRequest) {
       });
       return NextResponse.json({ contacts });
     }
-    const contacts = await prisma.contact.findMany({
-      where: { deletedAt: null },
-      include: { tags: { include: { tag: true } } },
-      orderBy: { createdAt: "desc" },
-    });
-
-    const formatted = contacts.map((c) => ({
-      ...c,
-      tags: c.tags.map((t) => t.tag.name),
-    }));
-
-    return NextResponse.json({ contacts: formatted });
+    // Contrato de listas: ?q=&filter=role:client&filter=tag:<id>&groupBy=role&sort=name:asc&offset=0&limit=80
+    const params = parseListParams(req.nextUrl.searchParams, { sortKeys: SORT_KEYS, groupKeys: GROUP_KEYS });
+    return NextResponse.json(await listContacts(params));
   } catch (error: any) {
+    if (error instanceof ListError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
     console.error("Contacts GET error:", error);
     return NextResponse.json({ error: "Error en el servidor" }, { status: 500 });
   }
@@ -41,6 +38,9 @@ export async function POST(req: NextRequest) {
     const user = await requireAuth();
     if (!user) {
       return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+    }
+    if (!can(user, "contacts.write")) {
+      return NextResponse.json({ error: "Tu rol no puede crear contactos" }, { status: 403 });
     }
 
     const body = await req.json().catch(() => null);

@@ -9,7 +9,6 @@ import { isSale } from "@/lib/operation-labels";
 import { SaleForm } from "./SaleForm";
 import { StandardForm } from "./StandardForm";
 import { fetchJson, type ContactOption, type Currency, type OperationDetailResponse } from "./types";
-import styles from "./form.module.css";
 
 type OperationFormProps = { id?: string; initialType?: "SINGLE_SALE" | "DISTRIBUTED_SALE" };
 
@@ -37,7 +36,7 @@ export default function OperationForm({ id, initialType = "SINGLE_SALE" }: Opera
   }
   if ((id && !detail.data) || !contacts.data || !currencies.data || parentId) {
     return (
-      <div className={styles.page} aria-busy="true">
+      <div aria-busy="true">
         <EmptyState icon={<Spinner label="Cargando la operación" size="lg" />} title="Cargando la operación" />
       </div>
     );

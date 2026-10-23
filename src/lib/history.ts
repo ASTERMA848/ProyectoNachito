@@ -9,6 +9,16 @@ export type HistoryEntry =
   | { id: string; kind: "event"; author: string; at: string; text: string };
 
 const FIELD_LABELS: Record<string, string> = {
+  name: "Nombre",
+  lastname: "Apellido",
+  document: "Documento",
+  cuitCuil: "CUIT/CUIL",
+  phone: "Teléfono",
+  email: "Email",
+  isClient: "Cliente",
+  isProvider: "Proveedor",
+  isActive: "Activo",
+  balance: "Saldo",
   state: "Estado",
   isPaid: "Cobrado",
   providerIsPaid: "Pago al proveedor",
@@ -21,7 +31,17 @@ const FIELD_LABELS: Record<string, string> = {
   operationDate: "Fecha",
 };
 
-const MONEY_FIELDS = new Set(["originAmount", "destAmount", "totalAmount"]);
+const MONEY_FIELDS = new Set(["originAmount", "destAmount", "totalAmount", "balance"]);
+
+// Cómo se nombra cada tipo de registro en las frases del historial.
+const NOUNS: Record<string, { article: string; noun: string }> = {
+  Operation: { article: "la", noun: "operación" },
+  Contact: { article: "el", noun: "contacto" },
+  TreasuryAccount: { article: "la", noun: "caja" },
+  User: { article: "el", noun: "usuario" },
+  Currency: { article: "la", noun: "moneda" },
+};
+const nounOf = (entity: string | null) => NOUNS[entity ?? ""] ?? { article: "el", noun: "registro" };
 
 function parse(json: string | null): Record<string, unknown> | null {
   if (!json) return null;
@@ -51,14 +71,18 @@ export function describeAuditLog(log: LogWithUser, detailed: boolean): HistoryEn
   const base = { id: log.id, author: log.user?.username ?? "Sistema", at: formatTime(log.createdAt) };
   const before = parse(log.oldValues);
   const after = parse(log.newValues);
-  const number = typeof after?.operationNumber === "string" ? ` ${after.operationNumber}` : "";
+  const { article, noun } = nounOf(log.entity);
+  const reference = typeof after?.operationNumber === "string" ? ` ${after.operationNumber}` : typeof after?.name === "string" ? ` ${after.name}` : "";
 
   if (log.action === "CREATE") {
     const amount = after?.totalAmount ?? after?.originAmount;
     const suffix = detailed && typeof amount === "number" ? ` por ${formatMoney(amount)}` : "";
-    return { ...base, kind: "event", text: `Registró la operación${number}${suffix}.` };
+    return { ...base, kind: "event", text: `Registró ${article} ${noun}${reference}${suffix}.` };
   }
-  if (log.action === "DELETE") return { ...base, kind: "event", text: "Eliminó la operación y revirtió sus saldos." };
+  if (log.action === "DELETE") {
+    const extra = log.entity === "Operation" ? " y revirtió sus saldos" : "";
+    return { ...base, kind: "event", text: `Eliminó ${article} ${noun}${extra}.` };
+  }
 
   if (before && after) {
     const fields = Object.keys(after).filter((field) => field in before && JSON.stringify(before[field]) !== JSON.stringify(after[field]));
@@ -73,7 +97,7 @@ export function describeAuditLog(log: LogWithUser, detailed: boolean): HistoryEn
     const parts = [`estado ${formatValue("state", after.state)}`];
     if (typeof after.itemCount === "number") parts.push(`${after.itemCount} ${after.itemCount === 1 ? "línea" : "líneas"}`);
     if ("providerIsPaid" in after) parts.push(`pago al proveedor: ${formatValue("providerIsPaid", after.providerIsPaid)}`);
-    return { ...base, kind: "event", text: `Actualizó la operación: ${parts.join(", ")}.` };
+    return { ...base, kind: "event", text: `Actualizó ${article} ${noun}: ${parts.join(", ")}.` };
   }
-  return { ...base, kind: "event", text: "Actualizó la operación." };
+  return { ...base, kind: "event", text: `Actualizó ${article} ${noun}.` };
 }

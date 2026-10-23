@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import { Badge, Breadcrumbs, ControlPanel, type Crumb } from "@/components/ui";
-import styles from "./form.module.css";
+import styles from "./FormPage.module.css";
 
 type FormPageProps = {
   breadcrumbs: Crumb[];
@@ -39,10 +39,11 @@ export function FormPage({ breadcrumbs, actions, dirty = false, header, notice, 
   );
 }
 
-export function Notice({ tone = "info", children }: { tone?: "info" | "warning"; children: ReactNode }) {
+export function Notice({ tone = "info", children, action }: { tone?: "info" | "warning"; children: ReactNode; action?: ReactNode }) {
   return (
-    <p className={`${styles.notice} ${tone === "warning" ? styles.noticeWarning : ""}`} role="status">
-      {children}
-    </p>
+    <div className={`${styles.notice} ${tone === "warning" ? styles.noticeWarning : ""}`} role="status">
+      <span>{children}</span>
+      {action}
+    </div>
   );
 }

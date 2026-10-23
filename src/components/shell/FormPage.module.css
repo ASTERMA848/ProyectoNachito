@@ -1,0 +1,54 @@
+.page {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* El historial va debajo y, desde xxl (bp-xxl), al costado de la hoja. */
+.layout {
+  display: grid;
+  flex: 1;
+  grid-template-columns: minmax(0, 1fr);
+  background: var(--ui-bg);
+}
+
+.main {
+  min-width: 0;
+}
+
+.aside {
+  min-width: 0;
+  border-top: 1px solid var(--ui-border);
+  background: var(--ui-surface);
+}
+
+@media (min-width: 1400px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr) var(--ui-chatter-w);
+  }
+
+  .aside {
+    border-top: 0;
+    border-left: 1px solid var(--ui-border);
+  }
+}
+
+.notice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ui-space-12);
+  max-width: var(--ui-sheet-max);
+  margin: var(--ui-space-16) auto 0;
+  padding: var(--ui-space-8) var(--ui-space-12);
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-info-bg);
+  color: var(--ui-info-text);
+}
+
+.noticeWarning {
+  background: var(--ui-warning-bg);
+  color: var(--ui-warning-text);
+}

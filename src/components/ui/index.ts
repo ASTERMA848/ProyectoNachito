@@ -23,7 +23,7 @@ export { Sparkline } from "./Sparkline";
 export { Spinner } from "./Spinner";
 export { StatusBar, type StatusStep } from "./StatusBar";
 export { TabPanel, Tabs, type TabItem } from "./Tabs";
-export { Tag, TAG_COLORS, tagStyle, type TagColor } from "./Tag";
+export { Tag, TAG_COLORS, tagColorFromHex, tagStyle, type TagColor } from "./Tag";
 export { Toast, ToastRegion, type ToastTone } from "./Toast";
 export { TopBar, type TopBarSection } from "./TopBar";
 export { ViewSwitcher, type ViewOption } from "./ViewSwitcher";

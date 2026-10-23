@@ -20,7 +20,17 @@ export const APPS: AppDef[] = [
     ],
   },
   { id: "treasury", label: "Tesorería", href: "/treasury", icon: Landmark },
-  { id: "contacts", label: "Contactos", href: "/contacts", icon: Users },
+  {
+    id: "contacts",
+    label: "Contactos",
+    href: "/contacts",
+    icon: Users,
+    sections: [
+      { id: "all", label: "Contactos", href: "/contacts" },
+      { id: "clients", label: "Clientes", href: "/contacts?filter=role:client" },
+      { id: "providers", label: "Proveedores", href: "/contacts?filter=role:provider" },
+    ],
+  },
   { id: "accounts", label: "Cuentas corrientes", href: "/accounts", icon: BookOpen },
   { id: "audit", label: "Auditoría", href: "/audit", icon: ShieldCheck, roles: ["ADMIN", "AUDITOR"] },
   { id: "sql", label: "Consola SQL", href: "/sql-console", icon: Database, roles: ["ADMIN", "AUDITOR"] },
@@ -29,7 +39,7 @@ export const APPS: AppDef[] = [
 ];
 
 // Pantallas que ya usan la interfaz nueva. Las demás siguen con la anterior hasta migrarlas.
-const NEW_UI_PATHS = ["/operations"];
+const NEW_UI_PATHS = ["/operations", "/contacts"];
 
 const matches = (pathname: string, base: string) => pathname === base || pathname.startsWith(`${base}/`);
 
