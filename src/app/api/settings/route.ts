@@ -39,43 +39,44 @@ export async function PUT(req: NextRequest) {
 
     const { mainCurrencyId, accountingBlockDate } = body;
 
-    let parsedDate: Date | null = null;
-    if (accountingBlockDate) {
-      const d = new Date(accountingBlockDate);
-      if (!isNaN(d.getTime())) {
-        parsedDate = d;
+    if (mainCurrencyId !== undefined && mainCurrencyId !== null && mainCurrencyId !== "") {
+      const currency = typeof mainCurrencyId === "string" ? await prisma.currency.findUnique({ where: { id: mainCurrencyId } }) : null;
+      if (!currency) {
+        return NextResponse.json({ error: "La moneda principal no existe" }, { status: 400 });
       }
     }
 
-    let settings = await prisma.settings.findFirst();
-    if (!settings) {
-      settings = await prisma.settings.create({
-        data: {
-          mainCurrencyId: mainCurrencyId || null,
-          accountingBlockDate: parsedDate,
-        },
-      });
-    } else {
-      settings = await prisma.settings.update({
-        where: { id: settings.id },
-        data: {
-          mainCurrencyId: mainCurrencyId !== undefined ? mainCurrencyId : settings.mainCurrencyId,
-          accountingBlockDate: parsedDate,
-        },
-      });
+    // La fecha de cierre es una fecha sin hora: se guarda como medianoche UTC, igual que operationDate.
+    let parsedDate: Date | null = null;
+    if (accountingBlockDate) {
+      if (typeof accountingBlockDate !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(accountingBlockDate.slice(0, 10))) {
+        return NextResponse.json({ error: "La fecha de cierre no es válida" }, { status: 400 });
+      }
+      parsedDate = new Date(`${accountingBlockDate.slice(0, 10)}T00:00:00Z`);
+      if (isNaN(parsedDate.getTime())) {
+        return NextResponse.json({ error: "La fecha de cierre no es válida" }, { status: 400 });
+      }
     }
 
-    // Registrar en auditoría
+    const current = (await prisma.settings.findFirst()) ?? (await prisma.settings.create({ data: {} }));
+    const settings = await prisma.settings.update({
+      where: { id: current.id },
+      data: {
+        mainCurrencyId: mainCurrencyId !== undefined ? mainCurrencyId || null : current.mainCurrencyId,
+        accountingBlockDate: accountingBlockDate !== undefined ? parsedDate : current.accountingBlockDate,
+      },
+    });
+
+    const code = async (id: string | null) => (id ? (await prisma.currency.findUnique({ where: { id }, select: { code: true } }))?.code ?? null : null);
+    const day = (date: Date | null) => (date ? date.toISOString().slice(0, 10) : null);
     await prisma.auditLog.create({
       data: {
         userId: user.id,
         action: "UPDATE",
         entity: "Settings",
         entityId: settings.id,
-        newValues: JSON.stringify({
-          mainCurrencyId: settings.mainCurrencyId,
-          accountingBlockDate: settings.accountingBlockDate,
-        }),
+        oldValues: JSON.stringify({ mainCurrency: await code(current.mainCurrencyId), accountingBlockDate: day(current.accountingBlockDate) }),
+        newValues: JSON.stringify({ mainCurrency: await code(settings.mainCurrencyId), accountingBlockDate: day(settings.accountingBlockDate) }),
       },
     });
 

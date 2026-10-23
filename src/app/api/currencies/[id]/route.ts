@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireAdmin } from "@/lib/session";
+import { logAudit } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -57,9 +58,22 @@ export async function PUT(
       updateData.isActive = Boolean(isActive);
     }
 
+    const current = await prisma.currency.findUnique({ where: { id: params.id } });
+    if (!current) {
+      return NextResponse.json({ error: "Moneda no encontrada" }, { status: 404 });
+    }
     const updated = await prisma.currency.update({
       where: { id: params.id },
       data: updateData,
+    });
+    const fields = ["code", "name", "symbol", "decimals", "isActive"] as const;
+    await logAudit({
+      userId: user.id,
+      action: "UPDATE",
+      entity: "Currency",
+      entityId: updated.id,
+      oldValues: Object.fromEntries(fields.map((field) => [field, current[field]])),
+      newValues: Object.fromEntries(fields.map((field) => [field, updated[field]])),
     });
 
     return NextResponse.json({ currency: updated }, { status: 200 });
@@ -85,26 +99,38 @@ export async function DELETE(
       return NextResponse.json({ error: "No autorizado" }, { status: 403 });
     }
 
-    const [usedInOps, usedInAccounts] = await Promise.all([
+    const [usedInOps, usedInAccounts, usedInTreasury] = await Promise.all([
       prisma.operation.count({
         where: {
           OR: [
             { originCurrencyId: params.id },
             { destCurrencyId: params.id },
+            { providerPaymentCurrencyId: params.id },
           ],
         },
       }),
       prisma.account.count({ where: { currencyId: params.id } }),
+      prisma.treasuryAccount.count({ where: { currencyId: params.id, OR: [{ balance: { not: 0 } }, { movements: { some: {} } }] } }),
     ]);
 
-    if (usedInOps > 0 || usedInAccounts > 0) {
+    if (usedInOps > 0 || usedInAccounts > 0 || usedInTreasury > 0) {
       return NextResponse.json(
-        { error: "No se puede eliminar esta moneda porque está siendo usada en operaciones o cuentas corrientes." },
+        { error: "No se puede eliminar esta moneda porque está siendo usada en operaciones, cuentas corrientes o cajas. Podés desactivarla." },
         { status: 409 }
       );
     }
 
-    await prisma.currency.delete({ where: { id: params.id } });
+    const settings = await prisma.settings.findFirst({ select: { mainCurrencyId: true } });
+    if (settings?.mainCurrencyId === params.id) {
+      return NextResponse.json({ error: "Es la moneda principal. Elegí otra en Configuración antes de eliminarla." }, { status: 409 });
+    }
+
+    // Las cajas vacías que se crearon solas para la moneda se van con ella.
+    const deleted = await prisma.$transaction(async (tx) => {
+      await tx.treasuryAccount.deleteMany({ where: { currencyId: params.id } });
+      return tx.currency.delete({ where: { id: params.id } });
+    });
+    await logAudit({ userId: user.id, action: "DELETE", entity: "Currency", entityId: deleted.id, oldValues: { code: deleted.code, name: deleted.name } });
     return NextResponse.json({ ok: true }, { status: 200 });
   } catch (error: any) {
     console.error("Currency DELETE error:", error);

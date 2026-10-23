@@ -36,7 +36,7 @@ import { agencyToday } from "@/lib/agency-time";
 import { formatAmount } from "@/lib/format-currency";
 import { parseLocaleNumber } from "@/lib/parse-number";
 import { OPERATION_TYPES } from "@/lib/operation-labels";
-import { AdminConfirmDialog } from "./AdminConfirmDialog";
+import { AdminConfirmDialog } from "@/components/shell/AdminConfirmDialog";
 import { FormPage, Notice } from "@/components/shell/FormPage";
 import { contactLabel, decimalText, type ContactOption, type Currency, type OperationDetailResponse } from "./types";
 import styles from "./form.module.css";

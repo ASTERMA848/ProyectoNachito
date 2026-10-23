@@ -28,7 +28,7 @@ import { can } from "@/lib/permissions";
 import { formatAmount } from "@/lib/format-currency";
 import { parseLocaleNumber } from "@/lib/parse-number";
 import { OPERATION_STATES } from "@/lib/operation-labels";
-import { AdminConfirmDialog } from "./AdminConfirmDialog";
+import { AdminConfirmDialog } from "@/components/shell/AdminConfirmDialog";
 import { FormPage, Notice } from "@/components/shell/FormPage";
 import { contactLabel, decimalText, type ContactOption, type Currency, type OperationDetailResponse } from "./types";
 

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireAuth } from "@/lib/session";
 import { logAudit } from "@/lib/audit";
+import { can } from "@/lib/permissions";
 
 export async function GET() {
   try {
@@ -23,6 +24,9 @@ export async function POST(req: NextRequest) {
     const user = await requireAuth();
     if (!user) {
       return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+    }
+    if (!can(user, "contacts.write")) {
+      return NextResponse.json({ error: "Tu rol no puede modificar etiquetas" }, { status: 403 });
     }
 
     const body = await req.json().catch(() => null);

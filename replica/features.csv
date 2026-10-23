@@ -30,7 +30,7 @@ Colores e insignias según el estado,lista,must,yes,yes,"Pendiente, en proceso, 
 Edición en línea de filas,lista,could,yes,no,
 Edición masiva de un campo en varios registros,lista,could,yes,no,
 Exportar los seleccionados eligiendo campos en XLSX o CSV,lista,should,yes,partial,"Hoy se exporta a CSV y JSON; CSV de los seleccionados, sin elegir campos"
-Archivar y desarchivar desde Acciones,lista,should,yes,partial,"Contactos, usuarios, monedas; Contactos; faltan usuarios y monedas"
+Archivar y desarchivar desde Acciones,lista,should,yes,yes,"Contactos, usuarios, monedas; Contactos; faltan usuarios y monedas; Contactos y usuarios desde Acciones; monedas con su interruptor"
 Ofrecer archivar cuando no se puede eliminar,lista,could,yes,no,Novedad de Odoo 20
 Importar registros desde un archivo,lista,could,yes,no,
 Kanban agrupado por estado con contador por columna,kanban,should,yes,yes,Operaciones por estado; Operaciones
@@ -63,10 +63,10 @@ Tablero con una tarjeta por caja y su saldo,tablero,must,yes,yes,Tesorería
 Menú de la tarjeta con las acciones de la caja,tablero,must,yes,yes,"Nuevo movimiento, transferencia, ver movimientos; Movimiento, traspaso y ver movimientos"
 Gráfico chico de evolución en la tarjeta,tablero,should,yes,yes,"Contenido exacto de la tarjeta de Odoo a confirmar; Saldo al cierre de cada día, últimos 30 días"
 Movimientos de cuenta agrupados por contacto y moneda con subtotales,cuentas,must,yes,partial,"El saldo acumulado ya existe en tu web; Saldos por contacto y moneda, agrupados por moneda o situación, con estado de cuenta"
-Pantalla de ajustes con secciones y bloques de opciones,ajustes,must,yes,no,Configuración general
+Pantalla de ajustes con secciones y bloques de opciones,ajustes,must,yes,yes,"Configuración general; General, administración, etiquetas y mi cuenta"
 Buscador de ajustes,ajustes,could,yes,no,A confirmar con capturas
-"Usuarios en lista y formulario con rol, archivar y cambiar contraseña",ajustes,must,yes,no,"Roles ADMIN, AUDITOR y OPERATOR"
-Monedas en lista con interruptor de activa,ajustes,must,yes,no,Gestión de monedas
+"Usuarios en lista y formulario con rol, archivar y cambiar contraseña",ajustes,must,yes,yes,"Roles ADMIN, AUDITOR y OPERATOR; Pausar y reactivar en lugar de archivar"
+Monedas en lista con interruptor de activa,ajustes,must,yes,yes,Gestión de monedas
 "Registro de auditoría con fecha, usuario, tipo de cambio y valores anterior y nuevo",auditoría,must,yes,yes,"Logs de Auditoría; Lista con filtros por fecha, acción, registro y usuario, agrupación y detalle de antes y después"
 Bloqueo de borrado de registros auditados,auditoría,should,yes,no,Patrón Audit Trail restrictivo (solo cancelar o archivar); hoy se puede eliminar una operación
 "Notificaciones emergentes de éxito, aviso y error",general,must,yes,yes,Hoy FeedbackProvider; posición a confirmar

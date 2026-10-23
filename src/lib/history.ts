@@ -2,6 +2,7 @@ import type { AuditLog } from "@prisma/client";
 import { formatTime } from "@/lib/agency-time";
 import { formatMoney } from "@/lib/format-currency";
 import { OPERATION_STATES, OPERATION_TYPES } from "@/lib/operation-labels";
+import { ROLE_LABELS } from "@/lib/permissions";
 
 // Entradas del historial de un registro. Se arman al vuelo desde AuditLog: no hay tabla aparte.
 export type HistoryEntry =
@@ -29,6 +30,14 @@ const FIELD_LABELS: Record<string, string> = {
   itemCount: "Líneas",
   observations: "Observaciones",
   operationDate: "Fecha",
+  username: "Usuario",
+  role: "Rol",
+  password: "Contraseña",
+  code: "Código",
+  symbol: "Símbolo",
+  decimals: "Decimales",
+  mainCurrency: "Moneda principal",
+  accountingBlockDate: "Cierre contable",
 };
 
 const MONEY_FIELDS = new Set(["originAmount", "destAmount", "totalAmount", "balance"]);
@@ -62,6 +71,7 @@ function formatValue(field: string, value: unknown): string {
   if (value === null || value === undefined || value === "") return "Sin definir";
   if (field === "state") return OPERATION_STATES[String(value)] ?? String(value);
   if (field === "type") return OPERATION_TYPES[String(value)] ?? String(value);
+  if (field === "role") return ROLE_LABELS[String(value)] ?? String(value);
   if (typeof value === "boolean") return value ? "Sí" : "No";
   if (MONEY_FIELDS.has(field) && typeof value === "number") return formatMoney(value);
   return String(value);

@@ -7,6 +7,34 @@ import { logAudit } from "@/lib/audit";
 const ALLOWED_ROLES = ["ADMIN", "AUDITOR", "OPERATOR"];
 const ALLOWED_THEMES = ["SYSTEM", "LIGHT", "DARK"];
 
+// Ficha de un usuario para la pantalla de usuarios (ADMIN y AUDITOR).
+export async function GET(_request: NextRequest, { params }: { params: { id: string } }) {
+  try {
+    const loggedUser = await requireAuth();
+    if (!loggedUser) {
+      return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+    }
+    if (loggedUser.role !== "ADMIN" && loggedUser.role !== "AUDITOR" && loggedUser.id !== params.id) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+    }
+    const [user, logs] = await Promise.all([
+      prisma.user.findUnique({
+        where: { id: params.id },
+        select: { id: true, username: true, role: true, isActive: true, theme: true, profilePicture: true, createdAt: true, updatedAt: true },
+      }),
+      prisma.auditLog.count({ where: { userId: params.id } }),
+    ]);
+    if (!user) {
+      return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 });
+    }
+    const lastLogin = await prisma.auditLog.findFirst({ where: { userId: params.id, action: "LOGIN" }, orderBy: { createdAt: "desc" }, select: { createdAt: true } });
+    return NextResponse.json({ user, counts: { auditLogs: logs }, lastLogin: lastLogin?.createdAt ?? null });
+  } catch (error) {
+    console.error("Get user error:", error);
+    return NextResponse.json({ error: "Error en el servidor" }, { status: 500 });
+  }
+}
+
 /**
  * PUT /api/users/[id] — Actualizar datos de un usuario.
  * Un usuario puede editar su propio perfil (username, password, theme, foto).
@@ -65,6 +93,10 @@ export async function PUT(
       if (!ALLOWED_ROLES.includes(role)) {
         return NextResponse.json({ error: "Rol inválido" }, { status: 400 });
       }
+      // Quitarse el rol de administrador a uno mismo puede dejar el sistema sin nadie que lo administre.
+      if (id === loggedUser.id && role !== "ADMIN") {
+        return NextResponse.json({ error: "No podés quitarte tu propio rol de administrador" }, { status: 400 });
+      }
       finalRole = role;
     }
 
@@ -114,14 +146,20 @@ export async function PUT(
       data: updateData,
     });
 
+    const passwordChanged = Boolean(updateData.passwordHash);
     await logAudit({
       userId: loggedUser.id,
       action: "UPDATE",
       entity: "User",
       entityId: id,
-      oldValues: { username: targetUser.username, role: targetUser.role },
-      newValues: { username: updatedUser.username, role: updatedUser.role },
+      oldValues: { username: targetUser.username, role: targetUser.role, password: "—" },
+      newValues: { username: updatedUser.username, role: updatedUser.role, password: passwordChanged ? "cambiada" : "—" },
     });
+
+    // Si otro usuario cambia la contraseña o el rol, las sesiones abiertas de ese usuario dejan de valer.
+    if (id !== loggedUser.id && (passwordChanged || updatedUser.role !== targetUser.role)) {
+      await prisma.session.deleteMany({ where: { userId: id } });
+    }
 
     return NextResponse.json({
       user: {

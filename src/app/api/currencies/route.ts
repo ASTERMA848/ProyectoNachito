@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireAdmin, requireAuth } from "@/lib/session";
 import { ensureCurrencyTreasuryAccounts } from "@/lib/treasury-accounts";
+import { logAudit } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -93,6 +94,7 @@ export async function POST(req: NextRequest) {
       return created;
     });
 
+    await logAudit({ userId: user.id, action: "CREATE", entity: "Currency", entityId: currency.id, newValues: { code: currency.code, name: currency.name } });
     return NextResponse.json({ currency }, { status: 201 });
   } catch (error: any) {
     console.error("Currencies POST error:", error);
