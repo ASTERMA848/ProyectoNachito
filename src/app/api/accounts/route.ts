@@ -2,31 +2,26 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireAuth } from "@/lib/session";
 import { logAudit } from "@/lib/audit";
+import { can } from "@/lib/permissions";
+import { ListError, parseListParams } from "@/lib/list-query";
+import { GROUP_KEYS, listAccounts, postManualMovement, SORT_KEYS } from "@/lib/resources/accounts";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     const user = await requireAuth();
     if (!user) {
       return NextResponse.json({ error: "No autenticado" }, { status: 401 });
     }
 
-    const accounts = await prisma.account.findMany({
-      where: {
-        balance: { not: 0 },
-      },
-      include: {
-        contact: { select: { id: true, name: true, document: true, isClient: true, isProvider: true } },
-        currency: { select: { id: true, code: true, symbol: true, color: true } },
-      },
-      orderBy: [
-        { contact: { name: "asc" } },
-        { currency: { code: "asc" } },
-      ],
-    });
-    return NextResponse.json({ accounts }, { status: 200 });
+    // Contrato de listas: ?q=&filter=currency:<id>&filter=sign:negative&groupBy=currency&sort=balance:asc&offset=0&limit=80
+    const params = parseListParams(req.nextUrl.searchParams, { sortKeys: SORT_KEYS, groupKeys: GROUP_KEYS });
+    return NextResponse.json(await listAccounts(params));
   } catch (error: any) {
+    if (error instanceof ListError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
     console.error("Accounts GET error:", error);
     return NextResponse.json({ error: "Error en el servidor" }, { status: 500 });
   }
@@ -37,6 +32,9 @@ export async function POST(req: NextRequest) {
     const user = await requireAuth();
     if (!user) {
       return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+    }
+    if (!can(user, "accounts.write")) {
+      return NextResponse.json({ error: "Tu rol no puede cargar movimientos" }, { status: 403 });
     }
 
     const body = await req.json().catch(() => null);
@@ -66,7 +64,7 @@ export async function POST(req: NextRequest) {
     }
 
     const val = parseFloat(amount);
-    if (isNaN(val) || val <= 0) {
+    if (!Number.isFinite(val) || val <= 0) {
       return NextResponse.json({ error: "El monto debe ser un número positivo" }, { status: 400 });
     }
 
@@ -93,47 +91,24 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Moneda no encontrada" }, { status: 404 });
     }
 
-    // Buscar o crear la cuenta
-    let account = await prisma.account.findUnique({
-      where: { contactId_currencyId: { contactId, currencyId } },
+    const { account, transaction: newTransaction } = await postManualMovement({
+      contactId,
+      currencyId,
+      debit,
+      credit,
+      concept: concept.trim().substring(0, 500),
+      observations: observations ? String(observations).trim().substring(0, 2000) : null,
     });
-
-    if (!account) {
-      account = await prisma.account.create({
-        data: { contactId, currencyId, balance: 0 },
-      });
-    }
-
-    const newBalance = account.balance - debit + credit;
-
-    const [, newTransaction] = await prisma.$transaction([
-      prisma.account.update({
-        where: { id: account.id },
-        data: { balance: newBalance },
-      }),
-      prisma.transaction.create({
-        data: {
-          accountId: account.id,
-          concept: concept.trim().substring(0, 500),
-          debit,
-          credit,
-          balance: newBalance,
-          observations: observations
-            ? String(observations).trim().substring(0, 2000)
-            : null,
-        },
-      }),
-    ]);
 
     await logAudit({
       userId: user.id,
       action: "CREATE",
       entity: "Transaction",
       entityId: newTransaction.id,
-      newValues: { accountId: account.id, debit, credit, balance: newBalance },
+      newValues: { accountId: account.id, concept: newTransaction.concept, debit, credit, balance: account.balance },
     });
 
-    return NextResponse.json({ account: { ...account, balance: newBalance } }, { status: 201 });
+    return NextResponse.json({ account, transaction: newTransaction }, { status: 201 });
   } catch (error: any) {
     console.error("Accounts POST error:", error);
     return NextResponse.json({ error: "Error en el servidor" }, { status: 400 });

@@ -56,3 +56,11 @@
     grid-template-columns: minmax(0, 1fr) minmax(var(--ui-search-min-w), 1.3fr) minmax(0, 1fr);
   }
 }
+
+/* Sin buscador (formularios): las migas usan todo el ancho que dejan las acciones. */
+@media (min-width: 992px) {
+  .panel.noSearch {
+    grid-template-areas: "start end";
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+}

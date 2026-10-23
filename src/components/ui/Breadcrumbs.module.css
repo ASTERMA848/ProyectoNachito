@@ -21,6 +21,11 @@
   min-width: 0;
 }
 
+/* Los niveles anteriores no se achican: solo se recorta el actual. */
+.item:not(:last-child) {
+  flex-shrink: 0;
+}
+
 .link {
   color: var(--ui-action);
   text-decoration: none;

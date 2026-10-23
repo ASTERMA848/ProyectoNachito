@@ -1,0 +1,122 @@
+.page {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.listArea {
+  flex: 1;
+  min-width: 0;
+  background: var(--ui-surface);
+}
+
+/* Totales por moneda: deuda y saldo a favor por separado. */
+.summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--ui-dashboard-card-min)), 1fr));
+  gap: var(--ui-space-8);
+  padding: var(--ui-space-12) var(--ui-space-16);
+  border-bottom: 1px solid var(--ui-border);
+  background: var(--ui-bg);
+}
+
+.summaryItem {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ui-space-4);
+  padding: var(--ui-space-8) var(--ui-space-12);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-surface);
+}
+
+.summaryCode {
+  font-weight: var(--ui-fw-semibold);
+  color: var(--ui-text-strong);
+}
+
+.summaryLine {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--ui-space-8);
+  font-size: var(--ui-fs-sm);
+}
+
+.amount {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.positive {
+  color: var(--ui-success-text);
+}
+
+.negative {
+  color: var(--ui-danger-text);
+}
+
+.muted {
+  color: var(--ui-text-muted);
+}
+
+.strong {
+  font-weight: var(--ui-fw-medium);
+  color: var(--ui-text-strong);
+}
+
+.selection {
+  font-size: var(--ui-fs-sm);
+  color: var(--ui-text-muted);
+  white-space: nowrap;
+}
+
+.alert {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ui-space-12);
+  padding: var(--ui-space-8) var(--ui-space-16);
+  border-bottom: 1px solid var(--ui-border);
+  background: var(--ui-danger-bg);
+  color: var(--ui-danger-text);
+}
+
+.dialogForm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ui-space-12);
+}
+
+.bigBalance {
+  font-size: var(--ui-fs-xl);
+  font-weight: var(--ui-fw-semibold);
+}
+
+.movements {
+  margin-top: var(--ui-space-8);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-sm);
+}
+
+.movementsHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ui-space-8);
+  margin-top: var(--ui-space-16);
+}
+
+.concept {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ui-space-2);
+}
+
+.link {
+  color: var(--ui-action);
+  text-decoration: underline;
+}
