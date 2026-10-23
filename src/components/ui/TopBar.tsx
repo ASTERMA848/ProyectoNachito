@@ -12,9 +12,10 @@ import styles from "./TopBar.module.css";
 
 export type TopBarSection = { id: string; label: string; href?: string; active?: boolean; items?: MenuEntry[] };
 
-type TopBarProps = { appName: string; sections?: TopBarSection[]; onOpenApps?: () => void; end?: ReactNode };
+// apps: si se pasa, el botón de la grilla abre un menú con las aplicaciones; si no, llama a onOpenApps.
+type TopBarProps = { appName: string; sections?: TopBarSection[]; apps?: MenuEntry[]; onOpenApps?: () => void; end?: ReactNode };
 
-export function TopBar({ appName, sections = [], onOpenApps, end }: TopBarProps) {
+export function TopBar({ appName, sections = [], apps, onOpenApps, end }: TopBarProps) {
   const router = useRouter();
   // En pantallas chicas los menús de sección se juntan en un solo desplegable.
   const compactItems: MenuEntry[] = sections.flatMap((section) =>
@@ -26,7 +27,11 @@ export function TopBar({ appName, sections = [], onOpenApps, end }: TopBarProps)
   return (
     <header className={styles.bar}>
       <nav aria-label="Principal" className={styles.nav}>
-        <IconButton icon={<LayoutGrid size={iconSize.md} />} label="Menú de aplicaciones" onClick={onOpenApps} />
+        {apps ? (
+          <Menu label="Menú de aplicaciones" icon={<LayoutGrid size={iconSize.md} />} items={apps} />
+        ) : (
+          <IconButton icon={<LayoutGrid size={iconSize.md} />} label="Menú de aplicaciones" onClick={onOpenApps} />
+        )}
         <span className={styles.app}>{appName}</span>
         {sections.length > 0 && (
           <>

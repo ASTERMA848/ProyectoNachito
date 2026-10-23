@@ -1,0 +1,54 @@
+.page {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.listArea {
+  flex: 1;
+  min-width: 0;
+  background: var(--ui-surface);
+}
+
+.number {
+  font-weight: var(--ui-fw-semibold);
+  color: var(--ui-text-strong);
+}
+
+.muted {
+  color: var(--ui-text-muted);
+}
+
+/* Nombres largos: se cortan con "…" para no estirar la tabla. */
+.truncate {
+  display: inline-block;
+  max-width: 28ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: bottom;
+}
+
+.selection {
+  font-size: var(--ui-fs-sm);
+  color: var(--ui-text-muted);
+  white-space: nowrap;
+}
+
+.alert {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ui-space-12);
+  padding: var(--ui-space-8) var(--ui-space-16);
+  border-bottom: 1px solid var(--ui-border);
+  background: var(--ui-danger-bg);
+  color: var(--ui-danger-text);
+}
+
+.more {
+  margin: var(--ui-space-4) 0 0;
+  font-size: var(--ui-fs-sm);
+  color: var(--ui-text-muted);
+}

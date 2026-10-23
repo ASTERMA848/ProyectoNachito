@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Sidebar from "./Sidebar";
 import AuditorInspector from "./AuditorInspector";
+import { AppShell } from "./shell/AppShell";
+import { canVisit, usesNewUi } from "./shell/apps";
 import { applyTheme, THEME_CHANGED_EVENT } from "@/lib/theme";
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
@@ -35,24 +37,13 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
           const data = await res.json();
           setUser(data.user);
           
+          // Qué pantallas ve cada rol: matriz de permisos (src/components/shell/apps.ts).
           const role = data.user.role;
-          const username = data.user.username;
-          const isAuditorRoute = pathname === "/audit" || pathname === "/sql-console";
-          
-          if (username === "admin") {
-            // Admin total
-          } else if (role === "AUDITOR") {
-            if (!isAuditorRoute && pathname !== "/settings" && pathname !== "/logout") {
-              router.push("/audit");
-              return;
-            }
-          } else {
-            if (isAuditorRoute) {
-              router.push("/");
-              return;
-            }
+          if (!canVisit(role, pathname)) {
+            router.push(role === "AUDITOR" ? "/audit" : "/");
+            return;
           }
-          
+
           setLoading(false);
         } else {
           router.push("/login");
@@ -118,6 +109,10 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
         </div>
       </div>
     );
+  }
+
+  if (usesNewUi(pathname)) {
+    return <AppShell user={user}>{children}</AppShell>;
   }
 
   return (

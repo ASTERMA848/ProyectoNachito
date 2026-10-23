@@ -95,6 +95,11 @@
   white-space: pre-wrap;
 }
 
+.event {
+  margin: 0;
+  color: var(--ui-text-muted);
+}
+
 .changes {
   display: grid;
   gap: var(--ui-space-2);

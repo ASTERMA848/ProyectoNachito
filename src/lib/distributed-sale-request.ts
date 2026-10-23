@@ -1,12 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireAuth } from "@/lib/session";
+import { can } from "@/lib/permissions";
 import { saveDistributedSale, SaleInput, SaleItem, SaleValidationError } from "@/lib/distributed-sale";
 
 export async function handleDistributedSale(req: NextRequest, parentId?: string) {
   try {
     const user = await requireAuth();
     if (!user) return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+    if (!can(user, "operations.write")) return NextResponse.json({ error: "Tu rol no puede registrar ni modificar ventas" }, { status: 403 });
+    if (parentId && !can(user, "operations.reopen")) {
+      const current = await prisma.operation.findFirst({ where: { id: parentId, deletedAt: null }, select: { state: true } });
+      if (current?.state === "COMPLETED") {
+        return NextResponse.json({ error: "Solo el administrador puede modificar una venta completada" }, { status: 403 });
+      }
+    }
     const body = await req.json().catch(() => null);
     if (!body) return NextResponse.json({ error: "Datos inválidos" }, { status: 400 });
     const { providerId, currencyId, exchangeRate, operationDate, observations, items, providerIsPaid, providerPaymentCurrencyId, providerPaymentRate } = body;

@@ -3,6 +3,7 @@ import prisma from "@/lib/prisma";
 import { requireAuth } from "@/lib/session";
 import { verifyPassword } from "@/lib/auth-utils";
 import { logAudit } from "@/lib/audit";
+import { can } from "@/lib/permissions";
 import { Prisma, Operation } from "@prisma/client";
 import { reverseSaleLedger } from "@/lib/distributed-sale";
 
@@ -22,6 +23,50 @@ async function verifyAdminPassword(userId: string, password: string): Promise<bo
   return verifyPassword(password, adminUser.passwordHash);
 }
 
+const currencySelect = { id: true, code: true, symbol: true, decimals: true } as const;
+
+// Ficha de una operación con sus líneas y los contadores de los botones inteligentes.
+export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+  try {
+    const user = await requireAuth();
+    if (!user) {
+      return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+    }
+
+    const operation = await prisma.operation.findFirst({
+      where: { id: params.id, deletedAt: null },
+      include: {
+        client: { select: { id: true, name: true, lastname: true, document: true } },
+        provider: { select: { id: true, name: true, lastname: true, document: true } },
+        originCurrency: { select: currencySelect },
+        destCurrency: { select: currencySelect },
+        providerPaymentCurrency: { select: currencySelect },
+        parentOperation: { select: { id: true, operationNumber: true } },
+        childOperations: {
+          where: { deletedAt: null },
+          include: { client: { select: { id: true, name: true, lastname: true } } },
+        },
+      },
+    });
+    if (!operation) {
+      return NextResponse.json({ error: "Operación no encontrada" }, { status: 404 });
+    }
+    // Las líneas se numeran OP-000123-1, -2... ; el orden numérico evita que "-10" quede antes que "-2".
+    operation.childOperations.sort((a, b) => a.operationNumber.localeCompare(b.operationNumber, undefined, { numeric: true }));
+
+    const ids = [operation.id, ...operation.childOperations.map((child) => child.id)];
+    const [transactions, treasuryMovements] = await Promise.all([
+      prisma.transaction.count({ where: { operationId: { in: ids } } }),
+      prisma.treasuryMovement.count({ where: { operationId: { in: ids } } }),
+    ]);
+
+    return NextResponse.json({ operation, counts: { transactions, treasuryMovements } }, { status: 200 });
+  } catch (error) {
+    console.error("Operation GET error:", error);
+    return NextResponse.json({ error: "Error en el servidor" }, { status: 500 });
+  }
+}
+
 export async function PUT(
   req: NextRequest,
   { params }: { params: { id: string } }
@@ -30,6 +75,9 @@ export async function PUT(
     const user = await requireAuth();
     if (!user) {
       return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+    }
+    if (!can(user, "operations.write")) {
+      return NextResponse.json({ error: "Tu rol no puede modificar operaciones" }, { status: 403 });
     }
 
     const operationId = params.id;
@@ -218,6 +266,9 @@ export async function PATCH(
     if (!user) {
       return NextResponse.json({ error: "No autenticado" }, { status: 401 });
     }
+    if (!can(user, "operations.write")) {
+      return NextResponse.json({ error: "Tu rol no puede cambiar el estado de las operaciones" }, { status: 403 });
+    }
 
     const operationId = params.id;
     const body = await req.json().catch(() => null);
@@ -253,7 +304,7 @@ export async function PATCH(
       if (oldOperation.type.startsWith("DISTRIBUTED_SALE") || oldOperation.type === "SINGLE_SALE") {
         throw new PatchError("Actualizá los cobros y el pago al proveedor desde Editar venta distribuida", 400);
       }
-      if (oldOperation.state === "COMPLETED" && state && state !== "COMPLETED" && user.role !== "ADMIN") {
+      if (oldOperation.state === "COMPLETED" && state && state !== "COMPLETED" && !can(user, "operations.reopen")) {
         throw new PatchError("Solo el administrador puede modificar operaciones completadas", 403);
       }
 
@@ -318,6 +369,9 @@ export async function DELETE(
     if (!user) {
       return NextResponse.json({ error: "No autenticado" }, { status: 401 });
     }
+    if (!can(user, "operations.delete")) {
+      return NextResponse.json({ error: "Solo el administrador puede eliminar operaciones" }, { status: 403 });
+    }
 
     const operationId = params.id;
 
@@ -376,11 +430,8 @@ export async function DELETE(
           }
           await tx.treasuryMovement.deleteMany({ where: { operationId: currentOp.id } });
 
-          // 3. Eliminar o desvincular relaciones secundarias para evitar FK constraints
+          // 3. La operación queda con deletedAt: su historial, notas y adjuntos se conservan.
           await tx.settlement.deleteMany({ where: { operationId: currentOp.id } });
-          await tx.attachment.deleteMany({ where: { operationId: currentOp.id } });
-          await tx.internalComment.deleteMany({ where: { operationId: currentOp.id } });
-          await tx.operationStateHistory.deleteMany({ where: { operationId: currentOp.id } });
 
           // 4. Soft delete de la operación
           await tx.operation.update({

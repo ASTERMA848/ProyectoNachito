@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireAuth } from "@/lib/session";
+import { can } from "@/lib/permissions";
 import { nextOperationNumber } from "@/lib/distributed-sale";
+import { ListError, parseListParams } from "@/lib/list-query";
+import { GROUP_KEYS, listOperations, SORT_KEYS } from "@/lib/resources/operations";
 import { randomUUID } from "node:crypto";
 
 export const dynamic = "force-dynamic";
 
+// Contrato de listas: ?q=&filter=state:pending&groupBy=state&sort=date:desc&offset=0&limit=80
 export async function GET(req: NextRequest) {
   try {
     const user = await requireAuth();
@@ -13,88 +17,12 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "No autenticado" }, { status: 401 });
     }
 
-    const { searchParams } = new URL(req.url);
-    const page = Math.max(1, Math.min(1000000, Number(searchParams.get("page")) || 1));
-    const limit = Math.max(1, Math.min(100, Number(searchParams.get("limit")) || 50));
-    if (!Number.isInteger(page) || !Number.isInteger(limit)) {
-      return NextResponse.json({ error: "Paginación inválida" }, { status: 400 });
-    }
-    const skip = (page - 1) * limit;
-
-    const search = (searchParams.get("search") || "").trim().slice(0, 200);
-    const state = searchParams.get("state") || "";
-    const startDate = searchParams.get("startDate") || "";
-    const endDate = searchParams.get("endDate") || "";
-
-    const where: any = { deletedAt: null, parentOperationId: null };
-
-    if (state) where.state = state;
-    if (startDate || endDate) {
-      where.operationDate = {};
-      if (startDate) where.operationDate.gte = new Date(startDate);
-      if (endDate) {
-        const exclusiveEnd = new Date(endDate);
-        exclusiveEnd.setUTCDate(exclusiveEnd.getUTCDate() + 1);
-        where.operationDate.lt = exclusiveEnd;
-      }
-      if (Object.values(where.operationDate).some(date => !Number.isFinite((date as Date).getTime()))) {
-        return NextResponse.json({ error: "Rango de fechas inválido" }, { status: 400 });
-      }
-    }
-    
-    if (search) {
-      where.OR = [
-        { operationNumber: { contains: search, mode: "insensitive" } },
-        { client: { name: { contains: search, mode: "insensitive" } } },
-        { provider: { name: { contains: search, mode: "insensitive" } } },
-      ];
-    }
-
-    const [operations, totalCount] = await Promise.all([
-      prisma.operation.findMany({
-        relationLoadStrategy: "join",
-        where,
-        include: {
-          client: { select: { id: true, name: true, document: true } },
-          provider: { select: { id: true, name: true, document: true } },
-          originCurrency: { select: { id: true, code: true, symbol: true, color: true } },
-          destCurrency: { select: { id: true, code: true, symbol: true, color: true } },
-          providerPaymentCurrency: { select: { id: true, code: true, symbol: true, color: true } },
-          parentOperation: { select: { id: true, operationNumber: true } },
-          childOperations: {
-            where: { deletedAt: null },
-            orderBy: { createdAt: "asc" },
-            select: {
-              id: true,
-              operationNumber: true,
-              state: true,
-              originAmount: true,
-              destAmount: true,
-              isPaid: true,
-              clientId: true,
-              exchangeRate: true,
-              observations: true,
-              client: { select: { id: true, name: true } },
-            },
-          },
-        },
-        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-        skip,
-        take: limit,
-      }),
-      prisma.operation.count({ where })
-    ]);
-
-    return NextResponse.json({ 
-      operations,
-      pagination: {
-        total: totalCount,
-        page,
-        limit,
-        totalPages: Math.ceil(totalCount / limit)
-      }
-    }, { status: 200 });
+    const params = parseListParams(new URL(req.url).searchParams, { sortKeys: SORT_KEYS, groupKeys: GROUP_KEYS });
+    return NextResponse.json(await listOperations(params), { status: 200 });
   } catch (error: any) {
+    if (error instanceof ListError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
     console.error("Operations GET error:", error);
     return NextResponse.json({ error: "Error en el servidor" }, { status: 500 });
   }
@@ -105,6 +33,9 @@ export async function POST(req: NextRequest) {
     const user = await requireAuth();
     if (!user) {
       return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+    }
+    if (!can(user, "operations.write")) {
+      return NextResponse.json({ error: "Tu rol no puede registrar operaciones" }, { status: 403 });
     }
 
     const body = await req.json().catch(() => null);

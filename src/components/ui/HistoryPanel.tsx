@@ -11,6 +11,7 @@ import styles from "./HistoryPanel.module.css";
 export type HistoryEntry =
   | { id: string; kind: "note"; author: string; at: string; body: string; pinned?: boolean }
   | { id: string; kind: "change"; author: string; at: string; changes: { field: string; from: string; to: string }[] }
+  | { id: string; kind: "event"; author: string; at: string; text: string }
   | { id: string; kind: "attachment"; author: string; at: string; fileName: string; href: string; size: string };
 
 export type HistoryGroup = { label: string; entries: HistoryEntry[] };
@@ -58,6 +59,7 @@ export function HistoryPanel({ toolbar, composer, groups, emptyText = "Todavía 
 
 function EntryContent({ entry }: { entry: HistoryEntry }) {
   if (entry.kind === "note") return <p className={styles.body}>{entry.body}</p>;
+  if (entry.kind === "event") return <p className={styles.event}>{entry.text}</p>;
   if (entry.kind === "attachment") {
     return (
       <a className={styles.file} href={entry.href}>

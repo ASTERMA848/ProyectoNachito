@@ -10,6 +10,7 @@
     "lint": "next lint",
     "db:setup": "prisma db push && node prisma/seed.js",
     "db:seed": "node prisma/seed.js",
+    "db:seed-demo": "node scripts/seed-demo.cjs",
     "ui:tokens": "node scripts/build-ui-tokens.cjs",
     "db:operation-indexes": "node scripts/apply-operation-indexes.cjs",
     "db:provider-payments": "node scripts/migrate-provider-payments.cjs",

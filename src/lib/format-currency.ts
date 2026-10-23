@@ -23,6 +23,13 @@ export function formatMoney(
 }
 
 /**
+ * Importe con el código de su moneda adelante: formatAmount(1500, "USD") => "USD 1.500,00".
+ */
+export function formatAmount(value: number | string | null | undefined, currencyCode: string, decimals: number = 2): string {
+  return `${currencyCode} ${formatMoney(value, decimals, true)}`;
+}
+
+/**
  * Formatea con código o símbolo de moneda
  * Ejemplo: formatCurrency(1500000, "ARS") => "$ 1.500.000,00" o "1.500.000,00 ARS"
  */
