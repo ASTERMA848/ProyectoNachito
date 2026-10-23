@@ -1,0 +1,30 @@
+.avatar {
+  display: inline-grid;
+  flex: none;
+  place-content: center;
+  width: var(--avatar-size);
+  height: var(--avatar-size);
+  border-radius: 50%;
+  font-size: calc(var(--avatar-size) * 0.42);
+  line-height: 1;
+  font-weight: var(--ui-fw-semibold);
+  user-select: none;
+}
+
+.sm {
+  --avatar-size: var(--ui-avatar-sm);
+}
+
+.md {
+  --avatar-size: var(--ui-avatar-md);
+}
+
+.lg {
+  --avatar-size: var(--ui-avatar-lg);
+}
+
+.photo {
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+}

@@ -1,0 +1,51 @@
+/* Base de la interfaz nueva. Una pantalla la usa envolviendo su contenido con la clase ui-app;
+   las pantallas actuales no cambian. */
+.ui-app {
+  min-height: 100vh;
+  font-family: var(--ui-font-sans);
+  font-size: var(--ui-fs-base);
+  line-height: var(--ui-lh-base);
+  color: var(--ui-text);
+  background: var(--ui-bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Las reglas globales de h1 a h4 usan !important. Dentro de .ui-app cada componente define su
+   título con --ui-heading-size, --ui-heading-weight, --ui-heading-line y --ui-heading-color. */
+.ui-app :is(h1, h2, h3, h4) {
+  margin: 0;
+  font-family: inherit;
+  font-size: var(--ui-heading-size, inherit) !important;
+  font-weight: var(--ui-heading-weight, inherit) !important;
+  line-height: var(--ui-heading-line, inherit);
+  letter-spacing: normal;
+  color: var(--ui-heading-color, inherit) !important;
+  background: none !important;
+  -webkit-text-fill-color: currentColor !important;
+}
+
+.ui-app :focus-visible {
+  outline: 2px solid var(--ui-focus);
+  outline-offset: 2px;
+}
+
+.ui-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-app *,
+  .ui-app *::before,
+  .ui-app *::after {
+    transition-duration: 1ms !important;
+    animation-duration: 1ms !important;
+  }
+}

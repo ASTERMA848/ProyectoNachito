@@ -1,0 +1,140 @@
+.board {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ui-space-16);
+  overflow-x: auto;
+  padding: var(--ui-space-16);
+  background: var(--ui-bg);
+}
+
+.column {
+  flex: none;
+  width: var(--ui-kanban-col-w);
+  max-width: calc(100vw - var(--ui-space-48));
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: var(--ui-control-h);
+}
+
+.title {
+  --ui-heading-size: var(--ui-fs-md);
+  --ui-heading-line: var(--ui-lh-md);
+  --ui-heading-weight: var(--ui-fw-semibold);
+  --ui-heading-color: var(--ui-text-strong);
+}
+
+.count {
+  font-size: var(--ui-fs-sm);
+  font-weight: var(--ui-fw-regular);
+  color: var(--ui-text-muted);
+}
+
+.progressRow {
+  display: flex;
+  align-items: center;
+  gap: var(--ui-space-12);
+  margin: var(--ui-space-4) 0 var(--ui-space-12);
+}
+
+.progress {
+  display: flex;
+  flex: 1;
+  gap: 1px;
+  overflow: hidden;
+  height: var(--ui-progress-h);
+  border-radius: var(--ui-radius-pill);
+  background: var(--ui-muted);
+}
+
+.success {
+  background: var(--ui-success);
+}
+
+.warning {
+  background: var(--ui-warning);
+}
+
+.danger {
+  background: var(--ui-danger);
+}
+
+.neutral {
+  background: var(--ui-border-input);
+}
+
+.total {
+  font-weight: var(--ui-fw-semibold);
+  color: var(--ui-text-strong);
+  font-variant-numeric: tabular-nums;
+}
+
+.cards {
+  display: grid;
+  gap: var(--ui-space-8);
+}
+
+.card {
+  position: relative;
+  display: grid;
+  gap: var(--ui-space-4);
+  padding: var(--ui-card-pad);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-surface);
+}
+
+.clickable:hover {
+  box-shadow: var(--ui-shadow-pop);
+}
+
+.cardTitle {
+  --ui-heading-size: var(--ui-fs-base);
+  --ui-heading-line: var(--ui-lh-base);
+  --ui-heading-weight: var(--ui-fw-semibold);
+  --ui-heading-color: var(--ui-text-strong);
+}
+
+.open {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.open::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+
+.open:focus-visible {
+  outline: none;
+}
+
+.open:focus-visible::after {
+  outline: 2px solid var(--ui-focus);
+  outline-offset: 1px;
+}
+
+.cardBody {
+  display: grid;
+  gap: var(--ui-space-2);
+  color: var(--ui-text);
+}
+
+.cardFooter {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ui-space-8);
+  margin-top: var(--ui-space-4);
+}

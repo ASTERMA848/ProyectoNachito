@@ -1,0 +1,27 @@
+.pager {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ui-space-8);
+}
+
+.value {
+  color: var(--ui-text);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.buttons {
+  display: inline-flex;
+  gap: 1px;
+}
+
+/* Los dos botones forman un grupo: se redondean solo los extremos. */
+.previous.previous {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.next.next {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}

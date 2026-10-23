@@ -1,0 +1,177 @@
+.root {
+  position: relative;
+  min-width: 0;
+}
+
+.box {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ui-space-4);
+  min-height: var(--ui-control-h);
+  padding: var(--ui-space-2) var(--ui-space-2) var(--ui-space-2) var(--ui-space-8);
+  border: 1px solid var(--ui-border-input);
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-surface);
+}
+
+.content {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ui-space-4);
+  min-width: 0;
+  min-height: calc(var(--ui-control-h) - var(--ui-space-4) - 2px);
+}
+
+.box:focus-within {
+  border-color: var(--ui-focus);
+  box-shadow: 0 0 0 1px var(--ui-focus);
+}
+
+.searchIcon {
+  flex: none;
+  color: var(--ui-text-muted);
+}
+
+.facets {
+  display: contents;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.facet {
+  display: inline-flex;
+  align-items: stretch;
+  max-width: 100%;
+  height: calc(var(--ui-control-h) - var(--ui-space-8) - 2px);
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-muted);
+  font-size: var(--ui-fs-sm);
+  line-height: var(--ui-lh-sm);
+  color: var(--ui-text-strong);
+}
+
+.facetIcon {
+  display: inline-grid;
+  place-content: center;
+  padding: 0 var(--ui-space-4);
+  border-radius: var(--ui-radius-sm) 0 0 var(--ui-radius-sm);
+  color: var(--ui-on-accent);
+}
+
+.filter,
+.favorite,
+.field {
+  background: var(--ui-accent);
+}
+
+.group {
+  background: var(--ui-action);
+  color: var(--ui-on-action);
+}
+
+.facetLabel {
+  display: inline-flex;
+  align-items: center;
+  overflow: hidden;
+  padding: 0 var(--ui-space-6);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.facetField {
+  white-space: pre;
+}
+
+.or {
+  color: var(--ui-text-muted);
+  white-space: pre;
+}
+
+.facetRemove {
+  display: inline-grid;
+  place-content: center;
+  padding: 0 var(--ui-space-6);
+  border: 0;
+  border-radius: 0 var(--ui-radius-sm) var(--ui-radius-sm) 0;
+  background: transparent;
+  color: var(--ui-text-muted);
+  cursor: pointer;
+}
+
+.facetRemove:hover {
+  background: var(--ui-muted-hover);
+  color: var(--ui-text-strong);
+}
+
+.facetRemove:focus-visible {
+  outline: 2px solid var(--ui-focus);
+  outline-offset: -2px;
+}
+
+.input {
+  flex: 1;
+  min-width: 8ch;
+  height: calc(var(--ui-control-h) - var(--ui-space-4) - 2px);
+  padding: 0 var(--ui-space-4);
+  border: 0;
+  background: transparent;
+  color: var(--ui-text-strong);
+  font: inherit;
+  outline: none;
+}
+
+.input::placeholder {
+  color: var(--ui-placeholder);
+}
+
+.input::-webkit-search-cancel-button {
+  appearance: none;
+}
+
+.toggle {
+  display: inline-grid;
+  flex: none;
+  place-content: center;
+  width: var(--ui-control-h-sm);
+  height: calc(var(--ui-control-h) - var(--ui-space-4) - 2px);
+  border: 0;
+  border-radius: var(--ui-radius-sm);
+  background: transparent;
+  color: var(--ui-text-muted);
+  cursor: pointer;
+}
+
+.toggle:hover {
+  background: var(--ui-surface-hover);
+  color: var(--ui-text-strong);
+}
+
+.toggle svg {
+  transition: transform var(--ui-dur-fast) var(--ui-ease);
+}
+
+.toggleOpen svg {
+  transform: rotate(180deg);
+}
+
+.panel {
+  position: absolute;
+  top: calc(100% + var(--ui-space-4));
+  left: 0;
+  z-index: 40;
+  width: 100%;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-surface);
+  box-shadow: var(--ui-shadow-pop);
+}
+
+/* Desde sm (bp-sm) el panel puede ser más ancho que el buscador, sin pasarse de la pantalla. */
+@media (min-width: 576px) {
+  .panel {
+    width: max(100%, min(var(--ui-panel-min-w), calc(100vw - var(--ui-space-48))));
+  }
+}

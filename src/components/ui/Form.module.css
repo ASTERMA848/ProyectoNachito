@@ -1,0 +1,105 @@
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ui-space-8);
+  padding: var(--ui-space-8) var(--ui-space-16);
+  border-bottom: 1px solid var(--ui-border);
+  background: var(--ui-surface);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ui-space-8);
+}
+
+.status {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.sheetWrap {
+  padding: var(--ui-space-16);
+  background: var(--ui-bg);
+}
+
+.sheet {
+  max-width: var(--ui-sheet-max);
+  margin: 0 auto;
+  padding: var(--ui-space-24) var(--ui-space-16);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-surface);
+  box-shadow: var(--ui-shadow-card);
+}
+
+.titleRow {
+  display: flex;
+  flex-wrap: wrap-reverse;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--ui-space-16);
+  margin-bottom: var(--ui-space-24);
+}
+
+.titleText {
+  min-width: 0;
+}
+
+.eyebrow {
+  margin: 0 0 var(--ui-space-2);
+  font-size: var(--ui-fs-sm);
+  line-height: var(--ui-lh-sm);
+  color: var(--ui-text-muted);
+}
+
+.title {
+  --ui-heading-size: var(--ui-fs-xl);
+  --ui-heading-line: var(--ui-lh-xl);
+  --ui-heading-weight: var(--ui-fw-xl);
+  --ui-heading-color: var(--ui-text-strong);
+}
+
+.groups {
+  display: grid;
+  gap: var(--ui-space-24) var(--ui-space-40);
+  margin-bottom: var(--ui-space-24);
+}
+
+.groupTitle {
+  --ui-heading-size: var(--ui-fs-xs);
+  --ui-heading-line: var(--ui-lh-xs);
+  --ui-heading-weight: var(--ui-fw-bold);
+  --ui-heading-color: var(--ui-text-muted);
+  margin-bottom: var(--ui-space-8);
+  padding-bottom: var(--ui-space-4);
+  border-bottom: 1px solid var(--ui-border);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: fit-content(var(--ui-label-col-max)) minmax(0, 1fr);
+  align-items: center;
+  gap: var(--ui-field-gap) var(--ui-space-16);
+}
+
+/* sm (bp-sm) y lg (bp-lg): las media queries no aceptan variables CSS. */
+@media (min-width: 576px) {
+  .sheet {
+    padding: var(--ui-space-24) var(--ui-space-32);
+  }
+}
+
+@media (min-width: 992px) {
+  .sheetWrap {
+    padding: var(--ui-space-24);
+  }
+
+  .groups {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

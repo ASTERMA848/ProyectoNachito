@@ -1,0 +1,46 @@
+/* Ocupa el espacio que queda y recorta el nivel actual con puntos suspensivos. */
+.nav {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.list {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--ui-fs-md);
+  line-height: var(--ui-lh-md);
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.link {
+  color: var(--ui-action);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.link:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.current {
+  overflow: hidden;
+  font-weight: var(--ui-fw-semibold);
+  color: var(--ui-text-strong);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.separator {
+  padding: 0 var(--ui-space-6);
+  color: var(--ui-text-muted);
+}

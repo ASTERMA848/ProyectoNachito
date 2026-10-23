@@ -1,0 +1,17 @@
+.spark {
+  display: block;
+  align-self: end;
+  width: 100%;
+  height: var(--ui-sparkline-h);
+}
+
+.area {
+  fill: var(--ui-accent-subtle);
+}
+
+.line {
+  fill: none;
+  stroke: var(--ui-action);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}

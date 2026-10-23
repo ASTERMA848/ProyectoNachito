@@ -1,0 +1,58 @@
+/* Teléfono: tres filas. Desde sm, paginador y vistas a la derecha de las migas. Desde lg, una sola fila. */
+.panel {
+  display: grid;
+  grid-template-areas:
+    "start"
+    "search"
+    "end";
+  grid-template-columns: minmax(0, 1fr);
+  align-items: center;
+  gap: var(--ui-space-8) var(--ui-space-12);
+  padding: var(--ui-space-12) var(--ui-space-16);
+  border-bottom: 1px solid var(--ui-border);
+  background: var(--ui-surface);
+}
+
+.start {
+  grid-area: start;
+  display: flex;
+  align-items: center;
+  gap: var(--ui-space-12);
+  min-width: 0;
+}
+
+.search {
+  grid-area: search;
+  min-width: 0;
+}
+
+.end {
+  grid-area: end;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ui-space-12);
+}
+
+@media (min-width: 576px) {
+  .end {
+    justify-content: flex-end;
+  }
+}
+
+/* Las media queries no aceptan variables CSS: 576 y 992 son los tokens bp-sm y bp-lg. */
+@media (min-width: 576px) {
+  .panel {
+    grid-template-areas:
+      "start end"
+      "search search";
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+}
+
+@media (min-width: 992px) {
+  .panel {
+    grid-template-areas: "start search end";
+    grid-template-columns: minmax(0, 1fr) minmax(var(--ui-search-min-w), 1.3fr) minmax(0, 1fr);
+  }
+}

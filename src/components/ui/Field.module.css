@@ -1,0 +1,56 @@
+.field {
+  display: grid;
+  gap: var(--ui-space-4);
+  min-width: 0;
+}
+
+/* En una fila inline, la etiqueta y el control pasan a ser celdas de la grilla del FormGroup. */
+.inline {
+  display: contents;
+}
+
+.label {
+  font-size: var(--ui-fs-sm);
+  line-height: var(--ui-lh-sm);
+  font-weight: var(--ui-fw-semibold);
+  color: var(--ui-text-strong);
+}
+
+.inline .label {
+  display: flex;
+  align-items: center;
+  min-height: var(--ui-field-h);
+  font-size: var(--ui-fs-base);
+  line-height: var(--ui-lh-base);
+}
+
+.required {
+  margin-left: var(--ui-space-2);
+  color: var(--ui-negative);
+}
+
+.control {
+  min-width: 0;
+}
+
+.readonly {
+  display: flex;
+  align-items: center;
+  min-height: var(--ui-field-h);
+  color: var(--ui-text-strong);
+}
+
+.help,
+.error {
+  margin: var(--ui-space-4) 0 0;
+  font-size: var(--ui-fs-sm);
+  line-height: var(--ui-lh-sm);
+}
+
+.help {
+  color: var(--ui-text-muted);
+}
+
+.error {
+  color: var(--ui-negative);
+}

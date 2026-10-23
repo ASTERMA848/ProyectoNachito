@@ -1,0 +1,53 @@
+.box {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--ui-space-8);
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ui-space-8);
+  min-width: 0;
+  height: var(--ui-smart-btn-h);
+  padding: 0 var(--ui-space-12);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-surface);
+  color: var(--ui-text);
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.button:hover {
+  background: var(--ui-surface-hover);
+}
+
+.button:focus-visible {
+  outline: 2px solid var(--ui-focus);
+  outline-offset: 2px;
+}
+
+.icon {
+  display: inline-flex;
+  color: var(--ui-action);
+}
+
+.text {
+  display: grid;
+}
+
+.value {
+  font-weight: var(--ui-fw-semibold);
+  color: var(--ui-text-strong);
+  font-variant-numeric: tabular-nums;
+}
+
+.label {
+  font-size: var(--ui-fs-sm);
+  line-height: var(--ui-lh-sm);
+  color: var(--ui-text-muted);
+}

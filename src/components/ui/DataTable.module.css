@@ -1,0 +1,161 @@
+.wrap {
+  overflow-x: auto;
+  background: var(--ui-surface);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.table th,
+.table td {
+  height: var(--ui-row-h);
+  padding: 0 var(--ui-space-12);
+  border-bottom: 1px solid var(--ui-border);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.head th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--ui-bg);
+  color: var(--ui-text-strong);
+  font-weight: var(--ui-fw-semibold);
+}
+
+.table .start {
+  text-align: left;
+}
+
+.table .end {
+  text-align: right;
+}
+
+.table .center {
+  text-align: center;
+}
+
+.sortButton {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ui-space-4);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.sortButton:focus-visible {
+  outline: 2px solid var(--ui-focus);
+  outline-offset: 2px;
+}
+
+.sortIcon {
+  color: var(--ui-text-muted);
+}
+
+.table .checkCell {
+  width: calc(var(--ui-check-size) + var(--ui-space-24));
+  padding-right: 0;
+}
+
+.row td {
+  color: var(--ui-text);
+}
+
+.clickable {
+  cursor: pointer;
+}
+
+.row:hover td {
+  background: var(--ui-surface-hover);
+}
+
+.row:focus-visible {
+  outline: 2px solid var(--ui-focus);
+  outline-offset: -2px;
+}
+
+.selected td,
+.selected:hover td {
+  background: var(--ui-accent-subtle);
+}
+
+.muted td {
+  color: var(--ui-text-muted);
+}
+
+.danger td {
+  color: var(--ui-negative);
+}
+
+.success td {
+  color: var(--ui-positive);
+}
+
+.warning td {
+  color: var(--ui-warning);
+}
+
+.groupRow th,
+.groupRow td {
+  background: var(--ui-bg);
+  color: var(--ui-text-strong);
+  font-weight: var(--ui-fw-semibold);
+}
+
+.groupToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ui-space-6);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.groupToggle:focus-visible {
+  outline: 2px solid var(--ui-focus);
+  outline-offset: 2px;
+}
+
+.count {
+  font-weight: var(--ui-fw-regular);
+  color: var(--ui-text-muted);
+}
+
+.foot td {
+  border-top: 1px solid var(--ui-border);
+  border-bottom: 0;
+  color: var(--ui-text-strong);
+  font-weight: var(--ui-fw-semibold);
+}
+
+.skeleton {
+  display: block;
+  width: 60%;
+  height: var(--ui-space-8);
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-muted);
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.45;
+  }
+}
+
+.table .emptyCell {
+  height: auto;
+  padding: 0;
+  white-space: normal;
+}

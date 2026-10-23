@@ -15,7 +15,9 @@ export function middleware(request: NextRequest) {
     pathname.startsWith("/api/auth/login") ||
     pathname.startsWith("/_next/") ||
     pathname.startsWith("/favicon") ||
-    pathname.startsWith("/uploads/");
+    pathname.startsWith("/uploads/") ||
+    // Galería de componentes: solo existe en desarrollo y no usa datos.
+    (process.env.NODE_ENV !== "production" && pathname === "/design");
 
   const response = isPublic
     ? NextResponse.next()

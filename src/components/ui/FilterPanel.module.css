@@ -1,0 +1,129 @@
+/* Las columnas dependen del ancho del panel, no de la pantalla: apiladas en un panel angosto,
+   una por sección cuando entran. */
+.panel {
+  container-type: inline-size;
+}
+
+.columns {
+  display: grid;
+  padding: var(--ui-space-8) 0;
+}
+
+.section {
+  padding: var(--ui-space-4) var(--ui-space-8);
+}
+
+.section + .section {
+  border-top: 1px solid var(--ui-border);
+}
+
+@container (min-width: 540px) {
+  .columns {
+    grid-auto-columns: minmax(0, 1fr);
+    grid-auto-flow: column;
+  }
+
+  .section + .section {
+    border-top: 0;
+    border-left: 1px solid var(--ui-border);
+  }
+}
+
+.title {
+  --ui-heading-size: var(--ui-fs-base);
+  --ui-heading-line: var(--ui-lh-base);
+  --ui-heading-weight: var(--ui-fw-semibold);
+  --ui-heading-color: var(--ui-text-strong);
+  display: flex;
+  align-items: center;
+  gap: var(--ui-space-8);
+  padding: var(--ui-space-4) var(--ui-space-8) var(--ui-space-8);
+}
+
+.titleIcon {
+  display: inline-flex;
+}
+
+.accent {
+  color: var(--ui-accent);
+}
+
+.action {
+  color: var(--ui-action);
+}
+
+.warning {
+  color: var(--ui-warning);
+}
+
+.group {
+  margin: 0;
+  padding: var(--ui-space-4) 0;
+  list-style: none;
+}
+
+.group + .group {
+  border-top: 1px solid var(--ui-border);
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: var(--ui-space-6);
+  width: 100%;
+  min-height: var(--ui-menu-item-h);
+  padding: 0 var(--ui-space-8) 0 var(--ui-space-4);
+  border: 0;
+  border-radius: var(--ui-radius-sm);
+  background: transparent;
+  color: var(--ui-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.option:hover {
+  background: var(--ui-surface-hover);
+  color: var(--ui-text-strong);
+}
+
+.option:focus-visible {
+  outline: 2px solid var(--ui-focus);
+  outline-offset: -2px;
+}
+
+.nested {
+  padding-left: var(--ui-space-24);
+}
+
+.active {
+  font-weight: var(--ui-fw-medium);
+  color: var(--ui-text-strong);
+}
+
+.check {
+  display: inline-flex;
+  flex: none;
+  width: var(--ui-space-16);
+  color: var(--ui-action);
+}
+
+.optionLabel {
+  flex: 1;
+}
+
+.caret {
+  color: var(--ui-text-muted);
+  transition: transform var(--ui-dur-fast) var(--ui-ease);
+}
+
+.caretOpen {
+  transform: rotate(180deg);
+}
+
+.footer {
+  margin-top: var(--ui-space-4);
+  border-top: 1px solid var(--ui-border);
+  border-radius: 0;
+  color: var(--ui-action);
+}

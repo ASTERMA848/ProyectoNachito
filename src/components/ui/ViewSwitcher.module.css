@@ -1,0 +1,42 @@
+.group {
+  display: inline-flex;
+  gap: 1px;
+}
+
+.button {
+  display: inline-grid;
+  place-content: center;
+  width: var(--ui-control-h-sm);
+  height: var(--ui-control-h-sm);
+  padding: 0;
+  border: 1px solid transparent;
+  background: var(--ui-muted);
+  color: var(--ui-text);
+  cursor: pointer;
+}
+
+.button:first-child {
+  border-radius: var(--ui-radius-sm) 0 0 var(--ui-radius-sm);
+}
+
+.button:last-child {
+  border-radius: 0 var(--ui-radius-sm) var(--ui-radius-sm) 0;
+}
+
+.button:hover {
+  background: var(--ui-muted-hover);
+  color: var(--ui-text-strong);
+}
+
+.button:focus-visible {
+  position: relative;
+  outline: 2px solid var(--ui-focus);
+  outline-offset: 1px;
+}
+
+.active,
+.active:hover {
+  border-color: var(--ui-action);
+  background: var(--ui-surface);
+  color: var(--ui-text-strong);
+}

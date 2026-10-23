@@ -4,6 +4,8 @@ import "@liquefy-ui/react/styles.css";
 import "./globals.css";
 import "../styles/responsive.css";
 import "../styles/themes.css";
+import "../styles/ui-tokens.css";
+import "../styles/ui-base.css";
 import MainLayout from "@/components/MainLayout";
 import { LiquefyProvider } from "@liquefy-ui/react";
 import FeedbackProvider from "@/components/FeedbackProvider";

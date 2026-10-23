@@ -1,0 +1,157 @@
+.page {
+  padding-bottom: var(--ui-space-64);
+}
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ui-space-16);
+  padding: var(--ui-space-12) var(--ui-space-24);
+  border-bottom: 1px solid var(--ui-border);
+  background: var(--ui-surface);
+}
+
+.pageTitle {
+  --ui-heading-size: var(--ui-fs-lg);
+  --ui-heading-line: var(--ui-lh-lg);
+  --ui-heading-weight: var(--ui-fw-semibold);
+  --ui-heading-color: var(--ui-text-strong);
+}
+
+.main {
+  display: grid;
+  gap: var(--ui-space-48);
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: var(--ui-space-32) var(--ui-space-16);
+}
+
+.section {
+  display: grid;
+  gap: var(--ui-space-16);
+  min-width: 0;
+}
+
+.sectionTitle {
+  --ui-heading-size: var(--ui-fs-md);
+  --ui-heading-line: var(--ui-lh-md);
+  --ui-heading-weight: var(--ui-fw-semibold);
+  --ui-heading-color: var(--ui-text-strong);
+  padding-bottom: var(--ui-space-8);
+  border-bottom: 1px solid var(--ui-border);
+}
+
+.note {
+  margin: 0;
+  font-size: var(--ui-fs-sm);
+  line-height: var(--ui-lh-sm);
+  color: var(--ui-text-muted);
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ui-space-12);
+}
+
+.frame {
+  min-width: 0;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-bg);
+}
+
+.swatches {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: var(--ui-space-12);
+}
+
+.swatch {
+  display: grid;
+  gap: var(--ui-space-4);
+}
+
+.chip {
+  height: var(--ui-space-48);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-sm);
+}
+
+.code {
+  font-family: var(--ui-font-mono);
+  font-size: var(--ui-fs-xs);
+  line-height: var(--ui-lh-xs);
+  color: var(--ui-text-muted);
+}
+
+.types {
+  display: grid;
+  gap: var(--ui-space-12);
+}
+
+.typeRow {
+  display: grid;
+  gap: var(--ui-space-2);
+  color: var(--ui-text-strong);
+}
+
+.grid2 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--ui-space-24);
+}
+
+.stack {
+  display: grid;
+  gap: var(--ui-space-16);
+  max-width: 480px;
+}
+
+.systray {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.systray > span:last-child {
+  position: absolute;
+  top: 0;
+  right: -2px;
+  transform: scale(0.85);
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--ui-dashboard-card-min), 1fr));
+  gap: var(--ui-space-16);
+}
+
+.muted {
+  color: var(--ui-text-muted);
+}
+
+.addLine {
+  padding: var(--ui-space-8) var(--ui-space-12);
+}
+
+/* El historial va al costado desde xxl (bp-xxl) y debajo en pantallas más chicas. */
+.formLayout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (min-width: 1400px) {
+  .formLayout {
+    grid-template-columns: minmax(0, 1fr) var(--ui-chatter-w);
+  }
+
+  .formLayout > section {
+    border-left: 1px solid var(--ui-border);
+  }
+}

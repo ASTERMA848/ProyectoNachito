@@ -1,0 +1,95 @@
+feature,area,priority,original,clone,notes
+Barra superior con menú de apps y app activa,navegación,must,yes,no,Reemplaza Sidebar.tsx y Header.tsx
+Menús de sección de cada app en la barra superior,navegación,must,yes,no,"Ej.: Operaciones > Todas, Ventas distribuidas"
+Migas de pan para volver al nivel anterior,navegación,must,yes,no,
+Menú de usuario con perfil y cerrar sesión,navegación,must,yes,no,Contenido exacto del menú a confirmar con capturas
+Pantalla de inicio con acceso a cada app,navegación,should,yes,no,Hoy el Dashboard muestra saldos por contacto
+Atajos de teclado con superposición al mantener Alt,navegación,should,yes,no,"Nuevo, guardar, descartar, página anterior y siguiente, volver"
+Paleta de comandos con Ctrl+K,navegación,could,yes,no,Prefijo / para menús y @ para usuarios
+Contador de actividades en la barra superior,navegación,could,yes,no,Depende de las actividades programadas
+Enlace para compartir una vista con sus filtros,navegación,could,yes,no,Novedad de Odoo 20
+Botón Nuevo en el panel de control,panel de control,must,yes,no,
+Paginador con rango y anterior/siguiente,panel de control,must,yes,no,Odoo muestra 80 registros por página en listas
+Selector de vistas lista y kanban,panel de control,must,yes,no,
+Menú Acciones sobre los registros seleccionados,panel de control,must,yes,no,"Exportar, archivar, eliminar"
+Buscador con sugerencias por campo,búsqueda,must,yes,no,"Cliente, proveedor, número de operación, documento"
+Facetas de búsqueda que se quitan con un clic,búsqueda,must,yes,no,
+Filtros predefinidos en grupos (O dentro del grupo e Y entre grupos),búsqueda,must,yes,no,Reemplaza los filtros avanzados de estado y fecha
+Filtros por período con flechas para cambiar de período,búsqueda,should,yes,no,Las flechas son novedad de Odoo 20
+Agrupar por uno o varios campos,búsqueda,must,yes,no,"Estado, moneda, cliente, proveedor, fecha"
+Filtros por defecto al abrir una vista,búsqueda,should,yes,no,Ej.: operaciones pendientes
+Favoritos con nombre y opciones de predeterminado y compartido,búsqueda,should,yes,no,Requiere guardar favoritos por usuario
+Editor de filtro personalizado con reglas,búsqueda,could,yes,no,
+Lista con columnas ordenables,lista,must,yes,no,
+Selección con casillas y seleccionar todo,lista,must,yes,no,
+Totales de columnas numéricas al pie,lista,must,yes,no,Sumar por moneda y nunca mezclar monedas
+Filas de grupo con conteo y subtotales,lista,must,yes,no,
+Expandir o plegar todos los grupos con Alt+clic,lista,could,yes,no,Novedad de Odoo 20
+Columnas opcionales que cada usuario muestra u oculta,lista,should,yes,no,
+Colores e insignias según el estado,lista,must,yes,no,"Pendiente, en proceso, completada, cancelada"
+Edición en línea de filas,lista,could,yes,no,
+Edición masiva de un campo en varios registros,lista,could,yes,no,
+Exportar los seleccionados eligiendo campos en XLSX o CSV,lista,should,yes,no,Hoy se exporta a CSV y JSON
+Archivar y desarchivar desde Acciones,lista,should,yes,no,"Contactos, usuarios, monedas"
+Ofrecer archivar cuando no se puede eliminar,lista,could,yes,no,Novedad de Odoo 20
+Importar registros desde un archivo,lista,could,yes,no,
+Kanban agrupado por estado con contador por columna,kanban,should,yes,no,Operaciones por estado
+Arrastrar tarjetas entre columnas para cambiar de estado,kanban,could,yes,no,Respetar permisos: solo ADMIN reabre una operación completada
+"Tarjetas de contacto con avatar, datos clave y etiquetas",kanban,must,yes,no,Directorio de Contactos
+Creación rápida desde la columna,kanban,could,yes,no,
+Barra de progreso por columna,kanban,could,yes,no,
+Plegar columnas,kanban,could,yes,no,
+Formulario en página con hoja centrada y grupos en dos columnas,formulario,must,yes,no,Reemplaza los modales de ficha de operación y de contacto
+Barra de estados en el encabezado con botones de acción,formulario,must,yes,no,Estado de la operación
+Botones inteligentes con contador,formulario,must,yes,no,"Contacto: operaciones y cuenta corriente; operación: movimientos"
+Pestañas dentro del formulario,formulario,must,yes,no,
+Líneas embebidas editables con Agregar línea,formulario,must,yes,no,Ítems de la venta distribuida
+Aviso de cambios sin guardar con guardar o descartar,formulario,must,yes,no,Comportamiento exacto a confirmar con capturas
+Paginador entre registros dentro del formulario,formulario,should,yes,no,A confirmar con capturas
+Cinta sobre la hoja para archivado o cancelado,formulario,could,yes,no,A confirmar con capturas
+Confirmación antes de acciones sensibles,formulario,must,yes,no,"Eliminar una operación, reabrir una completada"
+Selector de relación con autocompletar y crear,campos,must,yes,no,Hoy LiquidSelect
+Etiquetas de colores,campos,must,yes,no,Usa Tag.color
+Campos de importe con símbolo de moneda,campos,must,yes,no,Hoy FormattedNumberInput
+Selector de fecha,campos,must,yes,no,En móvil Odoo 20 lo abre desde abajo
+Separador decimal con punto o coma,campos,should,yes,no,Novedad de Odoo 20
+Historial por registro con cambios de campo (anterior y nuevo),historial,must,yes,no,"Une AuditLog, OperationStateHistory e InternalComment"
+Notas internas en el registro,historial,should,yes,no,Hoy solo en operaciones
+Adjuntos en el registro,historial,should,yes,no,Hoy solo en operaciones
+Filtro del historial entre notas y cambios,historial,could,yes,no,Novedad de Odoo 20
+Fijar mensajes importantes en el historial,historial,could,yes,no,Novedad de Odoo 20
+Actividades programadas con vencimiento y colores,actividades,could,yes,no,"Verde planificada, naranja hoy, rojo vencida"
+Tablero con una tarjeta por caja y su saldo,tablero,must,yes,no,Tesorería
+Menú de la tarjeta con las acciones de la caja,tablero,must,yes,no,"Nuevo movimiento, transferencia, ver movimientos"
+Gráfico chico de evolución en la tarjeta,tablero,should,yes,no,Contenido exacto de la tarjeta de Odoo a confirmar
+Movimientos de cuenta agrupados por contacto y moneda con subtotales,cuentas,must,yes,no,El saldo acumulado ya existe en tu web
+Pantalla de ajustes con secciones y bloques de opciones,ajustes,must,yes,no,Configuración general
+Buscador de ajustes,ajustes,could,yes,no,A confirmar con capturas
+"Usuarios en lista y formulario con rol, archivar y cambiar contraseña",ajustes,must,yes,no,"Roles ADMIN, AUDITOR y OPERATOR"
+Monedas en lista con interruptor de activa,ajustes,must,yes,no,Gestión de monedas
+"Registro de auditoría con fecha, usuario, tipo de cambio y valores anterior y nuevo",auditoría,must,yes,no,Logs de Auditoría
+Bloqueo de borrado de registros auditados,auditoría,should,yes,no,Patrón Audit Trail restrictivo (solo cancelar o archivar); hoy se puede eliminar una operación
+"Notificaciones emergentes de éxito, aviso y error",general,must,yes,no,Hoy FeedbackProvider; posición a confirmar
+Diálogos con pie de botones,general,must,yes,no,Odoo 20 rediseñó los diálogos
+Estados vacíos con ayuda y botón de crear,general,must,yes,no,
+Indicador de carga,general,should,yes,no,
+Inicio de sesión en tarjeta centrada,acceso,must,yes,no,
+Llave de acceso (passkey) para iniciar sesión,acceso,could,yes,no,Mejora de seguridad opcional
+Diseño adaptable con kanban por defecto en móvil,móvil,must,yes,no,
+Tema claro y oscuro,general,should,no,no,Ya existe en tu web; no verifiqué si Odoo lo tiene
+Consola SQL con el estilo nuevo,general,could,no,no,Propia de tu web
+Manual de uso con el estilo nuevo,general,could,no,no,Propio de tu web
+"Logo, íconos de apps y marca de Odoo",marca,could,yes,skip,Propiedad de Odoo: se usan íconos abiertos y una marca propia
+Textos de la interfaz de Odoo,marca,could,yes,skip,Se escriben textos propios
+Color violeta de Odoo,marca,could,yes,skip,Se reemplaza por azul a pedido tuyo
+"Apps de negocio de Odoo (ventas, inventario, CRM y demás)",alcance,could,yes,skip,El alcance son los patrones de interfaz y no las funciones
+"Vistas de tabla dinámica, gráfico y calendario",análisis,could,yes,skip,Fuera del alcance elegido
+"Vistas Gantt, mapa, cohortes y cuadrícula",análisis,could,yes,skip,Fuera de alcance
+Studio para personalizar vistas desde la interfaz,personalización,could,yes,skip,Plan Custom de Odoo y fuera de alcance
+Agentes de IA,IA,could,yes,skip,Servicio de Odoo y fuera de alcance
+Modo sin conexión,plataforma,could,yes,skip,Requiere sincronizar datos y queda fuera de alcance
+Multiempresa y selector de compañía,plataforma,could,yes,skip,Tu web es de una sola agencia
+"Seguidores, mensajes a contactos externos y WhatsApp",historial,could,yes,skip,Uso interno sin envío de mensajes
+Chat interno (Discuss),comunicación,could,yes,skip,Fuera de alcance
+Gestor de bases de datos en el inicio de sesión,acceso,could,yes,skip,No corresponde y expone un riesgo
+Idiomas y traducciones,general,could,yes,skip,La web es solo en español

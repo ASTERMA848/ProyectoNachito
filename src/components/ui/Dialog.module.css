@@ -1,0 +1,62 @@
+.dialog {
+  width: min(calc(100vw - var(--ui-space-32)), var(--dialog-w));
+  max-height: calc(100vh - var(--ui-space-64));
+  padding: 0;
+  border: 0;
+  border-radius: var(--ui-radius-lg);
+  background: var(--ui-surface);
+  color: var(--ui-text);
+  box-shadow: var(--ui-shadow-dialog);
+}
+
+.dialog::backdrop {
+  background: var(--ui-overlay);
+}
+
+.sm {
+  --dialog-w: var(--ui-dialog-sm);
+}
+
+.md {
+  --dialog-w: var(--ui-dialog-md);
+}
+
+.lg {
+  --dialog-w: var(--ui-dialog-lg);
+}
+
+.inner {
+  display: flex;
+  flex-direction: column;
+  max-height: inherit;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ui-space-12);
+  padding: var(--ui-space-12) var(--ui-space-12) var(--ui-space-12) var(--ui-space-20);
+  border-bottom: 1px solid var(--ui-border);
+}
+
+.title {
+  --ui-heading-size: var(--ui-fs-md);
+  --ui-heading-line: var(--ui-lh-md);
+  --ui-heading-weight: var(--ui-fw-semibold);
+  --ui-heading-color: var(--ui-text-strong);
+}
+
+.body {
+  overflow: auto;
+  padding: var(--ui-space-20);
+}
+
+/* Los botones del pie van a la izquierda y el principal primero. */
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ui-space-8);
+  padding: var(--ui-space-12) var(--ui-space-20);
+  border-top: 1px solid var(--ui-border);
+}

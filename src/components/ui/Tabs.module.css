@@ -1,0 +1,46 @@
+.list {
+  display: flex;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--ui-border);
+  scrollbar-width: none;
+}
+
+.tab {
+  flex: none;
+  height: var(--ui-tab-h);
+  margin-bottom: -1px;
+  padding: 0 var(--ui-space-16);
+  border: 1px solid transparent;
+  border-top-width: 2px;
+  border-radius: var(--ui-radius-sm) var(--ui-radius-sm) 0 0;
+  background: transparent;
+  color: var(--ui-text-muted);
+  font: inherit;
+  font-weight: var(--ui-fw-medium);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.tab:hover {
+  background: var(--ui-surface-hover);
+  color: var(--ui-text-strong);
+}
+
+.tab:focus-visible {
+  outline: 2px solid var(--ui-focus);
+  outline-offset: -2px;
+}
+
+/* La pestaña activa se une al panel: mismo fondo y borde superior en el color principal. */
+.active,
+.active:hover {
+  border-color: var(--ui-border);
+  border-top-color: var(--ui-accent);
+  border-bottom-color: var(--ui-surface);
+  background: var(--ui-surface);
+  color: var(--ui-text-strong);
+}
+
+.panel {
+  padding-top: var(--ui-space-16);
+}

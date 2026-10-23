@@ -15,13 +15,15 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
   useEffect(() => { setMenuOpen(false); }, [pathname]);
 
   const isAuthPage = pathname === "/login" || pathname === "/logout";
+  // Páginas sin barra lateral ni control de sesión. /design es la galería de componentes, solo en desarrollo.
+  const isBarePage = isAuthPage || (process.env.NODE_ENV !== "production" && pathname === "/design");
 
   useEffect(() => {
     import("@/lib/liquid-glass/liquid-glass.js").catch(() => {});
   }, []);
 
   useEffect(() => {
-    if (isAuthPage) {
+    if (isBarePage) {
       setLoading(false);
       return;
     }
@@ -62,7 +64,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
     };
 
     checkAuth();
-  }, [pathname, router, isAuthPage]);
+  }, [pathname, router, isBarePage]);
 
   useEffect(() => {
     applyTheme(isAuthPage ? "LIGHT" : user?.theme);
@@ -77,7 +79,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
     return () => window.removeEventListener(THEME_CHANGED_EVENT, handleThemeChange);
   }, []);
 
-  if (isAuthPage) {
+  if (isBarePage) {
     return <>{children}</>;
   }
 

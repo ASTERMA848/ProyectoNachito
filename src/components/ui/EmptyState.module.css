@@ -1,0 +1,30 @@
+.empty {
+  display: grid;
+  justify-items: center;
+  gap: var(--ui-space-8);
+  max-width: 48ch;
+  margin: 0 auto;
+  padding: var(--ui-space-40) var(--ui-space-16);
+  text-align: center;
+}
+
+.icon {
+  color: var(--ui-text-muted);
+}
+
+.title {
+  margin: 0;
+  font-size: var(--ui-fs-md);
+  line-height: var(--ui-lh-md);
+  font-weight: var(--ui-fw-semibold);
+  color: var(--ui-text-strong);
+}
+
+.text {
+  margin: 0;
+  color: var(--ui-text-muted);
+}
+
+.action {
+  margin-top: var(--ui-space-8);
+}

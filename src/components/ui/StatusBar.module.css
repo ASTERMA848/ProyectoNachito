@@ -1,0 +1,73 @@
+.bar {
+  display: flex;
+  overflow-x: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  scrollbar-width: none;
+}
+
+/* Cada paso son dos capas con la misma flecha: la de afuera hace de borde de 1px. */
+.step {
+  --arrow: polygon(0 0, calc(100% - var(--ui-notch)) 0, 100% 50%, calc(100% - var(--ui-notch)) 100%, 0 100%, var(--ui-notch) 50%);
+  flex: none;
+  margin-left: calc(var(--ui-notch) * -1 + var(--ui-space-2));
+  padding: 1px;
+  background: var(--ui-muted);
+  clip-path: var(--arrow);
+}
+
+.step:first-child {
+  --arrow: polygon(0 0, calc(100% - var(--ui-notch)) 0, 100% 50%, calc(100% - var(--ui-notch)) 100%, 0 100%);
+  margin-left: 0;
+}
+
+.inner {
+  display: flex;
+  align-items: center;
+  height: calc(var(--ui-control-h) - 2px);
+  padding: 0 calc(var(--ui-notch) + var(--ui-space-12));
+  background: var(--ui-muted);
+  color: var(--ui-text-muted);
+  font-weight: var(--ui-fw-medium);
+  white-space: nowrap;
+  clip-path: var(--arrow);
+}
+
+.current {
+  background: var(--ui-action);
+}
+
+.current .inner {
+  background: var(--ui-accent-subtle);
+  color: var(--ui-text-strong);
+  font-weight: var(--ui-fw-semibold);
+}
+
+.button {
+  display: block;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  cursor: pointer;
+}
+
+.button:hover .inner {
+  background: var(--ui-muted-hover);
+  color: var(--ui-text);
+}
+
+/* clip-path recorta el contorno de foco: se marca con el color de foco en la capa exterior. */
+.step:has(.button:focus-visible) {
+  background: var(--ui-focus);
+}
+
+.button:focus-visible {
+  outline: none;
+}
+
+.button:focus-visible .inner {
+  background: var(--ui-surface);
+  color: var(--ui-text-strong);
+}

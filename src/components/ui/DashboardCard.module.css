@@ -1,0 +1,103 @@
+/* Las tarjetas de una fila tienen el mismo alto: el contenido queda arriba y el gráfico al pie. */
+.card {
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+  align-items: start;
+  gap: var(--ui-space-12);
+  padding: var(--ui-space-16);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-surface);
+  box-shadow: var(--ui-shadow-card);
+}
+
+.head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ui-space-12);
+}
+
+.icon {
+  display: inline-grid;
+  flex: none;
+  place-content: center;
+  width: var(--ui-control-h);
+  height: var(--ui-control-h);
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-accent-subtle);
+  color: var(--ui-accent);
+}
+
+.heading {
+  flex: 1;
+  min-width: 0;
+}
+
+.title {
+  --ui-heading-size: var(--ui-fs-md);
+  --ui-heading-line: var(--ui-lh-md);
+  --ui-heading-weight: var(--ui-fw-semibold);
+  --ui-heading-color: var(--ui-text-strong);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.subtitle {
+  margin: 0;
+  font-size: var(--ui-fs-sm);
+  line-height: var(--ui-lh-sm);
+  color: var(--ui-text-muted);
+}
+
+.body {
+  display: grid;
+  gap: var(--ui-space-12);
+}
+
+.figures {
+  display: grid;
+  gap: var(--ui-space-4);
+  margin: 0;
+}
+
+.balanceRow dd,
+.line dd {
+  margin: 0;
+}
+
+.balance {
+  font-size: var(--ui-fs-lg);
+  line-height: var(--ui-lh-lg);
+  font-weight: var(--ui-fw-semibold);
+  color: var(--ui-text-strong);
+  font-variant-numeric: tabular-nums;
+}
+
+.positive {
+  color: var(--ui-positive);
+}
+
+.negative {
+  color: var(--ui-negative);
+}
+
+.line {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--ui-space-12);
+  font-size: var(--ui-fs-sm);
+  line-height: var(--ui-lh-sm);
+  color: var(--ui-text-muted);
+}
+
+.line dd {
+  color: var(--ui-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ui-space-8);
+}

@@ -1,0 +1,126 @@
+/* La clase va duplicada para ganarle a la regla global de campos (input[type="text"], select).
+   Esa regla fuerza tamaño y peso con !important: por eso los dos !important de acá. */
+.control.control {
+  width: 100%;
+  height: var(--ui-field-h);
+  min-height: 0;
+  padding: 0 var(--ui-space-2);
+  font-family: inherit;
+  font-size: var(--ui-fs-base) !important;
+  font-weight: var(--ui-fw-regular) !important;
+  line-height: var(--ui-lh-base);
+  color: var(--ui-text-strong);
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--ui-border-input);
+  border-radius: 0;
+  box-shadow: none;
+  outline: none;
+  transition:
+    border-color var(--ui-dur-fast) var(--ui-ease),
+    box-shadow var(--ui-dur-fast) var(--ui-ease);
+}
+
+.control.control::placeholder {
+  color: var(--ui-placeholder);
+  opacity: 1;
+}
+
+.control.control:hover:not(:disabled) {
+  border-bottom-color: var(--ui-text-muted);
+}
+
+.control.control:focus {
+  border-bottom-color: var(--ui-focus);
+  box-shadow: 0 1px 0 0 var(--ui-focus);
+}
+
+.control.control[aria-invalid="true"] {
+  border-bottom-color: var(--ui-negative);
+}
+
+.control.control[aria-invalid="true"]:focus {
+  box-shadow: 0 1px 0 0 var(--ui-negative);
+}
+
+.control.control:disabled {
+  color: var(--ui-text-muted);
+  border-bottom-style: dashed;
+  cursor: not-allowed;
+}
+
+.control.control[type="date"] {
+  color-scheme: light;
+}
+
+:global(html.dark) .control.control[type="date"] {
+  color-scheme: dark;
+}
+
+.boxed.boxed {
+  height: var(--ui-control-h);
+  padding: 0 var(--ui-space-8);
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border-input);
+  border-radius: var(--ui-radius-sm);
+}
+
+.boxed.boxed:hover:not(:disabled) {
+  border-color: var(--ui-text-muted);
+}
+
+.boxed.boxed:focus {
+  border-color: var(--ui-focus);
+  box-shadow: 0 0 0 1px var(--ui-focus);
+}
+
+.boxed.boxed[aria-invalid="true"] {
+  border-color: var(--ui-negative);
+}
+
+.area.area {
+  height: auto;
+  min-height: calc(var(--ui-field-h) * 3);
+  padding-top: var(--ui-space-4);
+  padding-bottom: var(--ui-space-4);
+  resize: vertical;
+}
+
+.selectWrap {
+  position: relative;
+  display: block;
+}
+
+.select.select {
+  appearance: none;
+  padding-right: var(--ui-space-24);
+  cursor: pointer;
+}
+
+.selectIcon {
+  position: absolute;
+  top: 50%;
+  right: var(--ui-space-4);
+  color: var(--ui-text-muted);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.money {
+  position: relative;
+  display: block;
+}
+
+.symbol {
+  position: absolute;
+  top: 50%;
+  left: var(--ui-space-2);
+  color: var(--ui-text-muted);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.moneyInput.moneyInput {
+  padding-left: calc(var(--symbol-w) + var(--ui-space-8));
+  font-variant-numeric: tabular-nums;
+}
