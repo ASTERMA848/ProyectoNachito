@@ -61,7 +61,7 @@ export function formatDateOnly(value: string | Date) {
 
 // Instantes reales (createdAt): se muestran en la hora local de la agencia.
 export function formatTime(value: string | Date) {
-  return new Intl.DateTimeFormat("es-AR", { hour: "2-digit", minute: "2-digit", timeZone: AGENCY_TIME_ZONE }).format(new Date(value));
+  return new Intl.DateTimeFormat("es-AR", { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: AGENCY_TIME_ZONE }).format(new Date(value));
 }
 
 export function dayKey(value: string | Date) {

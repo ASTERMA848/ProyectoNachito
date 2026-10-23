@@ -101,7 +101,8 @@ const groupLabel = (id: string | null) => GROUP_OPTIONS.find((option) => option.
 
 const joinSums = (sums: CurrencySum[]) => sums.map((sum) => formatAmount(sum.sum, sum.code)).join(" · ");
 
-const contactName = (contact: { name: string } | null | undefined) => contact?.name ?? "";
+const contactName = (contact: { name: string; lastname?: string | null } | null | undefined) =>
+  contact ? [contact.name, contact.lastname].filter(Boolean).join(" ") : "";
 
 function clientLabel(op: Op) {
   if (op.client) return contactName(op.client);

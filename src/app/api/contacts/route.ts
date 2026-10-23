@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
     if (req.nextUrl.searchParams.get("options") === "1") {
       const contacts = await prisma.contact.findMany({
         where: { deletedAt: null, isActive: true },
-        select: { id: true, name: true, document: true, isClient: true, isProvider: true, isActive: true },
+        select: { id: true, name: true, lastname: true, document: true, isClient: true, isProvider: true, isActive: true },
         orderBy: { name: "asc" },
       });
       return NextResponse.json({ contacts });

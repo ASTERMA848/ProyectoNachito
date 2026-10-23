@@ -78,14 +78,16 @@ const ORDER: Record<string, (dir: "asc" | "desc") => Order[]> = {
 
 const currencySelect = { id: true, code: true, symbol: true, decimals: true } as const;
 
+const contactSelect = { id: true, name: true, lastname: true } as const;
+
 export const operationListInclude = {
-  client: { select: { id: true, name: true } },
-  provider: { select: { id: true, name: true } },
+  client: { select: contactSelect },
+  provider: { select: contactSelect },
   originCurrency: { select: currencySelect },
   destCurrency: { select: currencySelect },
   childOperations: {
     where: { deletedAt: null },
-    select: { id: true, clientId: true, isPaid: true, client: { select: { id: true, name: true } } },
+    select: { id: true, clientId: true, isPaid: true, client: { select: contactSelect } },
   },
 } satisfies Prisma.OperationInclude;
 
