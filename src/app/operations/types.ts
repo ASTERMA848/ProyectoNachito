@@ -56,3 +56,12 @@ export async function fetchJson<T>(url: string): Promise<T> {
   if (!response.ok) throw new Error(data.error || "No se pudo cargar la información");
   return data as T;
 }
+
+// Opciones del selector de contactos: activos (y el ya elegido aunque esté archivado), con el documento al lado.
+export const contactChoices = (contacts: ContactOption[], kind: "isClient" | "isProvider", selected: string) =>
+  contacts
+    .filter((contact) => contact[kind] && (contact.isActive || contact.id === selected))
+    .map((contact) => ({ id: contact.id, label: contactLabel(contact), detail: contact.document }));
+
+// Alta rápida desde el selector: crea el contacto con ese nombre y el rol que corresponde.
+export type CreateContact = (name: string, role: "client" | "provider") => Promise<string | null>;

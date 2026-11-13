@@ -5,16 +5,24 @@ import { asRole, expect, expectAccessible, settle, test, unique } from "./fixtur
 
 const totalOperations = async (request: APIRequestContext) => (await (await request.get("/api/operations?limit=1")).json()).total as number;
 
+// Selector de contactos: se escribe y Enter elige la primera coincidencia.
+async function pick(page: Page, label: string | RegExp, text: string) {
+  const field = page.getByRole("combobox", { name: label });
+  await field.fill(text);
+  await expect(page.getByRole("listbox")).toBeVisible();
+  await field.press("Enter");
+}
+
 async function fillHeader(page: Page, { paid = true } = {}) {
   // Los campos obligatorios llevan un asterisco en la etiqueta.
-  await page.getByLabel(/^Proveedor\s*\*?$/).selectOption({ label: "Casa Norte Cambios" });
+  await pick(page, /^Proveedor/, "Casa Norte");
   await page.getByLabel(/^Moneda\s*\*?$/).selectOption({ label: "USD · Dólar Estadounidense" });
   await page.getByLabel(/^Cotización\s*\*?$/).fill("1200");
   await page.getByLabel(/^Estado del pago/).selectOption(paid ? "true" : "false");
 }
 
 async function fillLine(page: Page, index: number, client: string, amount: string, paid = true) {
-  await page.getByLabel(`Cliente de la línea ${index}`).selectOption({ label: client });
+  await pick(page, `Cliente de la línea ${index}`, client);
   await page.getByLabel(`Monto de la línea ${index}`).fill(amount);
   await page.getByLabel(`Cobrado, línea ${index}`).setChecked(paid);
 }
@@ -35,6 +43,25 @@ test.describe("F01 ventas (administrador)", () => {
     const detail = await (await request.get(`/api/operations/${id}`)).json();
     expect(detail.operation.state).toBe("COMPLETED");
     await expectAccessible(page, "S07 venta guardada");
+  });
+
+  test("F01-E5 el selector busca sin tildes y crea un contacto sin salir", async ({ page, request }) => {
+    const name = unique("Proveedor rápido");
+    await page.goto("/operations/new?type=single");
+    await settle(page);
+    const client = page.getByRole("combobox", { name: "Cliente de la línea 1" });
+    await client.fill("benitez");
+    await expect(page.getByRole("option", { name: /Carlos Benítez/ })).toBeVisible();
+    await client.press("ArrowDown");
+    await client.press("Escape");
+    await expect(page.getByRole("listbox")).toHaveCount(0);
+    const provider = page.getByRole("combobox", { name: /^Proveedor/ });
+    await provider.fill(name);
+    await page.getByRole("option", { name: `Crear «${name}»` }).click();
+    await expect(page.getByRole("status").filter({ hasText: `${name} creado como proveedor` })).toBeVisible();
+    await expect(provider).toHaveValue(name);
+    const found = await (await request.get(`/api/contacts?q=${encodeURIComponent(name)}&filter=role:provider`)).json();
+    expect(found.total).toBe(1);
   });
 
   test("F01-E1 sin datos obligatorios no se guarda", async ({ page, request }) => {
@@ -122,7 +149,7 @@ test.describe("F11 venta distribuida (administrador)", () => {
     await fillHeader(page, { paid: false });
     await fillLine(page, 1, "Julieta Ramos", "300", false);
     await page.getByRole("button", { name: "Agregar cliente" }).click();
-    await page.getByLabel("Cliente de la línea 2").selectOption({ label: "Distribuidora Río SRL" });
+    await pick(page, "Cliente de la línea 2", "Distribuidora");
     await page.getByLabel("Cobrado, línea 2").setChecked(false);
     // E2: línea sin monto.
     await page.getByRole("button", { name: "Registrar venta" }).click();

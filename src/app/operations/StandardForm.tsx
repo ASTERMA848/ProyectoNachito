@@ -5,11 +5,13 @@ import { useRouter } from "next/navigation";
 import { ArrowLeftRight, BookOpen, Trash2 } from "lucide-react";
 import {
   Button,
+  Combobox,
   DateInput,
   Field,
   FormGroup,
   FormGroups,
   FormHeader,
+  MoneyInput,
   ReadonlyField,
   Select,
   Sheet,
@@ -30,7 +32,7 @@ import { parseLocaleNumber } from "@/lib/parse-number";
 import { isTreasury, OPERATION_STATES, OPERATION_TYPES, TREASURY_LOCKED_MESSAGE } from "@/lib/operation-labels";
 import { AdminConfirmDialog } from "@/components/shell/AdminConfirmDialog";
 import { FormPage, Notice } from "@/components/shell/FormPage";
-import { contactLabel, decimalText, type ContactOption, type Currency, type OperationDetailResponse } from "./types";
+import { contactChoices, contactLabel, decimalText, type ContactOption, type CreateContact, type Currency, type OperationDetailResponse } from "./types";
 
 type Values = {
   clientId: string;
@@ -56,10 +58,17 @@ const valuesFrom = ({ operation: op }: OperationDetailResponse): Values => ({
   observations: op.observations ?? "",
 });
 
-type StandardFormProps = { detail: OperationDetailResponse; contacts: ContactOption[]; currencies: Currency[]; history?: ReactNode; onSaved: () => void };
+type StandardFormProps = {
+  detail: OperationDetailResponse;
+  contacts: ContactOption[];
+  onCreateContact?: CreateContact;
+  currencies: Currency[];
+  history?: ReactNode;
+  onSaved: () => void;
+};
 
 // Operaciones estándar anteriores a las ventas: el estado se cambia a mano, como en la pantalla anterior.
-export function StandardForm({ detail, contacts, currencies, history, onSaved }: StandardFormProps) {
+export function StandardForm({ detail, contacts, onCreateContact, currencies, history, onSaved }: StandardFormProps) {
   const router = useRouter();
   const user = useShellUser();
   const { notify, confirm } = useUiFeedback();
@@ -158,8 +167,19 @@ export function StandardForm({ detail, contacts, currencies, history, onSaved }:
       ))}
     </Select>
   );
-  const contactOptions = (kind: "isClient" | "isProvider", selected: string) =>
-    contacts.filter((contact) => contact[kind] && (contact.isActive || contact.id === selected)).map((contact) => ({ id: contact.id, label: contactLabel(contact) }));
+  const contactPicker = (key: "clientId" | "providerId", kind: "isClient" | "isProvider", role: "client" | "provider", placeholder: string) => (
+    <Combobox
+      placeholder={placeholder}
+      value={values[key]}
+      options={contactChoices(contacts, kind, values[key])}
+      onChange={(id) => set(key, id)}
+      onCreate={onCreateContact ? (name) => onCreateContact(name, role) : undefined}
+    />
+  );
+  const symbolOf = (currencyId: string) => {
+    const currency = currencies.find((item) => item.id === currencyId);
+    return currency?.symbol || currency?.code || "$";
+  };
   const currencyOptions = currencies.map((currency) => ({ id: currency.id, label: currency.code }));
 
   const header = (
@@ -211,8 +231,8 @@ export function StandardForm({ detail, contacts, currencies, history, onSaved }:
         {editable && !completed ? (
           <FormGroups>
             <FormGroup title="Partes">
-              <Field label="Cliente" layout="inline">{select("clientId", contactOptions("isClient", values.clientId), "Elegí un cliente")}</Field>
-              <Field label="Proveedor" layout="inline">{select("providerId", contactOptions("isProvider", values.providerId), "Elegí un proveedor")}</Field>
+              <Field label="Cliente" layout="inline">{contactPicker("clientId", "isClient", "client", "Buscar cliente...")}</Field>
+              <Field label="Proveedor" layout="inline">{contactPicker("providerId", "isProvider", "provider", "Buscar proveedor...")}</Field>
               <Field label="Fecha" layout="inline">
                 <DateInput value={values.operationDate} onChange={(event) => set("operationDate", event.target.value)} />
               </Field>
@@ -220,11 +240,11 @@ export function StandardForm({ detail, contacts, currencies, history, onSaved }:
             <FormGroup title="Importes">
               <Field label="Moneda que entrega" layout="inline">{select("originCurrencyId", currencyOptions, "Elegí la moneda")}</Field>
               <Field label="Monto que entrega" layout="inline">
-                <TextInput inputMode="decimal" value={values.originAmount} onChange={(event) => set("originAmount", event.target.value)} />
+                <MoneyInput symbol={symbolOf(values.originCurrencyId)} value={values.originAmount} onChange={(event) => set("originAmount", event.target.value)} />
               </Field>
               <Field label="Moneda que recibe" layout="inline">{select("destCurrencyId", currencyOptions, "Elegí la moneda")}</Field>
               <Field label="Monto que recibe" layout="inline">
-                <TextInput inputMode="decimal" value={values.destAmount} onChange={(event) => set("destAmount", event.target.value)} />
+                <MoneyInput symbol={symbolOf(values.destCurrencyId)} value={values.destAmount} onChange={(event) => set("destAmount", event.target.value)} />
               </Field>
               <Field label="Cotización" layout="inline">
                 <TextInput inputMode="decimal" value={values.exchangeRate} onChange={(event) => set("exchangeRate", event.target.value)} />

@@ -13,6 +13,7 @@ import {
   FormGroups,
   FormHeader,
   IconButton,
+  Combobox,
   MoneyInput,
   ReadonlyField,
   Select,
@@ -38,7 +39,7 @@ import { parseLocaleNumber } from "@/lib/parse-number";
 import { OPERATION_TYPES } from "@/lib/operation-labels";
 import { AdminConfirmDialog } from "@/components/shell/AdminConfirmDialog";
 import { FormPage, Notice } from "@/components/shell/FormPage";
-import { contactLabel, decimalText, type ContactOption, type Currency, type OperationDetailResponse } from "./types";
+import { contactChoices, contactLabel, decimalText, type ContactOption, type CreateContact, type Currency, type OperationDetailResponse } from "./types";
 import styles from "./form.module.css";
 
 type SaleType = "SINGLE_SALE" | "DISTRIBUTED_SALE";
@@ -121,12 +122,13 @@ type SaleFormProps = {
   detail?: OperationDetailResponse;
   initialType: SaleType;
   contacts: ContactOption[];
+  onCreateContact?: CreateContact;
   currencies: Currency[];
   history?: ReactNode;
   onSaved: (id: string) => void;
 };
 
-export function SaleForm({ detail, initialType, contacts, currencies, history, onSaved }: SaleFormProps) {
+export function SaleForm({ detail, initialType, contacts, onCreateContact, currencies, history, onSaved }: SaleFormProps) {
   const router = useRouter();
   const user = useShellUser();
   const { notify, confirm } = useUiFeedback();
@@ -159,8 +161,7 @@ export function SaleForm({ detail, initialType, contacts, currencies, history, o
   const canReopen = can(user, "operations.reopen");
   const editable = canWrite && (!completed || (canReopen && unlocked));
 
-  const providers = contacts.filter((contact) => contact.isProvider && (contact.isActive || contact.id === values.providerId));
-  const clients = contacts.filter((contact) => contact.isClient);
+  const clientChoices = (selected: string) => contactChoices(contacts, "isClient", selected);
   const buyable = currencies.filter((currency) => currency.code !== "ARS" && (currency.isActive || currency.id === values.currencyId));
   const payable = currencies.filter((currency) => currency.isActive && (currency.id === ars?.id || currency.id === values.currencyId));
   const currency = currencies.find((item) => item.id === values.currencyId);
@@ -265,14 +266,15 @@ export function SaleForm({ detail, initialType, contacts, currencies, history, o
         const index = values.lines.indexOf(line) + 1;
         if (!editable) return <span className={styles.cellText}>{contactLabel(contacts.find((contact) => contact.id === line.clientId))}</span>;
         return (
-          <Select aria-label={`Cliente de la línea ${index}`} value={line.clientId} invalid={Boolean(errors.lines) && !line.clientId} onChange={(event) => setLine(line.key, { clientId: event.target.value })}>
-            <option value="">Elegí un cliente</option>
-            {clients
-              .filter((contact) => contact.isActive || contact.id === line.clientId)
-              .map((contact) => (
-                <option key={contact.id} value={contact.id}>{contactLabel(contact)}</option>
-              ))}
-          </Select>
+          <Combobox
+            aria-label={`Cliente de la línea ${index}`}
+            placeholder="Buscar cliente..."
+            value={line.clientId}
+            options={clientChoices(line.clientId)}
+            invalid={Boolean(errors.lines) && !line.clientId}
+            onChange={(clientId) => setLine(line.key, { clientId })}
+            onCreate={onCreateContact ? (name) => onCreateContact(name, "client") : undefined}
+          />
         );
       },
     },
@@ -430,12 +432,13 @@ export function SaleForm({ detail, initialType, contacts, currencies, history, o
             {editable ? (
               <>
                 <Field label="Proveedor" layout="inline" required error={errors.providerId}>
-                  <Select value={values.providerId} onChange={(event) => set("providerId", event.target.value)}>
-                    <option value="">Elegí un proveedor</option>
-                    {providers.map((contact) => (
-                      <option key={contact.id} value={contact.id}>{contactLabel(contact)}</option>
-                    ))}
-                  </Select>
+                  <Combobox
+                    placeholder="Buscar proveedor..."
+                    value={values.providerId}
+                    options={contactChoices(contacts, "isProvider", values.providerId)}
+                    onChange={(providerId) => set("providerId", providerId)}
+                    onCreate={onCreateContact ? (name) => onCreateContact(name, "provider") : undefined}
+                  />
                 </Field>
                 <Field label="Moneda" layout="inline" required error={errors.currencyId}>
                   <Select value={values.currencyId} onChange={(event) => set("currencyId", event.target.value)}>

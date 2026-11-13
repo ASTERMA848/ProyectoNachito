@@ -3,6 +3,7 @@ export { Badge, CounterBadge, type BadgeTone } from "./Badge";
 export { Breadcrumbs, type Crumb } from "./Breadcrumbs";
 export { Button, IconButton, type ButtonProps, type ButtonSize, type ButtonVariant, type IconButtonProps } from "./Button";
 export { Checkbox, Switch } from "./Checkbox";
+export { Combobox, normalize, type ComboOption } from "./Combobox";
 export { ControlPanel } from "./ControlPanel";
 export { DashboardCard } from "./DashboardCard";
 export { DataTable, type Column, type RowTone, type SortState, type TableGroup } from "./DataTable";
