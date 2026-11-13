@@ -34,6 +34,7 @@ import { useShellUser } from "@/components/shell/AppShell";
 import { useLeaveGuard } from "@/components/shell/LeaveGuard";
 import { useUiFeedback } from "@/components/shell/UiFeedback";
 import { FormPage, Notice } from "@/components/shell/FormPage";
+import { RecordPager } from "@/components/shell/RecordPager";
 import { fetchList } from "@/components/shell/list-state";
 import { can } from "@/lib/permissions";
 import { formatAmount } from "@/lib/format-currency";
@@ -212,6 +213,7 @@ export default function ContactForm({ id }: { id?: string }) {
   return (
     <FormPage
       breadcrumbs={[{ label: "Contactos", href: "/contacts" }, { label: contact ? fullName(contact) : "Nuevo" }]}
+      pager={id ? <RecordPager resource="contacts" id={id} hrefOf={(next) => `/contacts/${next}`} label="Contactos de la lista" /> : undefined}
       dirty={dirty && Boolean(id)}
       actions={id && can(user, "operations.delete") ? <Button variant="ghost" size="sm" icon={<Trash2 size={iconSize.sm} />} onClick={remove}>Eliminar</Button> : null}
       header={header}

@@ -64,11 +64,12 @@ type StandardFormProps = {
   onCreateContact?: CreateContact;
   currencies: Currency[];
   history?: ReactNode;
+  pager?: ReactNode;
   onSaved: () => void;
 };
 
 // Operaciones estándar anteriores a las ventas: el estado se cambia a mano, como en la pantalla anterior.
-export function StandardForm({ detail, contacts, onCreateContact, currencies, history, onSaved }: StandardFormProps) {
+export function StandardForm({ detail, contacts, onCreateContact, currencies, history, pager, onSaved }: StandardFormProps) {
   const router = useRouter();
   const user = useShellUser();
   const { notify, confirm } = useUiFeedback();
@@ -203,6 +204,7 @@ export function StandardForm({ detail, contacts, onCreateContact, currencies, hi
     <FormPage
       breadcrumbs={[{ label: "Operaciones", href: "/operations" }, { label: op.operationNumber }]}
       dirty={dirty}
+      pager={pager}
       actions={can(user, "operations.delete") ? <Button variant="ghost" size="sm" icon={<Trash2 size={iconSize.sm} />} onClick={remove}>Eliminar</Button> : null}
       header={header}
       notice={

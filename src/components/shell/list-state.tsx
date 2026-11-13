@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import useSWR from "swr";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Filter, Layers } from "lucide-react";
@@ -17,11 +17,24 @@ export type SearchField = { id: string; label: string };
 
 export const MAX_GROUP_LEVELS = 2;
 
-export function useListUrlState(defaultSort: SortState, onSearchChange?: () => void) {
+// defaultFilters: filtros con los que abre la vista cuando se entra sin buscar nada (desde el menú, por ejemplo).
+// Se ven como cualquier faceta y se pueden quitar; quitarlos no los vuelve a poner mientras se siga en la pantalla.
+export function useListUrlState(defaultSort: SortState, onSearchChange?: () => void, defaultFilters: string[] = []) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const search = searchParams.toString();
+
+  const defaultsChecked = useRef(false);
+  const defaultsKey = defaultFilters.join("&");
+  useEffect(() => {
+    if (defaultsChecked.current) return;
+    defaultsChecked.current = true;
+    if (search || !defaultsKey) return;
+    const params = new URLSearchParams();
+    defaultsKey.split("&").forEach((filter) => params.append("filter", filter));
+    router.replace(`${pathname}?${params}`, { scroll: false });
+  }, [search, defaultsKey, pathname, router]);
 
   const state = useMemo(() => {
     const params = new URLSearchParams(search);

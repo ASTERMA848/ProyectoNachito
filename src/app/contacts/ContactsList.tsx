@@ -26,6 +26,7 @@ import {
   type TableGroup,
 } from "@/components/ui";
 import { useShellUser } from "@/components/shell/AppShell";
+import { rememberRecordList } from "@/components/shell/RecordPager";
 import { useUiFeedback } from "@/components/shell/UiFeedback";
 import { buildFacets, buildPanel, facetRemoval, fetchList, toggleFilter, useListUrlState, type FilterGroup, type GroupOption, clearSearch, searchChange, type SearchField } from "@/components/shell/list-state";
 import { can } from "@/lib/permissions";
@@ -230,7 +231,11 @@ export default function ContactsList() {
     rows: groupRows?.[group.filter] ?? [],
   }));
 
-  const openContact = (contact: ContactListItem) => router.push(`/contacts/${contact.id}`);
+  // La ficha recorre lo que se ve en la lista (anterior y siguiente).
+  const openContact = (contact: ContactListItem) => {
+    rememberRecordList("contacts", visible.map((row) => row.id));
+    router.push(`/contacts/${contact.id}`);
+  };
 
   const empty = hasSearch ? (
     <EmptyState icon={<Inbox size={iconSize.lg} />} title="Ningún contacto coincide con la búsqueda" action={<Button onClick={() => update(clearSearch)}>Quitar filtros</Button>}>

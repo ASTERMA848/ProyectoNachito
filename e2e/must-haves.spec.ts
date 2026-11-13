@@ -99,3 +99,55 @@ test.describe("operador", () => {
     expect(admin.status()).toBe(403);
   });
 });
+
+test.describe("convenientes para pasar de 80", () => {
+  test.use(asRole("admin"));
+
+  test("C-1 auditoría abre en los últimos 7 días; el filtro se puede quitar y no vuelve", async ({ page }) => {
+    await page.goto("/audit");
+    await expect(page).toHaveURL(/filter=date(%3A|:)last_7/);
+    await settle(page);
+    const facets = page.getByRole("list", { name: "Filtros aplicados" });
+    await expect(facets).toContainText("Últimos 7 días");
+    await facets.getByRole("button", { name: /Quitar filtro/ }).click();
+    await expect(page).not.toHaveURL(/filter=/);
+    await settle(page);
+    await expect(page.getByRole("list", { name: "Filtros aplicados" })).toHaveCount(0);
+    // Un enlace con su propia búsqueda no recibe el filtro por defecto.
+    await page.goto("/audit?filter=action:LOGIN");
+    await settle(page);
+    await expect(page).not.toHaveURL(/last_7/);
+  });
+
+  test("C-2 la ficha recorre los registros de la lista con anterior y siguiente", async ({ page }) => {
+    await page.goto("/operations?view=list&sort=number:asc");
+    await settle(page);
+    const numbers = await page.getByRole("checkbox", { name: /^Seleccionar OP-/ }).evaluateAll((boxes) => boxes.map((box) => box.getAttribute("aria-label")!.replace("Seleccionar ", "")));
+    test.skip(numbers.length < 3, "hacen falta al menos tres operaciones");
+    await page.getByRole("row", { name: new RegExp(numbers[1]) }).getByText(numbers[1], { exact: true }).click();
+    await settle(page);
+    const pager = page.getByRole("group", { name: "Operaciones de la lista" });
+    await expect(pager).toContainText(`2 / ${numbers.length}`);
+    await pager.getByRole("button", { name: "Siguiente" }).click();
+    await expect(pager).toContainText(`3 / ${numbers.length}`);
+    await expect(page.getByRole("navigation", { name: "Ruta" })).toContainText(numbers[2]);
+    await pager.getByRole("button", { name: "Anterior" }).click();
+    await expect(pager).toContainText(`2 / ${numbers.length}`);
+    await expectAccessible(page, "ficha con paginador");
+  });
+
+  test("C-3 con cambios sin guardar, pasar al siguiente pide confirmación", async ({ page }) => {
+    await page.goto("/contacts?view=list");
+    await settle(page);
+    const names = await page.getByRole("checkbox", { name: /^Seleccionar / }).evaluateAll((boxes) => boxes.map((box) => box.getAttribute("aria-label")!.replace("Seleccionar ", "")).filter((name) => name !== "todas las filas visibles"));
+    test.skip(names.length < 2, "hacen falta dos contactos");
+    await page.getByRole("row", { name: new RegExp(names[0]) }).getByText(names[0], { exact: true }).first().click();
+    await settle(page);
+    await page.getByLabel("Teléfono").fill("11 0000 0000");
+    await page.getByRole("group", { name: "Contactos de la lista" }).getByRole("button", { name: "Siguiente" }).click();
+    const dialog = page.getByRole("dialog", { name: "Cambios sin guardar" });
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole("button", { name: "Cancelar" }).click();
+    await expect(page.getByRole("group", { name: "Contactos de la lista" })).toContainText(`1 / ${names.length}`);
+  });
+});

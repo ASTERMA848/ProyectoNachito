@@ -11,11 +11,13 @@ type FormPageProps = {
   header: ReactNode;
   notice?: ReactNode;
   aside?: ReactNode;
+  // Anterior y siguiente de la lista desde la que se abrió (RecordPager).
+  pager?: ReactNode;
   children: ReactNode;
 };
 
 // Pantalla de formulario: migas y acciones arriba, encabezado con estados, hoja e historial al costado.
-export function FormPage({ breadcrumbs, actions, dirty = false, header, notice, aside, children }: FormPageProps) {
+export function FormPage({ breadcrumbs, actions, dirty = false, header, notice, aside, pager, children }: FormPageProps) {
   return (
     <div className={styles.page}>
       <ControlPanel
@@ -25,7 +27,14 @@ export function FormPage({ breadcrumbs, actions, dirty = false, header, notice, 
             {actions}
           </>
         }
-        end={dirty ? <Badge tone="warning">Cambios sin guardar</Badge> : undefined}
+        end={
+          dirty || pager ? (
+            <>
+              {dirty && <Badge tone="warning">Cambios sin guardar</Badge>}
+              {pager}
+            </>
+          ) : undefined
+        }
       />
       <div className={aside ? `${styles.layout} ${styles.withAside}` : styles.layout}>
         <div className={styles.main}>

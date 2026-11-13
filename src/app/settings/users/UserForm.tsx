@@ -27,6 +27,7 @@ import { useShellUser } from "@/components/shell/AppShell";
 import { useLeaveGuard } from "@/components/shell/LeaveGuard";
 import { useUiFeedback } from "@/components/shell/UiFeedback";
 import { FormPage, Notice } from "@/components/shell/FormPage";
+import { RecordPager } from "@/components/shell/RecordPager";
 import { RecordHistory } from "@/components/shell/RecordHistory";
 import { fetchList } from "@/components/shell/list-state";
 import { can, ROLE_LABELS } from "@/lib/permissions";
@@ -157,6 +158,7 @@ export default function UserForm({ id }: { id?: string }) {
     <FormPage
       breadcrumbs={[{ label: "Configuración", href: "/settings" }, { label: "Usuarios", href: "/settings/users" }, { label: user?.username ?? "Nuevo" }]}
       dirty={dirty && Boolean(id)}
+      pager={id ? <RecordPager resource="users" id={id} hrefOf={(next) => `/settings/users/${next}`} label="Usuarios de la lista" /> : undefined}
       header={header}
       aside={id ? <RecordHistory entity="User" id={id} refreshKey={detail.data} /> : undefined}
       notice={

@@ -23,6 +23,7 @@ import {
 } from "@/components/ui";
 import { useShellUser } from "@/components/shell/AppShell";
 import { FormPage, Notice } from "@/components/shell/FormPage";
+import { RecordPager } from "@/components/shell/RecordPager";
 import { RecordHistory } from "@/components/shell/RecordHistory";
 import { fetchList } from "@/components/shell/list-state";
 import { can } from "@/lib/permissions";
@@ -96,6 +97,7 @@ export default function AccountDetail({ id }: { id: string }) {
   return (
     <FormPage
       breadcrumbs={[{ label: "Cuentas corrientes", href: "/accounts" }, { label: `${name} · ${code}` }]}
+      pager={<RecordPager resource="accounts" id={id} hrefOf={(next) => `/accounts/${next}`} label="Cuentas de la lista" />}
       header={null}
       aside={<RecordHistory entity="Account" id={id} refreshKey={account.balance} emptyText="Todavía no hay movimientos manuales." />}
       actions={canWrite ? <Button variant="primary" size="sm" icon={<Plus size={iconSize.sm} />} onClick={() => setDialogOpen(true)}>Movimiento</Button> : null}

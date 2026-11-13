@@ -20,6 +20,7 @@ import {
   type TableGroup,
 } from "@/components/ui";
 import { useShellUser } from "@/components/shell/AppShell";
+import { rememberRecordList } from "@/components/shell/RecordPager";
 import { useUiFeedback } from "@/components/shell/UiFeedback";
 import { buildFacets, buildPanel, facetRemoval, fetchList, toggleFilter, useListUrlState, type FilterGroup, type GroupOption, clearSearch, searchChange, type SearchField, toggleGroupBy, useGroupTree, subgroupKey } from "@/components/shell/list-state";
 import { can } from "@/lib/permissions";
@@ -266,7 +267,10 @@ export default function AccountsList() {
           onSelectionChange={setSelected}
           sort={sort}
           onSortChange={(next) => update({ sort: `${next.key}:${next.dir}` })}
-          onRowOpen={(account) => router.push(`/accounts/${account.id}`)}
+          onRowOpen={(account) => {
+            rememberRecordList("accounts", visible.map((row) => row.id));
+            router.push(`/accounts/${account.id}`);
+          }}
           loading={isLoading && !data}
           empty={empty}
         />

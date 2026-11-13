@@ -125,10 +125,11 @@ type SaleFormProps = {
   onCreateContact?: CreateContact;
   currencies: Currency[];
   history?: ReactNode;
+  pager?: ReactNode;
   onSaved: (id: string) => void;
 };
 
-export function SaleForm({ detail, initialType, contacts, onCreateContact, currencies, history, onSaved }: SaleFormProps) {
+export function SaleForm({ detail, initialType, contacts, onCreateContact, currencies, history, pager, onSaved }: SaleFormProps) {
   const router = useRouter();
   const user = useShellUser();
   const { notify, confirm } = useUiFeedback();
@@ -389,6 +390,7 @@ export function SaleForm({ detail, initialType, contacts, onCreateContact, curre
     <FormPage
       breadcrumbs={[{ label: "Operaciones", href: "/operations" }, { label: title }]}
       dirty={dirty}
+      pager={pager}
       actions={
         op && can(user, "operations.delete") ? (
           <Button variant="ghost" size="sm" icon={<Trash2 size={iconSize.sm} />} loading={deleting} onClick={remove}>Eliminar</Button>

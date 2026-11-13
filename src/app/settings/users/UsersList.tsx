@@ -21,6 +21,7 @@ import {
   type TableGroup,
 } from "@/components/ui";
 import { useShellUser } from "@/components/shell/AppShell";
+import { rememberRecordList } from "@/components/shell/RecordPager";
 import { useUiFeedback } from "@/components/shell/UiFeedback";
 import { buildFacets, buildPanel, facetRemoval, fetchList, toggleFilter, useListUrlState, type FilterGroup, type GroupOption, clearSearch, searchChange } from "@/components/shell/list-state";
 import { can, ROLE_LABELS } from "@/lib/permissions";
@@ -205,7 +206,10 @@ export default function UsersList() {
           onSelectionChange={setSelected}
           sort={sort}
           onSortChange={(next) => update({ sort: `${next.key}:${next.dir}` })}
-          onRowOpen={(user) => router.push(`/settings/users/${user.id}`)}
+          onRowOpen={(user) => {
+            rememberRecordList("users", rows.map((row) => row.id));
+            router.push(`/settings/users/${user.id}`);
+          }}
           rowTone={(user) => (user.isActive ? undefined : "muted")}
           loading={isLoading && !data}
           empty={

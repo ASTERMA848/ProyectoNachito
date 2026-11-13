@@ -27,6 +27,7 @@ import {
   type TableGroup,
 } from "@/components/ui";
 import { useShellUser } from "@/components/shell/AppShell";
+import { rememberRecordList } from "@/components/shell/RecordPager";
 import { useUiFeedback } from "@/components/shell/UiFeedback";
 import {
   buildFacets,
@@ -289,7 +290,11 @@ export default function OperationsList() {
       return next;
     });
 
-  const openOperation = (op: Op) => router.push(`/operations/${op.id}`);
+  // La ficha recorre lo que se ve en la lista (anterior y siguiente).
+  const openOperation = (op: Op) => {
+    rememberRecordList("operations", visibleRows.map((row) => row.id));
+    router.push(`/operations/${op.id}`);
+  };
 
   const newMenu = canWrite ? (
     <Menu

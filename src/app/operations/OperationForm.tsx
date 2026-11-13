@@ -8,6 +8,7 @@ import { Inbox } from "lucide-react";
 import { isSale } from "@/lib/operation-labels";
 import { SaleForm } from "./SaleForm";
 import { StandardForm } from "./StandardForm";
+import { RecordPager } from "@/components/shell/RecordPager";
 import { useUiFeedback } from "@/components/shell/UiFeedback";
 import { fetchJson, type ContactOption, type CreateContact, type Currency, type OperationDetailResponse } from "./types";
 
@@ -65,11 +66,12 @@ export default function OperationForm({ id, initialType = "SINGLE_SALE" }: Opera
     return data.id as string;
   };
 
+  const pager = id ? <RecordPager resource="operations" id={id} hrefOf={(next) => `/operations/${next}`} label="Operaciones de la lista" /> : undefined;
   const historyPanel = id ? <HistoryPanel groups={history.data?.groups ?? []} emptyText="Todavía no hay cambios registrados." /> : undefined;
   const operation = detail.data?.operation;
 
   if (operation && !isSale(operation.type)) {
-    return <StandardForm detail={detail.data!} contacts={contacts.data.contacts} onCreateContact={createContact} currencies={currencies.data.currencies} history={historyPanel} onSaved={() => refresh()} />;
+    return <StandardForm detail={detail.data!} contacts={contacts.data.contacts} onCreateContact={createContact} currencies={currencies.data.currencies} history={historyPanel} pager={pager} onSaved={() => refresh()} />;
   }
   return (
     <SaleForm
@@ -79,6 +81,7 @@ export default function OperationForm({ id, initialType = "SINGLE_SALE" }: Opera
       onCreateContact={createContact}
       currencies={currencies.data.currencies}
       history={historyPanel}
+      pager={pager}
       onSaved={(savedId) => refresh(savedId)}
     />
   );

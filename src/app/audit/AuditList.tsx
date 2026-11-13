@@ -32,6 +32,7 @@ import styles from "./audit.module.css";
 
 const PAGE_SIZE = 80;
 const DEFAULT_SORT: SortState = { key: "created", dir: "desc" };
+const DEFAULT_FILTERS = ["date:last_7"];
 const GROUP_OPTIONS: GroupOption[] = [
   { id: "entity", label: "Registro" },
   { id: "action", label: "Acción" },
@@ -149,7 +150,8 @@ export default function AuditList() {
     setSelected(new Set());
     setOpenGroups(new Set());
   }, []);
-  const list = useListUrlState(DEFAULT_SORT, resetLocal);
+  // Desde el menú abre en los últimos 7 días: el registro solo crece y lo reciente es lo que más se mira.
+  const list = useListUrlState(DEFAULT_SORT, resetLocal, DEFAULT_FILTERS);
   const { filters, terms, groupBy, sort, offset, update, baseQuery } = list;
 
   const [query, setQuery] = useState("");
