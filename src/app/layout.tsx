@@ -24,8 +24,8 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Agencia de Cambio | Admin",
-  description: "Sistema integral de gestión de operaciones cambiarias",
+  title: "Calce | Agencia de cambio",
+  description: "Calce registra tus operaciones de cambio, tus cuentas y tu caja, sin vueltas.",
 };
 export const viewport: Viewport = { width: "device-width", initialScale: 1, viewportFit: "cover" };
 

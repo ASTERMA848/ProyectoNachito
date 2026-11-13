@@ -1,0 +1,5 @@
+{
+  "avoid": ["Odoo", "OpenERP", "Odoo S.A.", "Odoo SA"],
+  "domains": ["odoo.com", "openerp.com"],
+  "colors": ["#704b66", "#007e85"]
+}

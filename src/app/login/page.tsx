@@ -91,7 +91,7 @@ function LoginForm() {
   );
 }
 
-// Inicio de sesión en una tarjeta centrada, con la marca de la agencia arriba.
+// Inicio de sesión en una tarjeta centrada, con la marca arriba.
 export default function LoginPage() {
   return (
     <main className={`ui-app ${styles.page}`}>
@@ -100,7 +100,10 @@ export default function LoginPage() {
           <span className={styles.brandIcon} aria-hidden="true">
             <ArrowLeftRight size={iconSize.md} />
           </span>
-          <span className={styles.brandName}>Agencia de Cambio</span>
+          <span className={styles.brandText}>
+            <span className={styles.brandName}>Calce</span>
+            <span className={styles.brandCaption}>Agencia de cambio</span>
+          </span>
         </div>
         <section className={styles.card} aria-labelledby="login-title">
           <h1 id="login-title" className={styles.title}>Iniciar sesión</h1>

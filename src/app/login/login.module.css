@@ -21,6 +21,7 @@
   align-items: center;
   justify-content: center;
   gap: var(--ui-space-12);
+  margin-bottom: var(--ui-space-8);
 }
 
 .brandIcon {
@@ -33,10 +34,22 @@
   color: var(--ui-on-accent);
 }
 
+.brandText {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.15;
+}
+
 .brandName {
   font-size: var(--ui-fs-lg);
   font-weight: var(--ui-fw-semibold);
   color: var(--ui-text-strong);
+}
+
+.brandCaption {
+  font-size: var(--ui-fs-sm);
+  color: var(--ui-text-muted);
 }
 
 .card {
