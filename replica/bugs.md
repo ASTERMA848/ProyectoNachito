@@ -2,7 +2,7 @@
 
 Corrida: 2026-10-23, rama `feat/interfaz-azul`, servidor local `npm run dev`, base Docker local con datos de prueba, Chrome 1440 px (y 390 px donde se indica). Suite: `npm run test:e2e`.
 
-Resumen: 6 errores reproducidos (1 S1, 4 S3, 1 S4). 5 corregidos en `9f1b0c4`, con su prueba; 1 abierto (BUG-004).
+Resumen: 7 errores reproducidos (1 S1, 5 S3, 1 S4), todos corregidos con su prueba. Ninguno abierto.
 
 ### BUG-001: reabrir un traspaso de tesorería hace desaparecer el dinero
 
@@ -68,7 +68,7 @@ Expected: aparece Carlos Benítez.
 Actual: 0 resultados; con "Benítez" aparece.
 Evidence: `GET /api/contacts?q=benitez` → total 0; `q=Benítez` → total 1.
 Suspected cause: `contains` con `mode: "insensitive"` usa ILIKE, que ignora mayúsculas pero no tildes.
-Status: open. Arreglarlo bien pide la extensión `unaccent` de Postgres (o columnas normalizadas) y consultas SQL propias: es un cambio de esquema que conviene hacer aparte y probar también en Neon.
+Status: fixed in `c4be778`. Se resolvió sin extensiones ni cambios de esquema: las búsquedas de operaciones, contactos y cuentas comparan con `translate(lower(...))` de PostgreSQL, que existe igual en Neon. Los comodines `%` y `_` se buscan como texto. Prueba `F02-E7`.
 
 ### BUG-005: editar un contacto por la API sin etiquetas se las borra
 
@@ -100,6 +100,22 @@ Expected: la hoja y la barra de acciones usan todo el ancho.
 Actual: se reserva la columna del historial aunque un registro nuevo no tiene historial; la barra termina a 1020 px y el resto queda gris.
 Evidence: captura de la prueba F11 en la primera corrida; prueba `F10-E4`.
 Status: fixed in `9f1b0c4`.
+
+### BUG-007: un grupo trae filas de otros valores del mismo campo
+
+- Severity: S3
+- Flow / case: F02-E9
+- Screen: S04 (lista agrupada), S05 (kanban)
+- Build: `4b0e9b6`
+
+Steps
+1. Operaciones con el filtro "Pendiente o Completada" (`filter=state:pending&filter=state:completed`) y agrupar por estado.
+2. Abrir el grupo "Pendiente".
+
+Expected: las 17 operaciones pendientes que dice el grupo.
+Actual: 44 filas: también las completadas. El filtro del grupo se sumaba a los del usuario y los filtros de un mismo campo se combinan con O. Lo mismo pasaba en las columnas del kanban, en cuentas corrientes y en auditoría.
+Evidence: `GET /api/operations?filter=state:pending&filter=state:completed&filter=state:pending` → total 44 con el grupo en 17; prueba `F02-E9`.
+Status: fixed in `055cad2`. El filtro de un grupo reemplaza a los del usuario en ese mismo campo (`withGroupFilters`).
 
 ## Para revisar (no reproducido como error)
 

@@ -1,6 +1,6 @@
 # Plan de pruebas: Agencia de Cambio (interfaz azul)
 
-Build: `9e241b2` (rama `feat/interfaz-azul`); última corrida en `9f1b0c4`: 47 pruebas, 47 pasan  Fecha: 2026-10-23  Entorno: local, `npm run dev` en :3000, base Docker local (puerto 5434) con `npm run db:seed-demo`.
+Build: `9e241b2` (rama `feat/interfaz-azul`); última corrida el 2026-11-13, después de la segunda tanda de imprescindibles: 58 pruebas, 58 pasan  Fecha: 2026-10-23  Entorno: local, `npm run dev` en :3000, base Docker local (puerto 5434) con `npm run db:seed-demo`.
 
 Usuarios de prueba (solo existen en la base local, creados por `scripts/seed-demo.cjs` y `prisma/seed.js`): `admin` (ADMIN), `operador` (OPERATOR), `auditora` (AUDITOR).
 
@@ -65,4 +65,14 @@ Todas las specs fallan si hay un error de consola o una respuesta 5xx, y pasan u
 | X-4 | | negativo: reabrir un traspaso | PATCH a Pendiente y a Completada | Rechazado; saldos sin cambios | e2e | falló: BUG-001, corregido |
 | X-5 | | negativo: ficha de un traspaso | Abrir la operación de un traspaso | Sin Reabrir; dice "Traspaso entre cajas" | e2e | falló: BUG-001, corregido |
 | X-6 | | borde: agrupar por tipo | Agrupar por tipo y abrir cada grupo | Nombres legibles; cada grupo trae sus filas | e2e | falló: BUG-002, corregido |
-
+| F01-E5 | | borde: selector de contactos | Buscar "benitez" sin tilde, Escape, y crear un proveedor desde el campo | Encuentra a Benítez; crea y elige al proveedor | e2e | pasa |
+| F02-E6 | | borde: buscar en un campo | Escribir, elegir "Buscar Cliente" con flechas y Enter, quitar la faceta | Faceta "Cliente: …" y el total de la API | e2e | pasa |
+| F02-E7 | | borde: tildes y comodines | "benitez", "BENITEZ", "perez" y "%" | Mismo resultado que con tildes; "%" no encuentra nada | e2e | falló: BUG-004, corregido |
+| F02-E8 | | borde: agrupar por dos campos | Estado y después cliente; abrir grupo y subgrupo | Subgrupos que suman el grupo; filas del subgrupo | e2e | pasa |
+| F02-E9 | | borde: grupo con filtro de varios valores | Filtro Pendiente o Completada, agrupar por estado, abrir Completada | Solo las completadas | e2e | falló: BUG-007, corregido |
+| M-1 | Imprescindibles | feliz: perfil | Menú de usuario > Mi perfil | Página propia con los datos del usuario | e2e | pasa |
+| M-2 | | borde: teléfono | Operaciones a 390 px | Abre en kanban | e2e | pasa |
+| M-3 | | feliz: cuentas por contacto | Agrupar por contacto | Un subtotal por moneda y las filas del contacto | e2e | pasa |
+| M-4 | | feliz: saldos enlazados | Ficha del contacto > Saldos > una moneda | Abre su estado de cuenta | e2e | pasa |
+| M-5 | | feliz: historial en más fichas | Cuenta, caja, usuario y moneda | Cada una muestra sus cambios | e2e | pasa |
+| M-6 | | negativo: historial de otro usuario | Operador pide el historial de otro usuario | 403 | e2e | pasa |

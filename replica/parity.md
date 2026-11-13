@@ -1,61 +1,59 @@
 # Paridad con el original
 
-Fecha: 2026-11-13. Rama `feat/interfaz-azul`. Fuente: `replica/features.csv`, calculado con `parity.py` (imprescindible pesa 3, conveniente 2 y opcional 1; "a medias" cuenta la mitad; las filas `skip` no cuentan).
+Fecha: 2026-11-13 (segunda medición, después de construir los imprescindibles). Rama `feat/interfaz-azul`. Fuente: `replica/features.csv`, calculado con `parity.py` (imprescindible pesa 3, conveniente 2 y opcional 1; "a medias" cuenta la mitad; las filas `skip` no cuentan).
 
-## Veredicto: todavía no se puede publicar
+## Veredicto: casi publicable
 
-| | |
+| | primera medición | ahora |
+| --- | --- | --- |
+| Puntaje de funciones | 70,3 | **78,0 / 100** (77 funciones contadas) |
+| Imprescindibles | 34 de 42 | **42 de 42** |
+| Puntaje de diseño | sin medir | sin medir: no hay capturas del original (ver más abajo) |
+| Errores abiertos | 1 S3 | **ninguno** |
+
+El método pide tres cosas para "se puede publicar": todos los imprescindibles, 80 puntos de funciones y ningún error S1 ni S2 abierto. Los imprescindibles y los errores ya están. **Faltan 2 puntos**: con dos funciones convenientes de las de abajo se pasa de 80. Las más baratas son "filtros por defecto al abrir una vista" y "paginador entre registros dentro del formulario".
+
+## Qué se construyó en esta tanda
+
+| imprescindible | cómo quedó |
 | --- | --- |
-| Puntaje de funciones | **70,3 / 100** (77 funciones contadas) |
-| Imprescindibles | **34 de 42** hechas, 7 a medias y 1 sin hacer |
-| Puntaje de diseño | **sin medir**: no hay capturas del original para comparar (ver más abajo) |
-| Errores abiertos | ninguno S1 ni S2; 1 S3 (BUG-004, búsqueda con tildes) |
+| Selector de contacto con autocompletar y crear | Selector con búsqueda sin tildes, teclado y "Crear «…»" en ventas, operaciones estándar y movimientos de cuenta |
+| Buscador con sugerencias por campo | "Buscar «x» en todo" y una opción por campo, con flechas y Enter; cada búsqueda por campo es una faceta propia |
+| Agrupar por varios campos | Dos niveles (por ejemplo, estado y después cliente) en operaciones, cuentas corrientes y auditoría |
+| Campos de importe con símbolo | El símbolo de la moneda en ventas, operaciones estándar, movimientos de caja, traspasos y movimientos de cuenta |
+| Cuentas agrupadas por contacto | Un grupo por contacto con un subtotal por moneda; los saldos de la ficha del contacto abren su estado de cuenta |
+| Historial en todos los registros | Además de operaciones y contactos: cuentas, cajas, usuarios y monedas |
+| Kanban por defecto en el teléfono | Ya estaba hecho en operaciones (la matriz lo marcaba mal); ahora tiene su prueba |
+| Menú de usuario con perfil | "Mi perfil" abre su propia página |
 
-Para pasar a "se puede publicar" faltan las 8 imprescindibles y llegar a 80 puntos de funciones. Sin errores S1 ni S2 abiertos, eso ya se cumple.
-
-Corrección en esta revisión: la barra de progreso por columna del kanban ya estaba hecha (barra por estado de cobro con el total de la columna) y figuraba como faltante. El puntaje subió de 69,8 a 70,3.
+De paso se cerraron dos errores: BUG-004 (la búsqueda distinguía tildes) y BUG-007 (un grupo traía filas de otros valores del mismo campo cuando el filtro tenía varios). Ver `replica/bugs.md`.
 
 ## Por área, de la más floja a la más completa
 
 | área | puntaje | funciones |
 | --- | --- | --- |
 | actividades | 0 | 1 |
-| historial | 16,7 | 5 |
-| búsqueda | 47,4 | 8 |
-| cuentas | 50 | 1 |
-| móvil | 50 | 1 |
-| campos | 53,6 | 5 |
+| historial | 33,3 | 5 |
 | auditoría | 60 | 2 |
-| navegación | 65,8 | 9 |
+| búsqueda | 63,2 | 8 |
 | kanban | 66,7 | 6 |
 | lista | 69,2 | 13 |
+| navegación | 73,7 | 9 |
 | acceso | 75 | 2 |
+| campos | 85,7 | 5 |
 | formulario | 87,5 | 9 |
 | ajustes | 90 | 4 |
-| panel de control | 100 | 4 |
-| tablero | 100 | 3 |
-| general | 100 | 4 |
+| panel de control, tablero, cuentas, general y móvil | 100 | 13 |
 
 ## Lo que falta, en orden de construcción
 
-### Imprescindibles (bloquean la publicación)
+### Convenientes (con dos de estas se pasa de 80)
 
-1. **Selector de contacto con autocompletar y crear** (falta). Hoy se elige de una lista desplegable; con muchos contactos no escala y no se puede crear uno sin salir del formulario.
-2. **Agrupar por varios campos** (a medias). Hoy un solo nivel.
-3. **Buscador con sugerencias por campo** (a medias). Hoy el texto busca en todos los campos a la vez; falta elegir "Buscar cliente: …", "Buscar número: …".
-4. **Campos de importe con símbolo** (a medias). Se ve el código de moneda; falta el campo con símbolo integrado.
-5. **Cuentas agrupadas por contacto con subtotales por moneda** (a medias). Hoy se agrupa por moneda o por situación.
-6. **Historial en todos los registros** (a medias). Está en operaciones y contactos; faltan cuentas, cajas, usuarios y monedas.
-7. **Kanban por defecto en el teléfono** (a medias). Contactos sí; operaciones abre en lista.
-8. **Menú de usuario con perfil** (a medias). Hoy "Mi perfil" lleva a Configuración.
-
-### Convenientes
-
-Bloquear el borrado de registros auditados, favoritos de búsqueda, filtros por defecto al abrir una vista, filtros por período con flechas, separador decimal con punto o coma, paginador entre registros dentro del formulario, notas internas y adjuntos, columnas opcionales, atajos de teclado y exportar eligiendo campos (y en XLSX).
+Filtros por defecto al abrir una vista, paginador entre registros dentro del formulario, bloquear el borrado de registros auditados, favoritos de búsqueda, filtros por período con flechas, separador decimal con punto o coma, notas internas y adjuntos, columnas opcionales, atajos de teclado y exportar eligiendo campos (y en XLSX).
 
 ### Opcionales
 
-Paleta de comandos (Ctrl+K), actividades programadas y su contador, buscador de ajustes, editor de filtros con reglas, cinta de archivado o cancelado, filtro y mensajes fijados en el historial, arrastrar tarjetas, creación rápida en kanban (el componente ya la soporta, ninguna pantalla la usa), plegar columnas, edición en línea y masiva, plegar todos los grupos, importar desde archivo, ofrecer archivar cuando no se puede eliminar, enlace para compartir una vista y llave de acceso.
+Paleta de comandos (Ctrl+K), actividades programadas y su contador, buscador de ajustes, editor de filtros con reglas, cinta de archivado o cancelado, filtro y mensajes fijados en el historial, arrastrar tarjetas, creación rápida en kanban, plegar columnas, edición en línea y masiva, plegar todos los grupos, importar desde archivo, ofrecer archivar cuando no se puede eliminar, enlace para compartir una vista y llave de acceso.
 
 ## Diseño de pantallas
 
@@ -81,12 +79,12 @@ Clics del original: estimados en el recon a partir de la documentación pública
 
 | flujo | original | clon | diferencia | ¿arreglar o dejar? |
 | --- | --- | --- | --- | --- |
-| F01 crear una operación y completarla | 5 clics más datos, y el estado se cambia con un botón | 4 clics más datos. El estado de la venta sale solo de lo cobrado y pagado | Un clic menos y no se puede olvidar de cambiar el estado | Dejar |
-| F02 buscar, filtrar y agrupar | 4 clics, con sugerencias por campo | 3 clics (Enter, filtro, agrupar), búsqueda en todos los campos | Más rápido pero menos preciso; un solo nivel de agrupación | Arreglar (imprescindibles 2 y 3) |
+| F01 crear una operación y completarla | 5 clics más datos, y el estado se cambia con un botón | 4 clics más datos. El estado de la venta sale solo de lo cobrado y pagado, y un cliente o proveedor nuevo se crea desde el mismo campo | Un clic menos, no se puede olvidar de cambiar el estado y no hace falta salir a Contactos | Dejar |
+| F02 buscar, filtrar y agrupar | 4 clics, con sugerencias por campo | 3 o 4 clics, con sugerencias por campo, dos niveles de agrupación y búsqueda sin tildes | Igual, y no hace falta escribir las tildes | Dejar |
 | F03 favoritos | Guarda búsquedas con nombre, predeterminadas y compartidas | No existe; la búsqueda vive en la URL (sobrevive a recargar y a volver atrás) | No se recuerda entre visitas | Arreglar (conveniente) |
-| F04 contacto y su cuenta | 3 clics: ficha, botón de cuenta, movimientos | Ficha y botón "Operaciones" en 2 clics. La pestaña Saldos muestra los saldos, pero sus filas no abren el estado de cuenta | Para ver los movimientos hay que ir a Cuentas corrientes y buscar al contacto | Arreglar: que cada saldo abra su estado de cuenta (cambio chico) |
+| F04 contacto y su cuenta | 3 clics: ficha, botón de cuenta, movimientos | 3 clics: ficha, pestaña Saldos, saldo de la moneda (abre el estado de cuenta, con su historial) | Igual | Dejar |
 | F05 movimiento desde el tablero | 2 clics | 2 clics (Movimiento, Registrar), con aviso y saldo actualizado | Igual. Además, el traspaso entre monedas calcula el importe con la cotización | Dejar |
-| F06 historial y notas | Notas, menciones, adjuntos y filtros en el historial | Historial de cambios en operaciones y contactos; sin notas ni adjuntos | Tu web anterior tampoco tenía notas: no es una pérdida, es una función nueva por hacer | Arreglar (conveniente) |
+| F06 historial y notas | Notas, menciones, adjuntos y filtros en el historial | Historial de cambios en operaciones, contactos, cuentas, cajas, usuarios y monedas; sin notas ni adjuntos | Tu web anterior tampoco tenía notas: no es una pérdida, es una función nueva por hacer | Arreglar (conveniente) |
 | F07 acciones masivas y exportación | n + 3 clics, eligiendo campos y formato | n + 2 clics, CSV con columnas fijas | Más rápido y menos configurable; las celdas que parecen fórmulas salen como texto | Arreglar a futuro (conveniente) |
 | F08 configurar | 3 clics | 2 o 3 clics, con Guardar y Descartar visibles solo si hay cambios | Igual | Dejar |
 | F09 usuarios | 4 clics, Archivar y Cambiar contraseña desde Acciones | 4 clics, Pausar y Reactivar desde Acciones, contraseña en la ficha | Igual. Además, un administrador no puede quitarse su propio rol | Dejar |
@@ -98,12 +96,12 @@ Errores en pantalla: los dos marcan el campo con problema y muestran un aviso. E
 
 Lo que el original recuerda y el clon no: la vista elegida (lista o kanban) y los filtros entre una visita y otra. El clon los guarda en la dirección de la página, así que se conservan al volver atrás o al compartir el enlace, pero no al entrar de nuevo desde el menú.
 
-## Las cinco cosas que conviene construir ahora
+## Lo que conviene construir ahora
 
-1. **Selector de contacto con autocompletar y "Crear …"** en ventas y operaciones (imprescindible 1). Es la que más se nota en el trabajo diario.
-2. **Buscador con sugerencias por campo** (imprescindible 3), y de paso la búsqueda sin tildes (BUG-004), que toca las mismas consultas.
-3. **Agrupar por varios campos** (imprescindible 2), por ejemplo estado y después cliente.
-4. **Historial en cuentas, cajas, usuarios y monedas** (imprescindible 6). La auditoría ya registra esos cambios: falta mostrarlos en cada ficha.
-5. **Cuentas agrupadas por contacto con subtotales por moneda**, y que los saldos de la ficha del contacto abran su estado de cuenta (imprescindible 5 y la diferencia de F04).
+1. **Filtros por defecto al abrir una vista** (por ejemplo, Operaciones abre en "Pendientes"). Con esta y la siguiente se pasa de 80.
+2. **Paginador entre registros dentro del formulario** (anterior y siguiente sin volver a la lista).
+3. **Bloquear el borrado de registros auditados**: hoy un administrador puede eliminar una operación; el original solo deja cancelar o archivar.
+4. **Notas internas en cada ficha**: es lo que más pesa en el área de historial.
+5. **Favoritos de búsqueda**: guardar la búsqueda actual con nombre, predeterminada o compartida.
 
-Con esas cinco, más las tres imprescindibles chicas (importe con símbolo, kanban en el teléfono y menú de perfil), el clon queda en condiciones de publicarse. El siguiente paso es `/replica-build` para esos huecos. `/replica-entrepreneur` (qué mejorar respecto del original) conviene después, cuando la paridad esté cubierta.
+Después, `/replica-entrepreneur` para decidir en qué conviene ser mejor que el original, y `/replica-brand` antes de publicar.

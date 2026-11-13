@@ -2,7 +2,7 @@ feature,area,priority,original,clone,notes
 Barra superior con menú de apps y app activa,navegación,must,yes,yes,Reemplaza Sidebar.tsx y Header.tsx; AppShell + TopBar en todas las pantallas salvo consola SQL y manual
 Menús de sección de cada app en la barra superior,navegación,must,yes,yes,"Ej.: Operaciones > Todas, Ventas distribuidas"
 Migas de pan para volver al nivel anterior,navegación,must,yes,yes,
-Menú de usuario con perfil y cerrar sesión,navegación,must,yes,partial,Contenido exacto del menú a confirmar con capturas; Cambiar contraseña y cerrar sesión; falta perfil
+Menú de usuario con perfil y cerrar sesión,navegación,must,yes,yes,"Mi perfil con página propia, tema y cerrar sesión"
 Pantalla de inicio con acceso a cada app,navegación,should,yes,yes,Hoy el Dashboard muestra saldos por contacto; Accesos por rol y operaciones para atender
 Atajos de teclado con superposición al mantener Alt,navegación,should,yes,no,"Nuevo, guardar, descartar, página anterior y siguiente, volver"
 Paleta de comandos con Ctrl+K,navegación,could,yes,no,Prefijo / para menús y @ para usuarios
@@ -12,11 +12,11 @@ Botón Nuevo en el panel de control,panel de control,must,yes,yes,
 Paginador con rango y anterior/siguiente,panel de control,must,yes,yes,Odoo muestra 80 registros por página en listas; 80 por página
 Selector de vistas lista y kanban,panel de control,must,yes,yes,Operaciones y contactos
 Menú Acciones sobre los registros seleccionados,panel de control,must,yes,yes,"Exportar, archivar, eliminar; Exportar, archivar y eliminar según la pantalla"
-Buscador con sugerencias por campo,búsqueda,must,yes,partial,"Cliente, proveedor, número de operación, documento; Búsqueda de texto libre en varios campos; faltan sugerencias por campo"
+Buscador con sugerencias por campo,búsqueda,must,yes,yes,"Sugerencias ""Buscar en todo"" y por campo, con teclado; búsqueda sin tildes"
 Facetas de búsqueda que se quitan con un clic,búsqueda,must,yes,yes,
 Filtros predefinidos en grupos (O dentro del grupo e Y entre grupos),búsqueda,must,yes,yes,Reemplaza los filtros avanzados de estado y fecha
 Filtros por período con flechas para cambiar de período,búsqueda,should,yes,no,Las flechas son novedad de Odoo 20
-Agrupar por uno o varios campos,búsqueda,must,yes,partial,"Estado, moneda, cliente, proveedor, fecha; Un solo nivel de agrupación"
+Agrupar por uno o varios campos,búsqueda,must,yes,yes,"Dos niveles (groupBy=a,b) en operaciones, cuentas y auditoría"
 Filtros por defecto al abrir una vista,búsqueda,should,yes,no,Ej.: operaciones pendientes
 Favoritos con nombre y opciones de predeterminado y compartido,búsqueda,should,yes,no,Requiere guardar favoritos por usuario
 Editor de filtro personalizado con reglas,búsqueda,could,yes,no,
@@ -48,12 +48,12 @@ Aviso de cambios sin guardar con guardar o descartar,formulario,must,yes,yes,Com
 Paginador entre registros dentro del formulario,formulario,should,yes,no,A confirmar con capturas
 Cinta sobre la hoja para archivado o cancelado,formulario,could,yes,no,A confirmar con capturas
 Confirmación antes de acciones sensibles,formulario,must,yes,yes,"Eliminar una operación, reabrir una completada"
-Selector de relación con autocompletar y crear,campos,must,yes,no,Hoy LiquidSelect
+Selector de relación con autocompletar y crear,campos,must,yes,yes,"Combobox con búsqueda sin tildes y ""Crear «…»"" en ventas, operaciones y movimientos de cuenta"
 Etiquetas de colores,campos,must,yes,yes,Usa Tag.color
-Campos de importe con símbolo de moneda,campos,must,yes,partial,Hoy FormattedNumberInput; Montos con código de moneda; sin selector integrado
+Campos de importe con símbolo de moneda,campos,must,yes,yes,"MoneyInput con el símbolo de la moneda en ventas, operaciones, caja, traspasos y cuentas"
 Selector de fecha,campos,must,yes,yes,En móvil Odoo 20 lo abre desde abajo; Selector nativo
 Separador decimal con punto o coma,campos,should,yes,no,Novedad de Odoo 20
-Historial por registro con cambios de campo (anterior y nuevo),historial,must,yes,partial,"Une AuditLog, OperationStateHistory e InternalComment; Operaciones y contactos; faltan los demás registros"
+Historial por registro con cambios de campo (anterior y nuevo),historial,must,yes,yes,"Operaciones, contactos, cuentas, cajas, usuarios y monedas"
 Notas internas en el registro,historial,should,yes,no,Hoy solo en operaciones
 Adjuntos en el registro,historial,should,yes,no,Hoy solo en operaciones
 Filtro del historial entre notas y cambios,historial,could,yes,no,Novedad de Odoo 20
@@ -62,7 +62,7 @@ Actividades programadas con vencimiento y colores,actividades,could,yes,no,"Verd
 Tablero con una tarjeta por caja y su saldo,tablero,must,yes,yes,Tesorería
 Menú de la tarjeta con las acciones de la caja,tablero,must,yes,yes,"Nuevo movimiento, transferencia, ver movimientos; Movimiento, traspaso y ver movimientos"
 Gráfico chico de evolución en la tarjeta,tablero,should,yes,yes,"Contenido exacto de la tarjeta de Odoo a confirmar; Saldo al cierre de cada día, últimos 30 días"
-Movimientos de cuenta agrupados por contacto y moneda con subtotales,cuentas,must,yes,partial,"El saldo acumulado ya existe en tu web; Saldos por contacto y moneda, agrupados por moneda o situación, con estado de cuenta"
+Movimientos de cuenta agrupados por contacto y moneda con subtotales,cuentas,must,yes,yes,Agrupar por contacto con subtotal por moneda; los saldos de la ficha abren el estado de cuenta
 Pantalla de ajustes con secciones y bloques de opciones,ajustes,must,yes,yes,"Configuración general; General, administración, etiquetas y mi cuenta"
 Buscador de ajustes,ajustes,could,yes,no,A confirmar con capturas
 "Usuarios en lista y formulario con rol, archivar y cambiar contraseña",ajustes,must,yes,yes,"Roles ADMIN, AUDITOR y OPERATOR; Pausar y reactivar en lugar de archivar"
@@ -75,7 +75,7 @@ Estados vacíos con ayuda y botón de crear,general,must,yes,yes,
 Indicador de carga,general,should,yes,yes,Esqueletos en tablas
 Inicio de sesión en tarjeta centrada,acceso,must,yes,yes,Vuelve a la pantalla pedida después de entrar
 Llave de acceso (passkey) para iniciar sesión,acceso,could,yes,no,Mejora de seguridad opcional
-Diseño adaptable con kanban por defecto en móvil,móvil,must,yes,partial,Contactos abren en tarjetas; operaciones en lista
+Diseño adaptable con kanban por defecto en móvil,móvil,must,yes,yes,Contactos y operaciones abren en tarjetas en el teléfono
 Tema claro y oscuro,general,should,no,no,Ya existe en tu web; no verifiqué si Odoo lo tiene
 Consola SQL con el estilo nuevo,general,could,no,no,Propia de tu web
 Manual de uso con el estilo nuevo,general,could,no,no,Propio de tu web

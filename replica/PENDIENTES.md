@@ -1,6 +1,6 @@
 # Pendientes para retomar
 
-Estado al 2026-10-23. Rama `feat/interfaz-azul` (último commit `9fed2ac`). **Nada subido al remoto.**
+Estado al 2026-11-13. Rama `feat/interfaz-azul`. **Nada subido al remoto.**
 
 ## Estado del repositorio
 
@@ -20,12 +20,12 @@ Para retomar hay que decidir:
 - `.env.development.local` (no se versiona) apunta a esa base. **No usar `.env` (Neon) para desarrollo ni pruebas.**
 - Servidor: `npm run dev` (puerto 3000).
 - Datos de prueba: `npm run db:seed-demo` (se niega a correr contra una base que no sea la local). Usuarios: `admin`, `operador` y `auditora`; las contraseñas están en `prisma/seed.js` y `scripts/seed-demo.cjs`.
-- Pruebas: `npm run test:e2e` (47 pruebas, todas pasan). Usa el Chrome instalado; `E2E_CHANNEL` permite cambiarlo.
+- Pruebas: `npm run test:e2e` (58 pruebas, todas pasan). Usa el Chrome instalado; `E2E_CHANNEL` permite cambiarlo.
 - Los contenedores `odoo-ee-web-1` y `odoo-ee-db-1` son de otro proyecto: no se tocaron.
 
 ## Errores abiertos
 
-- **BUG-004 (S3): la búsqueda distingue tildes.** "benitez" no encuentra a Benítez. La solución es la extensión `unaccent` de PostgreSQL (o columnas normalizadas) con consultas SQL propias en `src/lib/resources/*`. Es un cambio de esquema: probarlo en la base local y en una copia de Neon antes de aplicarlo en producción. Detalle en `replica/bugs.md`.
+Ninguno. BUG-004 (búsqueda con tildes) y BUG-007 (grupos con filtros del mismo campo) quedaron corregidos el 2026-11-13. Detalle en `replica/bugs.md`.
 
 ## Antes de producción
 
@@ -38,42 +38,26 @@ Para retomar hay que decidir:
 
 ## Funciones que faltan
 
-Fuente: `replica/features.csv` (columna `clone`). Imprescindibles: 34 de 42 hechas y 7 a medias.
+Fuente: `replica/features.csv`. **Imprescindibles: 42 de 42.** Paridad de funciones 78,0 / 100: faltan 2 puntos para el umbral de 80 del método. Detalle y orden en `replica/parity.md`.
 
-### Imprescindibles (must)
+### Convenientes (con dos de estas se pasa de 80)
 
-- **Selector de contacto con autocompletar y crear** (falta): hoy se elige de una lista desplegable.
-- **Menú de usuario** (a medias): falta un perfil propio; hoy lleva a Configuración.
-- **Buscador con sugerencias por campo** (a medias): hoy es texto libre en varios campos.
-- **Agrupar por varios campos** (a medias): hoy un solo nivel.
-- **Campos de importe con símbolo** (a medias): se muestra el código de moneda, sin selector integrado.
-- **Historial por registro** (a medias): está en operaciones y contactos; faltan los demás.
-- **Cuentas agrupadas por contacto con subtotales por moneda** (a medias): hoy se agrupa por moneda o por situación.
-- **Kanban por defecto en el teléfono** (a medias): contactos sí; operaciones abre en lista.
-
-### Convenientes (should)
-
-- Favoritos de búsqueda (predeterminado y compartido).
 - Filtros por defecto al abrir una vista.
-- Filtros por período con flechas.
-- Columnas opcionales por usuario.
-- Exportar eligiendo campos, y en XLSX.
 - Paginador entre registros dentro del formulario.
-- Notas internas y adjuntos en la interfaz nueva (antes estaban en operaciones).
 - Bloquear el borrado de registros auditados (hoy se puede eliminar una operación).
-- Atajos de teclado con superposición al mantener Alt.
-- Separador decimal con punto o coma.
-- Verificar el tema oscuro en todas las pantallas nuevas.
+- Notas internas y adjuntos.
+- Favoritos de búsqueda.
+- Filtros por período con flechas, separador decimal con punto o coma, columnas opcionales, atajos de teclado y exportar eligiendo campos (y en XLSX).
 
-### Opcionales (could)
+### Opcionales
 
-Paleta de comandos (Ctrl+K), arrastrar tarjetas entre columnas, creación rápida en kanban, barra de progreso y plegado de columnas, edición en línea y masiva, importar desde archivo, cinta de archivado o cancelado, actividades programadas, filtro y mensajes fijados en el historial, buscador de ajustes, llave de acceso, enlace para compartir una vista, y pasar la consola SQL y el manual a la interfaz nueva.
+Paleta de comandos (Ctrl+K), arrastrar tarjetas, creación rápida en kanban, plegar columnas, edición en línea y masiva, importar desde archivo, cinta de archivado o cancelado, actividades programadas, filtro y mensajes fijados en el historial, buscador de ajustes, llave de acceso, enlace para compartir una vista, y pasar la consola SQL y el manual a la interfaz nueva.
 
 ## Siguientes pasos del método
 
 1. Hecho el 2026-11-13: `/replica-diff`. Paridad de funciones 70,3 / 100; 34 de 42 imprescindibles. Detalle y las cinco prioridades en `replica/parity.md`. Las capturas del clon están en `replica/clone-screens/`; faltan las del original para medir el diseño.
-2. `/replica-build` para las 8 imprescindibles que faltan (orden en `replica/parity.md`).
-3. Después, `/replica-entrepreneur`, `/replica-brand` (nombre y marca propios; correr la búsqueda de restos del original) y recién ahí el lanzamiento.
+2. Hecho el 2026-11-13: `/replica-build` de las 8 imprescindibles que faltaban. Paridad 78,0 con 42 de 42.
+3. Siguiente: dos funciones convenientes para pasar de 80 (las primeras de `replica/parity.md`). Después, `/replica-entrepreneur`, `/replica-brand` (nombre y marca propios; correr la búsqueda de restos del original) y recién ahí el lanzamiento.
 
 ## Documentos relacionados
 
