@@ -1,5 +1,5 @@
 import UserForm from "../UserForm";
 
-export default function UserPage({ params }: { params: { id: string } }) {
-  return <UserForm id={params.id} />;
+export default async function UserPage({ params }: { params: Promise<{ id: string }> }) {
+  return <UserForm id={(await params).id} />;
 }

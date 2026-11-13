@@ -1,21 +1,15 @@
 // Integración PostgreSQL: todos los movimientos y cajas de prueba se revierten.
 const fs = require('node:fs');
 const path = require('node:path');
-const Module = require('node:module');
 const assert = require('node:assert/strict');
 const { randomUUID } = require('node:crypto');
-const ts = require('typescript');
 const { PrismaClient } = require('@prisma/client');
 
 const raw = fs.readFileSync('.env', 'utf8').match(/^DATABASE_URL\s*=\s*(.*)$/m)?.[1];
 if (!raw) throw new Error('DATABASE_URL no encontrada');
-process.env.DATABASE_URL = raw.trim().replace(/^["']|["']$/g, '');
+process.env.DATABASE_URL ||= raw.trim().replace(/^["']|["']$/g, '');
 const filename = path.resolve('src/lib/manual-treasury.ts');
-const mod = new Module(filename, module);
-mod.filename = filename;
-mod.paths = Module._nodeModulePaths(path.dirname(filename));
-mod._compile(ts.transpile(fs.readFileSync(filename, 'utf8'), { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 }), filename);
-const { recordManualTreasuryMovement: record, parseTreasuryInput } = mod.exports;
+const { recordManualTreasuryMovement: record, parseTreasuryInput } = require('./load-typescript.cjs')(filename);
 const prisma = new PrismaClient();
 const rollback = new Error('TEST_ROLLBACK');
 
@@ -33,17 +27,19 @@ async function main() {
       const other = await tx.treasuryAccount.create({ data: { name: 'TEST otra moneda', type: 'WALLET', currencyId: secondCurrency.id } });
       ids = [account.id, other.id];
       const income = await record(tx, { accountId: account.id, type: 'INCOME', amount: 50.25, reason: '  Aporte de prueba  ' }, user.id);
-      assert.equal(income.account.balance, 150.25);
+      assert.equal(Number(income.account.balance), 150.25);
       assert.equal(income.movement.concept, 'Aporte de prueba');
-      assert.equal(income.movement.operationId, null);
+      assert.ok(income.movement.operationId);
+      const operation = await tx.operation.findUniqueOrThrow({ where: { id: income.movement.operationId } });
+      assert.equal(operation.type, 'TREASURY_INCOME');
       const expense = await record(tx, { accountId: account.id, type: 'EXPENSE', amount: 30.25, reason: 'Retiro de prueba' }, user.id);
-      assert.equal(expense.account.balance, 120);
+      assert.equal(Number(expense.account.balance), 120);
       await assert.rejects(record(tx, { accountId: account.id, type: 'EXPENSE', amount: 121, reason: 'Sin saldo' }, user.id), /Saldo insuficiente/);
       await assert.rejects(record(tx, { accountId: account.id, type: 'INCOME', amount: 1.001, reason: 'Precisión' }, user.id), /decimales/);
       await assert.rejects(record(tx, { accountId: account.id, type: 'INCOME', amount: 1, reason: '  ' }, user.id), /motivo/);
       const precise = await record(tx, { accountId: other.id, type: 'INCOME', amount: 0.123456, reason: 'Otra moneda' }, user.id);
-      assert.equal(precise.account.balance, 0.123456);
-      assert.equal((await tx.treasuryAccount.findUniqueOrThrow({ where: { id: account.id } })).balance, 120);
+      assert.equal(Number(precise.account.balance), 0.123456);
+      assert.equal(Number((await tx.treasuryAccount.findUniqueOrThrow({ where: { id: account.id } })).balance), 120);
       assert.equal(await tx.treasuryMovement.count({ where: { treasuryAccountId: { in: ids } } }), 3);
       const audit = await tx.auditLog.findFirstOrThrow({ where: { entityId: expense.movement.id } });
       assert.equal(audit.userId, user.id);

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import prisma from "@/lib/prisma";
+import { PrismaClient } from "@prisma/client";
 import { requireAdminOrAuditor } from "@/lib/session";
 import { logAudit } from "@/lib/audit";
 
@@ -7,6 +7,14 @@ export const dynamic = "force-dynamic";
 
 const MAX_ROWS = 1000;
 const STATEMENT_TIMEOUT_MS = 5000;
+let reportingDb: PrismaClient | undefined;
+
+function getReportingDb() {
+  const url = process.env.SQL_REPORTING_DATABASE_URL;
+  if (!url) return null;
+  reportingDb ??= new PrismaClient({ datasourceUrl: url });
+  return reportingDb;
+}
 
 // Comandos de escritura / destructivos. La transacción READ ONLY es la barrera real;
 // esta lista da un mensaje claro antes de llegar a la base.
@@ -45,6 +53,7 @@ const FORBIDDEN_PATTERNS = [
 
 function blocked(query: string): string | null {
   if (query.includes(";")) return "Solo se permite una consulta por vez.";
+  if (/--|\/\*/.test(query)) return "La consulta debe estar sin comentarios.";
   if (!/^SELECT\b/i.test(query)) return "Solo se permiten consultas SELECT.";
   if (WRITE_PATTERNS.some((p) => p.test(query))) return "Solo se permiten consultas de lectura (SELECT).";
   if (FORBIDDEN_PATTERNS.some((p) => p.test(query))) return "La consulta accede a datos o funciones no permitidos.";
@@ -88,14 +97,31 @@ export async function POST(req: NextRequest) {
 
     // Transacción de solo lectura con tiempo máximo; envolver la consulta como
     // subconsulta garantiza una única sentencia SELECT y limita las filas.
-    const result = await prisma.$transaction(
-      async (tx) => {
-        await tx.$executeRawUnsafe("SET TRANSACTION READ ONLY");
-        await tx.$executeRawUnsafe(`SET LOCAL statement_timeout = ${STATEMENT_TIMEOUT_MS}`);
-        return tx.$queryRawUnsafe(`SELECT * FROM (${query}) AS consulta LIMIT ${MAX_ROWS}`);
-      },
-      { maxWait: 5000, timeout: STATEMENT_TIMEOUT_MS + 5000 }
-    );
+    const db = getReportingDb();
+    if (!db) return NextResponse.json({ error: "La consola requiere una conexión de informes configurada." }, { status: 503 });
+    let result: unknown;
+    try {
+      result = await db.$transaction(
+        async (tx) => {
+          await tx.$executeRawUnsafe("SET TRANSACTION READ ONLY");
+          await tx.$executeRawUnsafe(`SET LOCAL statement_timeout = ${STATEMENT_TIMEOUT_MS}`);
+          await tx.$executeRawUnsafe("SET LOCAL search_path = calce_reporting, pg_catalog");
+          const [access] = await tx.$queryRaw<{ allowed: boolean }[]>`
+            SELECT current_user = 'calce_report_reader' AND NOT EXISTS (
+              SELECT 1 FROM pg_catalog.pg_class AS relation
+              JOIN pg_catalog.pg_namespace AS namespace ON namespace.oid = relation.relnamespace
+              WHERE namespace.nspname = 'public' AND relation.relkind IN ('r', 'p', 'v', 'm', 'f')
+                AND has_any_column_privilege(current_user, relation.oid, 'SELECT')
+            ) AS allowed`;
+          if (!access?.allowed) throw new Error("El rol de informes tiene permisos incorrectos.");
+          return tx.$queryRawUnsafe(`SELECT * FROM (\n${query}\n) AS consulta LIMIT ${MAX_ROWS}`);
+        },
+        { maxWait: 5000, timeout: STATEMENT_TIMEOUT_MS + 5000 }
+      );
+    } catch (error) {
+      await logAudit({ userId: user.id, action: "SQL_QUERY", query: `[ERROR] ${query.slice(0, 500)}` });
+      throw error;
+    }
 
     await logAudit({
       userId: user.id,

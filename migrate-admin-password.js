@@ -2,49 +2,42 @@
  * Script de migración: actualiza el hash de contraseña del usuario admin
  * de "hardcoded" (valor especial del código legacy) a un hash bcrypt real.
  * 
- * Uso: node migrate-admin-password.js <nueva_contraseña>
+ * Definí INITIAL_ADMIN_PASSWORD en el entorno y ejecutá node migrate-admin-password.js.
  */
+require("@next/env").loadEnvConfig(process.cwd(), process.env.NODE_ENV === "development");
 const { PrismaClient } = require("@prisma/client");
 const bcrypt = require("bcryptjs");
 
 const prisma = new PrismaClient();
 
 async function main() {
-  // Aceptar la nueva contraseña como argumento o usar prompt
-  const newPassword = process.argv[2];
+  const newPassword = process.env.INITIAL_ADMIN_PASSWORD || process.argv[2];
 
   if (!newPassword) {
-    console.error("ERROR: Provee la nueva contraseña como argumento.");
-    console.error("  node migrate-admin-password.js <nueva_contraseña>");
+    console.error("ERROR: Configurá INITIAL_ADMIN_PASSWORD.");
     process.exit(1);
   }
 
-  if (newPassword.length < 8) {
-    console.error("ERROR: La contraseña debe tener al menos 8 caracteres.");
+  if (newPassword.length < 12 || Buffer.byteLength(newPassword) > 72) {
+    console.error("ERROR: La contraseña debe tener al menos 12 caracteres y como máximo 72 bytes.");
     process.exit(1);
   }
 
   const hash = await bcrypt.hash(newPassword, 12);
 
-  const updated = await prisma.user.updateMany({
-    where: { username: "admin" },
-    data: { passwordHash: hash },
+  await prisma.$transaction(async (tx) => {
+    const admin = await tx.user.findUnique({ where: { username: "admin" } });
+    if (admin?.role !== "ADMIN") throw new Error("El usuario admin con rol ADMIN no existe.");
+    await tx.user.update({ where: { id: admin.id }, data: { passwordHash: hash } });
+    await tx.session.deleteMany({ where: { userId: admin.id } });
+    await tx.auditLog.create({ data: {
+      action: "UPDATE",
+      entity: "User",
+      entityId: admin.id,
+      newValues: JSON.stringify({ password: "actualizada por mantenimiento" }),
+    } });
   });
-
-  if (updated.count === 0) {
-    console.log("No se encontró el usuario admin. Creándolo...");
-    await prisma.user.create({
-      data: {
-        username: "admin",
-        passwordHash: hash,
-        role: "ADMIN",
-        isActive: true,
-      },
-    });
-    console.log("✓ Usuario admin creado con contraseña segura.");
-  } else {
-    console.log("✓ Contraseña del usuario admin actualizada correctamente.");
-  }
+  console.log("✓ Contraseña actualizada y sesiones anteriores cerradas.");
 }
 
 main()

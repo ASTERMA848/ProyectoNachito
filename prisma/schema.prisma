@@ -37,6 +37,14 @@ model Session {
   user         User     @relation(fields: [userId], references: [id])
 }
 
+model LoginAttempt {
+  key       String   @id
+  count     Int
+  expiresAt DateTime
+
+  @@index([expiresAt])
+}
+
 model Settings {
   id                      String   @id @default(uuid())
   mainCurrencyId          String?
@@ -155,17 +163,17 @@ model Operation {
   originCurrency   Currency     @relation("OriginCurrency", fields: [originCurrencyId], references: [id])
   destCurrency     Currency     @relation("DestCurrency", fields: [destCurrencyId], references: [id])
 
-  originAmount     Float
-  destAmount       Float
-  exchangeRate     Float
+  originAmount     Decimal @db.Decimal(30, 8)
+  destAmount       Decimal @db.Decimal(30, 8)
+  exchangeRate     Decimal @db.Decimal(30, 8)
   operationDate    DateTime
 
   isPaid           Boolean      @default(false)
   providerIsPaid   Boolean?     @default(false) // NULL: pago de una operación anterior pendiente de revisión
   providerPaymentCurrencyId String?
   providerPaymentCurrency   Currency? @relation("ProviderPaymentCurrency", fields: [providerPaymentCurrencyId], references: [id])
-  providerPaymentRate       Float?
-  providerPaymentAmount     Float?
+  providerPaymentRate       Decimal? @db.Decimal(30, 8)
+  providerPaymentAmount     Decimal? @db.Decimal(30, 8)
   observations     String?
   state            String       @default("PENDING") // PENDING, PARTIAL, COMPLETED, CANCELED
 
@@ -226,7 +234,7 @@ model Account {
   id          String       @id @default(uuid())
   contactId   String
   currencyId  String
-  balance     Float        @default(0.0) 
+  balance     Decimal @db.Decimal(30, 8) @default(0.0)
   
   contact     Contact      @relation(fields: [contactId], references: [id])
   currency    Currency     @relation(fields: [currencyId], references: [id])
@@ -241,9 +249,9 @@ model Transaction {
   operationId String?
   date        DateTime  @default(now())
   concept     String
-  debit       Float     @default(0.0)
-  credit      Float     @default(0.0)
-  balance     Float     
+  debit       Decimal @db.Decimal(30, 8) @default(0.0)
+  credit      Decimal @db.Decimal(30, 8) @default(0.0)
+  balance     Decimal @db.Decimal(30, 8)
   observations String?
   
   account     Account   @relation(fields: [accountId], references: [id])
@@ -263,7 +271,7 @@ model TreasuryAccount {
   name             String
   type             String    // CASH, BANK, WALLET
   currencyId       String
-  balance          Float     @default(0.0)
+  balance          Decimal @db.Decimal(30, 8) @default(0.0)
   
   isActive         Boolean   @default(true)
   createdAt        DateTime  @default(now())
@@ -281,7 +289,7 @@ model TreasuryMovement {
   
   date             DateTime  @default(now())
   type             String    // INCOME, EXPENSE, TRANSFER, ADJUSTMENT
-  amount           Float
+  amount           Decimal @db.Decimal(30, 8)
   
   concept          String
   reference        String?
@@ -304,8 +312,8 @@ model Settlement {
   providerId  String
   operationId String
   dueDate     DateTime
-  amount      Float
-  paidAmount  Float     @default(0.0)
+  amount      Decimal @db.Decimal(30, 8)
+  paidAmount  Decimal @db.Decimal(30, 8) @default(0.0)
   state       String    @default("PENDING") // PENDING, PARTIAL, SETTLED, EXPIRED
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt

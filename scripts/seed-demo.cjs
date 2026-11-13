@@ -1,9 +1,9 @@
 // Datos de prueba inventados para la base de desarrollo local (no corre contra otra base).
-// Requisitos: base local con `prisma db push` y `node prisma/seed.js`, y `npm run dev` levantado.
+// Requisitos: base local con `prisma migrate deploy` y `node prisma/seed.js`, y `npm run dev` levantado.
 // Uso: npm run db:seed-demo
 //
 // Usuarios de prueba que crea (solo para la base local):
-//   operador / operador1234 (OPERATOR)   auditora / auditora1234 (AUDITOR)   admin / admin (de prisma/seed.js)
+//   operador / operador1234 (OPERATOR)   auditora / auditora1234 (AUDITOR)   admin / INITIAL_ADMIN_PASSWORD
 const fs = require("fs");
 const path = require("path");
 const bcrypt = require("bcryptjs");
@@ -13,7 +13,7 @@ const root = path.join(__dirname, "..");
 const localEnv = path.join(root, ".env.development.local");
 if (fs.existsSync(localEnv)) {
   const match = fs.readFileSync(localEnv, "utf8").match(/^DATABASE_URL="?([^"\n]+)"?/m);
-  if (match) process.env.DATABASE_URL = match[1];
+  if (match && !process.env.DATABASE_URL) process.env.DATABASE_URL = match[1];
 }
 const { PrismaClient } = require("@prisma/client");
 const API = process.env.SEED_API_URL || "http://localhost:3000";
@@ -43,7 +43,9 @@ async function api(method, url, body) {
 }
 
 async function login() {
-  const { response } = await api("POST", "/api/auth/login", { username: "admin", password: "admin" });
+  const password = process.env.E2E_ADMIN_PASSWORD || process.env.INITIAL_ADMIN_PASSWORD;
+  if (!password) throw new Error("Configurá E2E_ADMIN_PASSWORD o INITIAL_ADMIN_PASSWORD para los datos de prueba.");
+  const { response } = await api("POST", "/api/auth/login", { username: "admin", password });
   cookie = (response.headers.get("set-cookie") || "").split(";")[0];
 }
 
@@ -98,7 +100,7 @@ async function main() {
   await login();
 
   // Ventas por la misma ruta que usa la interfaz: así quedan cuentas, cajas y auditoría coherentes.
-  const sale = (body) => api("POST", "/api/operations/distributed-sale", { providerPaymentCurrencyId: "", providerPaymentRate: "", observations: "", ...body });
+  const sale = (body) => api("POST", "/api/operations/distributed-sale", { providerPaymentCurrencyId: "", observations: "", ...body });
   const line = (client, amount, isPaid, extra = {}) => ({ clientId: client.id, amount, exchangeRate: "", isPaid, observations: "", ...extra });
   const usd = currencies.USD.id;
   const eur = currencies.EUR.id;

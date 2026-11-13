@@ -1,5 +1,5 @@
 import OperationForm from "../OperationForm";
 
-export default function NewOperationPage({ searchParams }: { searchParams: { type?: string } }) {
-  return <OperationForm initialType={searchParams.type === "distributed" ? "DISTRIBUTED_SALE" : "SINGLE_SALE"} />;
+export default async function NewOperationPage({ searchParams }: { searchParams: Promise<{ type?: string }> }) {
+  return <OperationForm initialType={(await searchParams).type === "distributed" ? "DISTRIBUTED_SALE" : "SINGLE_SALE"} />;
 }

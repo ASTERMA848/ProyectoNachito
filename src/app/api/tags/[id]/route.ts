@@ -6,7 +6,7 @@ import { can } from "@/lib/permissions";
 
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await requireAuth();
@@ -17,7 +17,7 @@ export async function PUT(
       return NextResponse.json({ error: "Tu rol no puede modificar etiquetas" }, { status: 403 });
     }
 
-    const { id } = params;
+    const { id } = await params;
     const body = await req.json().catch(() => null);
     if (!body) {
       return NextResponse.json({ error: "Datos inválidos" }, { status: 400 });
@@ -43,21 +43,24 @@ export async function PUT(
       return NextResponse.json({ error: "Etiqueta no encontrada" }, { status: 404 });
     }
 
-    const updatedTag = await prisma.tag.update({
-      where: { id },
-      data: {
-        name: name.trim().substring(0, 50),
-        color: safeColor,
-      },
-    });
+    const updatedTag = await prisma.$transaction(async (tx) => {
+      const updatedTag = await tx.tag.update({
+        where: { id },
+        data: {
+          name: name.trim().substring(0, 50),
+          color: safeColor,
+        },
+      });
 
-    await logAudit({
-      userId: user.id,
-      action: "UPDATE",
-      entity: "Tag",
-      entityId: id,
-      oldValues: { name: existingTag.name },
-      newValues: { name: updatedTag.name },
+      await logAudit({
+        userId: user.id,
+        action: "UPDATE",
+        entity: "Tag",
+        entityId: id,
+        oldValues: { name: existingTag.name },
+        newValues: { name: updatedTag.name },
+      }, tx);
+      return updatedTag;
     });
 
     return NextResponse.json(updatedTag);
@@ -72,7 +75,7 @@ export async function PUT(
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await requireAuth();
@@ -83,22 +86,24 @@ export async function DELETE(
       return NextResponse.json({ error: "Tu rol no puede modificar etiquetas" }, { status: 403 });
     }
 
-    const { id } = params;
+    const { id } = await params;
 
     const existingTag = await prisma.tag.findUnique({ where: { id } });
     if (!existingTag) {
       return NextResponse.json({ error: "Etiqueta no encontrada" }, { status: 404 });
     }
 
-    await prisma.contactTag.deleteMany({ where: { tagId: id } });
-    await prisma.tag.delete({ where: { id } });
+    await prisma.$transaction(async (tx) => {
+      await tx.contactTag.deleteMany({ where: { tagId: id } });
+      await tx.tag.delete({ where: { id } });
 
-    await logAudit({
-      userId: user.id,
-      action: "DELETE",
-      entity: "Tag",
-      entityId: id,
-      oldValues: { name: existingTag.name },
+      await logAudit({
+        userId: user.id,
+        action: "DELETE",
+        entity: "Tag",
+        entityId: id,
+        oldValues: { name: existingTag.name },
+      }, tx);
     });
 
     return NextResponse.json({ success: true });

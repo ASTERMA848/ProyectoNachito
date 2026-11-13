@@ -8,26 +8,26 @@ const ALLOWED_ROLES = ["ADMIN", "AUDITOR", "OPERATOR"];
 const ALLOWED_THEMES = ["SYSTEM", "LIGHT", "DARK"];
 
 // Ficha de un usuario para la pantalla de usuarios (ADMIN y AUDITOR).
-export async function GET(_request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const loggedUser = await requireAuth();
     if (!loggedUser) {
       return NextResponse.json({ error: "No autenticado" }, { status: 401 });
     }
-    if (loggedUser.role !== "ADMIN" && loggedUser.role !== "AUDITOR" && loggedUser.id !== params.id) {
+    if (loggedUser.role !== "ADMIN" && loggedUser.role !== "AUDITOR" && loggedUser.id !== (await params).id) {
       return NextResponse.json({ error: "No autorizado" }, { status: 403 });
     }
     const [user, logs] = await Promise.all([
       prisma.user.findUnique({
-        where: { id: params.id },
+        where: { id: (await params).id },
         select: { id: true, username: true, role: true, isActive: true, theme: true, profilePicture: true, createdAt: true, updatedAt: true },
       }),
-      prisma.auditLog.count({ where: { userId: params.id } }),
+      prisma.auditLog.count({ where: { userId: (await params).id } }),
     ]);
     if (!user) {
       return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 });
     }
-    const lastLogin = await prisma.auditLog.findFirst({ where: { userId: params.id, action: "LOGIN" }, orderBy: { createdAt: "desc" }, select: { createdAt: true } });
+    const lastLogin = await prisma.auditLog.findFirst({ where: { userId: (await params).id, action: "LOGIN" }, orderBy: { createdAt: "desc" }, select: { createdAt: true } });
     return NextResponse.json({ user, counts: { auditLogs: logs }, lastLogin: lastLogin?.createdAt ?? null });
   } catch (error) {
     console.error("Get user error:", error);
@@ -42,7 +42,7 @@ export async function GET(_request: NextRequest, { params }: { params: { id: str
  */
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const loggedUser = await requireAuth();
@@ -50,7 +50,7 @@ export async function PUT(
       return NextResponse.json({ error: "No autenticado" }, { status: 401 });
     }
 
-    const { id } = params;
+    const { id } = await params;
 
     // Un usuario solo puede editarse a sí mismo, salvo que sea ADMIN
     if (loggedUser.role !== "ADMIN" && loggedUser.id !== id) {
@@ -79,8 +79,8 @@ export async function PUT(
     }
 
     if (password !== undefined && password !== null && password !== "") {
-      if (typeof password !== "string" || password.length < 8 || password.length > 128) {
-        return NextResponse.json({ error: "La contraseña debe tener entre 8 y 128 caracteres" }, { status: 400 });
+      if (typeof password !== "string" || password.length < 8 || Buffer.byteLength(password) > 72) {
+        return NextResponse.json({ error: "La contraseña debe tener al menos 8 caracteres y como máximo 72 bytes" }, { status: 400 });
       }
     }
 
@@ -141,25 +141,28 @@ export async function PUT(
       updateData.passwordHash = await hashPassword(password);
     }
 
-    const updatedUser = await prisma.user.update({
-      where: { id },
-      data: updateData,
-    });
+    const updatedUser = await prisma.$transaction(async (tx) => {
+      const updatedUser = await tx.user.update({
+        where: { id },
+        data: updateData,
+      });
 
-    const passwordChanged = Boolean(updateData.passwordHash);
-    await logAudit({
-      userId: loggedUser.id,
-      action: "UPDATE",
-      entity: "User",
-      entityId: id,
-      oldValues: { username: targetUser.username, role: targetUser.role, password: "—" },
-      newValues: { username: updatedUser.username, role: updatedUser.role, password: passwordChanged ? "cambiada" : "—" },
-    });
+      const passwordChanged = Boolean(updateData.passwordHash);
+      await logAudit({
+        userId: loggedUser.id,
+        action: "UPDATE",
+        entity: "User",
+        entityId: id,
+        oldValues: { username: targetUser.username, role: targetUser.role, password: "—" },
+        newValues: { username: updatedUser.username, role: updatedUser.role, password: passwordChanged ? "cambiada" : "—" },
+      }, tx);
 
-    // Si otro usuario cambia la contraseña o el rol, las sesiones abiertas de ese usuario dejan de valer.
-    if (id !== loggedUser.id && (passwordChanged || updatedUser.role !== targetUser.role)) {
-      await prisma.session.deleteMany({ where: { userId: id } });
-    }
+      // Si otro usuario cambia la contraseña o el rol, las sesiones abiertas de ese usuario dejan de valer.
+      if (id !== loggedUser.id && (passwordChanged || updatedUser.role !== targetUser.role)) {
+        await tx.session.deleteMany({ where: { userId: id } });
+      }
+      return updatedUser;
+    });
 
     return NextResponse.json({
       user: {
@@ -182,7 +185,7 @@ export async function PUT(
  */
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const admin = await requireAdmin();
@@ -190,7 +193,7 @@ export async function PATCH(
       return NextResponse.json({ error: "No autorizado" }, { status: 403 });
     }
 
-    const { id } = params;
+    const { id } = await params;
     const body = await request.json().catch(() => null);
     if (!body || typeof body.isActive !== "boolean") {
       return NextResponse.json({ error: "Falta campo isActive (boolean)" }, { status: 400 });
@@ -211,24 +214,27 @@ export async function PATCH(
       return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 });
     }
 
-    const updatedUser = await prisma.user.update({
-      where: { id },
-      data: { isActive },
-    });
+    const updatedUser = await prisma.$transaction(async (tx) => {
+      const updatedUser = await tx.user.update({
+        where: { id },
+        data: { isActive },
+      });
 
-    await logAudit({
-      userId: admin.id,
-      action: "UPDATE",
-      entity: "User",
-      entityId: id,
-      oldValues: { isActive: targetUser.isActive },
-      newValues: { isActive: updatedUser.isActive },
-    });
+      await logAudit({
+        userId: admin.id,
+        action: "UPDATE",
+        entity: "User",
+        entityId: id,
+        oldValues: { isActive: targetUser.isActive },
+        newValues: { isActive: updatedUser.isActive },
+      }, tx);
 
-    // Si pausamos el usuario, destruimos todas sus sesiones activas
-    if (!isActive) {
-      await prisma.session.deleteMany({ where: { userId: id } });
-    }
+      // Si pausamos el usuario, destruimos todas sus sesiones activas
+      if (!isActive) {
+        await tx.session.deleteMany({ where: { userId: id } });
+      }
+      return updatedUser;
+    });
 
     return NextResponse.json({
       user: {

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/session";
 import { verifyPassword } from "@/lib/auth-utils";
 import prisma from "@/lib/prisma";
+import { clearAuthAttempts, consumeAuthAttempt } from "@/lib/rate-limit";
 
 /**
  * Verifica la contraseña del administrador actual.
@@ -27,6 +28,12 @@ export async function POST(request: Request) {
         { status: 401 }
       );
     }
+    const key = `verify-admin:${admin.id}`;
+    const retryAfter = await consumeAuthAttempt(key, 10);
+    if (retryAfter) return NextResponse.json(
+      { error: "Demasiados intentos. Intente más tarde." },
+      { status: 429, headers: { "Retry-After": String(retryAfter) } }
+    );
 
     // Obtener el hash real del usuario
     const adminUser = await prisma.user.findUnique({
@@ -49,6 +56,7 @@ export async function POST(request: Request) {
       );
     }
 
+    await clearAuthAttempts(key);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Admin verification error:", error);

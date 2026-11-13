@@ -3,23 +3,22 @@
 // Este script agrega miles de operaciones de prueba, mide /api/operations a través del servidor
 // real (el mismo camino que usa el buscador al tipear) y borra todo lo que creó al terminar.
 //
-// Corre SIEMPRE contra la base local de Docker (.env.development.local, puerto 5434). Nunca Neon.
+// Usar la misma base local que el servidor y las sesiones de Playwright.
 const fs = require("node:fs");
 const path = require("node:path");
 const { PrismaClient } = require("@prisma/client");
 
 const envPath = path.join(__dirname, "..", ".env.development.local");
-const raw = fs.readFileSync(envPath, "utf8").match(/^DATABASE_URL\s*=\s*(.*)$/m)?.[1];
-if (!raw) throw new Error("DATABASE_URL no encontrada en .env.development.local");
-const databaseUrl = raw.trim().replace(/^["']|["']$/g, "");
-if (!/localhost|127\.0\.0\.1/.test(databaseUrl)) {
-  throw new Error(`DATABASE_URL no apunta a la base local de Docker: ${databaseUrl}`);
-}
+const raw = fs.existsSync(envPath) ? fs.readFileSync(envPath, "utf8").match(/^DATABASE_URL\s*=\s*(.*)$/m)?.[1] : null;
+const databaseUrl = process.env.E2E_DATABASE_URL ?? raw?.trim().replace(/^["']|["']$/g, "");
+const isLocal = (url) => ["localhost", "127.0.0.1", "[::1]"].includes(new URL(url).hostname);
+if (!databaseUrl || !isLocal(databaseUrl)) throw new Error("Configurá E2E_DATABASE_URL con una base local de prueba.");
 process.env.DATABASE_URL = databaseUrl;
 
-const BASE_URL = process.argv.find((arg) => arg.startsWith("--base-url="))?.split("=")[1] ?? "http://localhost:3000";
+const BASE_URL = process.argv.find((arg) => arg.startsWith("--base-url="))?.split("=")[1] ?? process.env.E2E_BASE_URL ?? "http://localhost:3000";
+if (!isLocal(BASE_URL)) throw new Error("La API de la prueba de carga debe ser local.");
 const ROW_COUNT = Number(process.argv.find((arg) => arg.startsWith("--rows="))?.split("=")[1] ?? 5000);
-const TAG = "ZZPERF-";
+const TAG = `ZZPERF-${Date.now()}-`;
 const SLOW_MS = 1500; // umbral generoso: lo que importa es que no crezca con la escala, no un número exacto.
 
 const prisma = new PrismaClient();
@@ -58,12 +57,11 @@ async function main() {
   }));
   // createMany en tandas: una sola sentencia con miles de filas es más lenta de preparar que varias chicas.
   const BATCH = 1000;
-  for (let i = 0; i < data.length; i += BATCH) {
-    await prisma.operation.createMany({ data: data.slice(i, i + BATCH) });
-  }
-
   const results = {};
   try {
+    for (let i = 0; i < data.length; i += BATCH) {
+      await prisma.operation.createMany({ data: data.slice(i, i + BATCH) });
+    }
     const cookie = authCookie();
     // Sin filtro: la primera pantalla de la lista, con miles de filas de por medio.
     results.sinFiltro = await timedFetch(cookie, "limit=80");

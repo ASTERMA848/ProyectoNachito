@@ -11,8 +11,12 @@ export async function PUT(request: NextRequest) {
     if (body?.theme !== "LIGHT" && body?.theme !== "DARK") {
       return NextResponse.json({ error: "Seleccione un tema claro u oscuro" }, { status: 400 });
     }
-    const updated = await prisma.user.update({ where: { id: user.id }, data: { theme: body.theme }, select: { theme: true } });
-    await logAudit({ userId: user.id, action: "UPDATE", entity: "User", entityId: user.id, oldValues: { theme: user.theme }, newValues: { theme: updated.theme } });
+    const updated = await prisma.$transaction(async (tx) => {
+      const updated = await tx.user.update({ where: { id: user.id }, data: { theme: body.theme }, select: { theme: true } });
+      await logAudit({ userId: user.id, action: "UPDATE", entity: "User", entityId: user.id, oldValues: { theme: user.theme }, newValues: { theme: updated.theme } }, tx);
+      return updated;
+    });
+
     return NextResponse.json({ theme: updated.theme });
   } catch (error) {
     console.error("Theme update error:", error);

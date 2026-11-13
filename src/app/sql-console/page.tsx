@@ -61,7 +61,7 @@ export default function SqlConsolePage() {
           <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
         <div>
-          <strong style={{ color: "var(--color-snow)" }}>Consultas de solo lectura habilitadas.</strong> Se admiten comandos <code>SELECT</code>, <code>WITH</code> y afines. Las operaciones destructivas o de alteración de tablas (<code>INSERT</code>, <code>UPDATE</code>, <code>DELETE</code>, <code>DROP</code>) están estrictamente bloqueadas.
+          <strong style={{ color: "var(--color-snow)" }}>Consultas de solo lectura.</strong> Usá <code>SELECT</code> sobre las vistas de informes.
         </div>
       </div>
 

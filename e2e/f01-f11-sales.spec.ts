@@ -9,8 +9,9 @@ const totalOperations = async (request: APIRequestContext) => (await (await requ
 async function pick(page: Page, label: string | RegExp, text: string) {
   const field = page.getByRole("combobox", { name: label });
   await field.fill(text);
-  await expect(page.getByRole("listbox")).toBeVisible();
+  await expect(page.getByRole("listbox").getByRole("option", { name: new RegExp(text, "i") }).first()).toBeVisible();
   await field.press("Enter");
+  await expect(field).toHaveAttribute("aria-expanded", "false");
 }
 
 async function fillHeader(page: Page, { paid = true } = {}) {

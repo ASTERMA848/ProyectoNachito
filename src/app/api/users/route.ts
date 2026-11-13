@@ -77,9 +77,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (password.length < 8 || password.length > 128) {
+    if (password.length < 8 || Buffer.byteLength(password) > 72) {
       return NextResponse.json(
-        { error: "La contraseña debe tener entre 8 y 128 caracteres" },
+        { error: "La contraseña debe tener al menos 8 caracteres y como máximo 72 bytes" },
         { status: 400 }
       );
     }
@@ -100,22 +100,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const newUser = await prisma.user.create({
-      data: {
-        username: trimmedUsername,
-        passwordHash: await hashPassword(password),
-        role,
-        theme: "SYSTEM",
-        isActive: true,
-      },
-    });
+    const newUser = await prisma.$transaction(async (tx) => {
+      const newUser = await tx.user.create({
+        data: {
+          username: trimmedUsername,
+          passwordHash: await hashPassword(password),
+          role,
+          theme: "SYSTEM",
+          isActive: true,
+        },
+      });
 
-    await logAudit({
-      userId: admin.id,
-      action: "CREATE",
-      entity: "User",
-      entityId: newUser.id,
-      newValues: { username: newUser.username, role: newUser.role },
+      await logAudit({
+        userId: admin.id,
+        action: "CREATE",
+        entity: "User",
+        entityId: newUser.id,
+        newValues: { username: newUser.username, role: newUser.role },
+      }, tx);
+      return newUser;
     });
 
     return NextResponse.json({

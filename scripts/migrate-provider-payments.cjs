@@ -1,18 +1,12 @@
 // Migración atómica: separar proveedor/cliente y corregir la entrega de divisa en ventas existentes.
 const fs = require('node:fs');
 const path = require('node:path');
-const Module = require('node:module');
-const ts = require('typescript');
 const { PrismaClient } = require('@prisma/client');
 const raw = fs.readFileSync('.env', 'utf8').match(/^DATABASE_URL\s*=\s*(.*)$/m)?.[1];
 if (!raw) throw new Error('DATABASE_URL no encontrada');
-process.env.DATABASE_URL = raw.trim().replace(/^["']|["']$/g, '');
+process.env.DATABASE_URL ||= raw.trim().replace(/^["']|["']$/g, '');
 const filename = path.resolve('src/lib/distributed-sale.ts');
-const mod = new Module(filename, module);
-mod.filename = filename;
-mod.paths = Module._nodeModulePaths(path.dirname(filename));
-mod._compile(ts.transpile(fs.readFileSync(filename, 'utf8'), { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 }), filename);
-const { saveDistributedSale } = mod.exports;
+const { saveDistributedSale } = require('./load-typescript.cjs')(filename);
 const prisma = new PrismaClient();
 async function main() {
   let confirmedPayments;

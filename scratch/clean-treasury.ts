@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -21,9 +21,9 @@ async function cleanTreasury() {
       where: { treasuryAccountId: acc.id },
     });
 
-    let sum = 0;
+    let sum = new Prisma.Decimal(0);
     for (const m of movs) {
-      sum += m.type === 'INCOME' ? m.amount : -m.amount;
+      sum = m.type === 'INCOME' ? sum.plus(m.amount) : sum.minus(m.amount);
     }
 
     await prisma.treasuryAccount.update({

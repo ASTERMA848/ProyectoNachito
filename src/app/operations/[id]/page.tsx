@@ -1,5 +1,5 @@
 import OperationForm from "../OperationForm";
 
-export default function OperationPage({ params }: { params: { id: string } }) {
-  return <OperationForm id={params.id} />;
+export default async function OperationPage({ params }: { params: Promise<{ id: string }> }) {
+  return <OperationForm id={(await params).id} />;
 }

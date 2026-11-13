@@ -1,5 +1,5 @@
 import AccountDetail from "../AccountDetail";
 
-export default function AccountPage({ params }: { params: { id: string } }) {
-  return <AccountDetail id={params.id} />;
+export default async function AccountPage({ params }: { params: Promise<{ id: string }> }) {
+  return <AccountDetail id={(await params).id} />;
 }

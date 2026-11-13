@@ -1,4 +1,7 @@
 import prisma from "./prisma";
+import { assertOpenAccountingPeriod, lockAccountingWrites } from "./accounting-period";
+import { dateOnlyRange } from "./agency-time";
+import { positiveDecimal } from "./monetary";
 
 /**
  * Registra un movimiento directo en una cuenta de tesorería (ingreso o egreso).
@@ -21,7 +24,11 @@ export async function registerTreasuryMovement({
   reference?: string;
   observations?: string;
 }) {
-  return await prisma.$transaction(async (tx: any) => {
+  const decimalAmount = positiveDecimal(amount);
+  if (!decimalAmount) throw new Error("Importe de tesorería inválido.");
+  return prisma.$transaction(async (tx) => {
+    await lockAccountingWrites(tx);
+    await assertOpenAccountingPeriod(tx, dateOnlyRange("today").gte);
     const account = await tx.treasuryAccount.findUnique({
       where: { id: treasuryAccountId },
     });
@@ -30,24 +37,12 @@ export async function registerTreasuryMovement({
       throw new Error("Treasury account not found");
     }
 
-    // Calcular el nuevo balance. Si es INCOME suma, si es EXPENSE resta.
-    let newBalance = account.balance;
-    if (type === "INCOME") {
-      newBalance += amount;
-    } else if (type === "EXPENSE") {
-      newBalance -= amount;
-    } else {
-      // Para TRANSFER o ADJUSTMENT se podría manejar diferente, pero asumimos
-      // que amount tiene el signo correcto o se delega a transacciones separadas.
-      // Por convención, si es un ajuste positivo será INCOME, si es negativo EXPENSE.
-    }
-
     const movement = await tx.treasuryMovement.create({
       data: {
         treasuryAccountId,
         operationId,
         type,
-        amount,
+        amount: decimalAmount,
         concept,
         reference,
         observations,
@@ -57,7 +52,9 @@ export async function registerTreasuryMovement({
     const updatedAccount = await tx.treasuryAccount.update({
       where: { id: treasuryAccountId },
       data: {
-        balance: newBalance,
+        balance: {
+          increment: type === "INCOME" ? decimalAmount : type === "EXPENSE" ? decimalAmount.negated() : 0,
+        },
       },
     });
 

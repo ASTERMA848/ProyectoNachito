@@ -15,8 +15,7 @@ async function checkBalances() {
   });
 
   for (const acc of accounts) {
-    // Only print accounts that have an actual balance absolute > 0.001 to avoid float precision issues
-    if (Math.abs(acc.balance) > 0.001) {
+    if (!acc.balance.isZero()) {
       console.log(`\n==============================================`);
       console.log(`Cuenta: ${acc.contact.name} - ${acc.currency.code}`);
       console.log(`Balance Actual: ${acc.balance}`);

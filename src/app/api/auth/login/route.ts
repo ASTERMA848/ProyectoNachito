@@ -1,29 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isIP } from "node:net";
 import prisma from "@/lib/prisma";
 import { hashPassword, verifyPassword, isLegacyHash, generateToken } from "@/lib/auth-utils";
-import { rateLimit } from "@/lib/rate-limit";
-
-// 5 intentos por IP cada 15 minutos
-const LOGIN_LIMIT = 5;
-const LOGIN_WINDOW_MS = 15 * 60 * 1000;
+import { clearAuthAttempts, consumeAuthAttempt } from "@/lib/rate-limit";
 
 export async function POST(request: NextRequest) {
-  // Rate limiting por IP
-  const ip =
-    request.headers.get("x-forwarded-for")?.split(",")[0].trim() ??
-    "unknown";
-  const rl = rateLimit(`login:${ip}`, LOGIN_LIMIT, LOGIN_WINDOW_MS);
-  if (!rl.allowed) {
-    return NextResponse.json(
-      { error: "Demasiados intentos. Intente más tarde." },
-      {
-        status: 429,
-        headers: { "Retry-After": String(rl.retryAfterSeconds) },
-      }
-    );
-  }
-
   try {
+    // El proxy configurado debe reemplazar este encabezado antes de reenviar.
+    const proxyIp = process.env.TRUST_PROXY === "true" ? request.headers.get("x-real-ip")?.trim() : undefined;
+    const ip = proxyIp && isIP(proxyIp) ? proxyIp : null;
     const body = await request.json().catch(() => null);
     const username = typeof body?.username === "string" ? body.username.trim() : "";
     const password = typeof body?.password === "string" ? body.password : "";
@@ -43,6 +28,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const sourceLimit = await consumeAuthAttempt(`login:source:${ip ?? "direct"}`, 60);
+    const userKey = `login:user:${username.toLowerCase()}`;
+    const userLimit = sourceLimit || await consumeAuthAttempt(userKey, 5);
+    if (userLimit) return NextResponse.json(
+      { error: "Demasiados intentos. Intente más tarde." },
+      { status: 429, headers: { "Retry-After": String(userLimit) } }
+    );
+
     const user = await prisma.user.findUnique({ where: { username } });
 
     if (!user) {
@@ -54,49 +47,43 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!user.isActive) {
-      return NextResponse.json(
-        { error: "Usuario o contraseña incorrectos" },
-        { status: 401 }
-      );
-    }
-
     const valid = await verifyPassword(password, user.passwordHash);
-    if (!valid) {
+    if (!valid || !user.isActive || (process.env.NODE_ENV === "production" && user.role === "ADMIN" && password === "admin")) {
       return NextResponse.json(
         { error: "Usuario o contraseña incorrectos" },
         { status: 401 }
       );
     }
 
-    // Migración transparente: si el hash es legacy SHA-256, actualizarlo a bcrypt
-    if (isLegacyHash(user.passwordHash)) {
-      const newHash = await hashPassword(password);
-      await prisma.user.update({
-        where: { id: user.id },
-        data: { passwordHash: newHash },
-      });
-    }
-
-    // Crear sesión
+    const upgradedHash = isLegacyHash(user.passwordHash) && Buffer.byteLength(password) <= 72
+      ? await hashPassword(password)
+      : null;
     const sessionToken = generateToken();
-    const expiresAt = new Date();
-    expiresAt.setHours(expiresAt.getHours() + 8); // 8 horas
+    const expiresAt = new Date(Date.now() + 8 * 60 * 60 * 1000);
 
-    await prisma.session.create({
-      data: { userId: user.id, sessionToken, expiresAt },
+    const created = await prisma.$transaction(async (tx) => {
+      const locked = await tx.$queryRaw<{ id: string }[]>`
+        SELECT id FROM "User" WHERE id = ${user.id} AND "passwordHash" = ${user.passwordHash}
+        AND "isActive" = true FOR UPDATE
+      `;
+      if (!locked.length) return false;
+      if (upgradedHash) await tx.user.update({ where: { id: user.id }, data: { passwordHash: upgradedHash } });
+      await clearAuthAttempts(userKey, tx);
+      await tx.session.create({
+        data: { userId: user.id, sessionToken, expiresAt },
+      });
+      await tx.auditLog.create({
+        data: {
+          userId: user.id,
+          action: "LOGIN",
+          entity: "Session",
+          ipAddress: ip,
+          newValues: JSON.stringify({ username: user.username }),
+        },
+      });
+      return true;
     });
-
-    // Auditoría
-    await prisma.auditLog.create({
-      data: {
-        userId: user.id,
-        action: "LOGIN",
-        entity: "Session",
-        ipAddress: ip,
-        newValues: JSON.stringify({ username: user.username }),
-      },
-    });
+    if (!created) return NextResponse.json({ error: "Usuario o contraseña incorrectos" }, { status: 401 });
 
     const response = NextResponse.json({
       success: true,

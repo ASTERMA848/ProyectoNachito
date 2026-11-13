@@ -1,51 +1,27 @@
-/**
- * Rate limiter en memoria simple para proteger endpoints críticos.
- * En producción con múltiples instancias, reemplazar por Redis.
- */
+import { createHash } from "node:crypto";
+import type { Prisma } from "@prisma/client";
+import prisma from "./prisma";
 
-type Entry = {
-  count: number;
-  resetAt: number;
-};
+const WINDOW_MS = 15 * 60 * 1000;
+const digestKey = (key: string) => createHash("sha256").update(key).digest("hex");
 
-const store = new Map<string, Entry>();
+export async function consumeAuthAttempt(key: string, limit: number) {
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + WINDOW_MS);
+  const digest = digestKey(key);
+  const [attempt] = await prisma.$queryRaw<{ count: number; expiresAt: Date }[]>`
+    INSERT INTO "LoginAttempt" ("key", "count", "expiresAt")
+    VALUES (${digest}, 1, ${expiresAt})
+    ON CONFLICT ("key") DO UPDATE SET
+      "count" = CASE WHEN "LoginAttempt"."expiresAt" <= ${now} THEN 1 ELSE LEAST("LoginAttempt"."count" + 1, ${limit + 1}) END,
+      "expiresAt" = CASE WHEN "LoginAttempt"."expiresAt" <= ${now} THEN ${expiresAt} ELSE "LoginAttempt"."expiresAt" END
+    RETURNING "count", "expiresAt"
+  `;
+  // Limpieza amortizada por el índice, incluso si nadie vuelve a usar una clave.
+  if (Math.random() < 0.01) await prisma.loginAttempt.deleteMany({ where: { expiresAt: { lte: now } } });
+  return attempt.count > limit ? Math.max(1, Math.ceil((attempt.expiresAt.getTime() - now.getTime()) / 1000)) : 0;
+}
 
-// Limpiar entradas vencidas cada 5 minutos
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, entry] of Array.from(store)) {
-    if (entry.resetAt < now) store.delete(key);
-  }
-}, 5 * 60 * 1000);
-
-export type RateLimitResult =
-  | { allowed: true }
-  | { allowed: false; retryAfterSeconds: number };
-
-/**
- * Verifica si una clave (IP, username, etc.) excedió el límite.
- * @param key      Identificador único (ej: `login:${ip}`)
- * @param limit    Máximo de intentos permitidos
- * @param windowMs Ventana de tiempo en milisegundos
- */
-export function rateLimit(
-  key: string,
-  limit: number,
-  windowMs: number
-): RateLimitResult {
-  const now = Date.now();
-  const entry = store.get(key);
-
-  if (!entry || entry.resetAt < now) {
-    store.set(key, { count: 1, resetAt: now + windowMs });
-    return { allowed: true };
-  }
-
-  if (entry.count >= limit) {
-    const retryAfterSeconds = Math.ceil((entry.resetAt - now) / 1000);
-    return { allowed: false, retryAfterSeconds };
-  }
-
-  entry.count++;
-  return { allowed: true };
+export function clearAuthAttempts(key: string, db: Pick<Prisma.TransactionClient, "loginAttempt"> = prisma) {
+  return db.loginAttempt.deleteMany({ where: { key: digestKey(key) } });
 }

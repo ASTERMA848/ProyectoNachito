@@ -27,10 +27,10 @@ Uso diario en agencias de cambio o mesas operativas, optimizado para ser operado
 - Nombre de marca comercial: Pendiente de definición formal (actualmente identificado como "Agencia").
 
 ## Evidence on Hand
-- Sistema web completo en Next.js 14 con TypeScript, Prisma y componentes UI personalizados.
+- Sistema web en Next.js 15 con TypeScript, Prisma, PostgreSQL y componentes UI personalizados.
 
 ## Product Principles
-- **Trazabilidad Inmutable**: Registro auditado de cada operación y modificación.
+- **Trazabilidad**: Registro auditado de las operaciones y sus modificaciones.
 - **Claridad Visual**: Contraste optimizado y tipografía legible para evitar errores en cargas financieras.
 - **Eficiencia Operativa**: Accesos directos y navegación sin fricción.
 

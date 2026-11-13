@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -69,11 +69,11 @@ async function fixBalances() {
       orderBy: { date: 'asc' }
     });
 
-    let runningBalance = 0;
+    let runningBalance = new Prisma.Decimal(0);
     
     for (const tx of accountTxs) {
-      runningBalance += tx.credit;
-      runningBalance -= tx.debit;
+      runningBalance = runningBalance.plus(tx.credit);
+      runningBalance = runningBalance.minus(tx.debit);
       
       // Actualizar el balance histórico en la transacción para que quede prolijo
       await prisma.transaction.update({

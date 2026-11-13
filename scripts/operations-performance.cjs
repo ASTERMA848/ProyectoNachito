@@ -10,7 +10,7 @@ const { PrismaClient } = require('@prisma/client');
 
 const raw = fs.readFileSync('.env', 'utf8').match(/^DATABASE_URL\s*=\s*(.*)$/m)?.[1];
 if (!raw) throw new Error('DATABASE_URL no encontrada');
-process.env.DATABASE_URL = raw.trim().replace(/^["']|["']$/g, '');
+process.env.DATABASE_URL ||= raw.trim().replace(/^["']|["']$/g, '');
 function load(source, filename) {
   const mod = new Module(filename, module);
   mod.filename = filename;
@@ -18,7 +18,7 @@ function load(source, filename) {
   mod._compile(ts.transpile(source, { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 }), filename);
   return mod.exports;
 }
-const helper = load(fs.readFileSync('src/lib/distributed-sale.ts', 'utf8'), path.resolve('src/lib/distributed-sale.ts'));
+const helper = require('./load-typescript.cjs')(path.resolve('src/lib/distributed-sale.ts'));
 let legacy;
 if (process.argv.includes('--compare')) {
   const source = execFileSync('git', ['-c', `safe.directory=${process.cwd().replaceAll('\\', '/')}`,
@@ -49,12 +49,12 @@ async function fixture(tx, count) {
 }
 async function snapshot(tx, input) {
   const accounts = await tx.account.findMany({ where: { currencyId: input.currencyId } });
-  const balances = [input.providerId, ...Array.from(new Set(input.items.map(i => i.clientId)))].map(id => accounts.find(a => a.contactId === id)?.balance || 0);
+  const balances = [input.providerId, ...Array.from(new Set(input.items.map(i => i.clientId)))].map(id => Number(accounts.find(a => a.contactId === id)?.balance ?? 0));
   const treasury = await tx.treasuryAccount.findMany({ where: { currencyId: { in: [input.currencyId, input.destCurrencyId] } } });
   const ids = accounts.map(a => a.id);
   const transactions = await tx.transaction.findMany({ where: { accountId: { in: ids } }, orderBy: { date: 'asc' } });
-  return { balances, treasury: [input.currencyId, input.destCurrencyId].map(id => treasury.filter(a => a.currencyId === id).reduce((sum, a) => sum + a.balance, 0)),
-    debits: transactions.reduce((s, t) => s + t.debit, 0), credits: transactions.reduce((s, t) => s + t.credit, 0), transactions: transactions.length };
+  return { balances, treasury: [input.currencyId, input.destCurrencyId].map(id => treasury.filter(a => a.currencyId === id).reduce((sum, a) => sum + Number(a.balance), 0)),
+    debits: transactions.reduce((s, t) => s + Number(t.debit), 0), credits: transactions.reduce((s, t) => s + Number(t.credit), 0), transactions: transactions.length };
 }
 async function run(label, save, count, checks = false) {
   let result;
@@ -91,7 +91,7 @@ async function run(label, save, count, checks = false) {
         const expected = new Map([[mixed.providerId, -mixed.items.reduce((sum, i) => sum + i.amount, 0)]]);
         mixed.items.forEach(i => expected.set(i.clientId, (expected.get(i.clientId) || 0) + (i.isPaid ? 0 : i.amount)));
         const actual = await tx.account.findMany({ where: { currencyId: input.currencyId } });
-        actual.forEach(a => assert.equal(a.balance, expected.get(a.contactId) || 0));
+        actual.forEach(a => assert.equal(Number(a.balance), expected.get(a.contactId) || 0));
         // Agregar filas después de quitar otras no debe chocar con los números de las hijas borradas.
         await helper.saveDistributedSale(tx, input, sale.parentOp.id);
         assert.deepEqual(await snapshot(tx, input), initial);

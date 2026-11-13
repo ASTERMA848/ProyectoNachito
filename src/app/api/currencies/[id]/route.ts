@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await requireAdmin();
@@ -58,22 +58,25 @@ export async function PUT(
       updateData.isActive = Boolean(isActive);
     }
 
-    const current = await prisma.currency.findUnique({ where: { id: params.id } });
+    const current = await prisma.currency.findUnique({ where: { id: (await params).id } });
     if (!current) {
       return NextResponse.json({ error: "Moneda no encontrada" }, { status: 404 });
     }
-    const updated = await prisma.currency.update({
-      where: { id: params.id },
-      data: updateData,
-    });
-    const fields = ["code", "name", "symbol", "decimals", "isActive"] as const;
-    await logAudit({
-      userId: user.id,
-      action: "UPDATE",
-      entity: "Currency",
-      entityId: updated.id,
-      oldValues: Object.fromEntries(fields.map((field) => [field, current[field]])),
-      newValues: Object.fromEntries(fields.map((field) => [field, updated[field]])),
+    const updated = await prisma.$transaction(async (tx) => {
+      const updated = await tx.currency.update({
+        where: { id: (await params).id },
+        data: updateData,
+      });
+      const fields = ["code", "name", "symbol", "decimals", "isActive"] as const;
+      await logAudit({
+        userId: user.id,
+        action: "UPDATE",
+        entity: "Currency",
+        entityId: updated.id,
+        oldValues: Object.fromEntries(fields.map((field) => [field, current[field]])),
+        newValues: Object.fromEntries(fields.map((field) => [field, updated[field]])),
+      }, tx);
+      return updated;
     });
 
     return NextResponse.json({ currency: updated }, { status: 200 });
@@ -91,7 +94,7 @@ export async function PUT(
 
 export async function DELETE(
   _req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await requireAdmin();
@@ -103,14 +106,14 @@ export async function DELETE(
       prisma.operation.count({
         where: {
           OR: [
-            { originCurrencyId: params.id },
-            { destCurrencyId: params.id },
-            { providerPaymentCurrencyId: params.id },
+            { originCurrencyId: (await params).id },
+            { destCurrencyId: (await params).id },
+            { providerPaymentCurrencyId: (await params).id },
           ],
         },
       }),
-      prisma.account.count({ where: { currencyId: params.id } }),
-      prisma.treasuryAccount.count({ where: { currencyId: params.id, OR: [{ balance: { not: 0 } }, { movements: { some: {} } }] } }),
+      prisma.account.count({ where: { currencyId: (await params).id } }),
+      prisma.treasuryAccount.count({ where: { currencyId: (await params).id, OR: [{ balance: { not: 0 } }, { movements: { some: {} } }] } }),
     ]);
 
     if (usedInOps > 0 || usedInAccounts > 0 || usedInTreasury > 0) {
@@ -121,16 +124,16 @@ export async function DELETE(
     }
 
     const settings = await prisma.settings.findFirst({ select: { mainCurrencyId: true } });
-    if (settings?.mainCurrencyId === params.id) {
+    if (settings?.mainCurrencyId === (await params).id) {
       return NextResponse.json({ error: "Es la moneda principal. Elegí otra en Configuración antes de eliminarla." }, { status: 409 });
     }
 
     // Las cajas vacías que se crearon solas para la moneda se van con ella.
-    const deleted = await prisma.$transaction(async (tx) => {
-      await tx.treasuryAccount.deleteMany({ where: { currencyId: params.id } });
-      return tx.currency.delete({ where: { id: params.id } });
+    await prisma.$transaction(async (tx) => {
+      await tx.treasuryAccount.deleteMany({ where: { currencyId: (await params).id } });
+      const deleted = await tx.currency.delete({ where: { id: (await params).id } });
+      await logAudit({ userId: user.id, action: "DELETE", entity: "Currency", entityId: deleted.id, oldValues: { code: deleted.code, name: deleted.name } }, tx);
     });
-    await logAudit({ userId: user.id, action: "DELETE", entity: "Currency", entityId: deleted.id, oldValues: { code: deleted.code, name: deleted.name } });
     return NextResponse.json({ ok: true }, { status: 200 });
   } catch (error: any) {
     console.error("Currency DELETE error:", error);

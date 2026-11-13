@@ -43,7 +43,7 @@ export const Combobox = forwardRef<HTMLInputElement, ComboboxProps>(function Com
   const [text, setText] = useState<string | null>(null);
   const [active, setActive] = useState(0);
   const [creating, setCreating] = useState(false);
-  const closeTimer = useRef<ReturnType<typeof setTimeout>>();
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   // Mientras no se escribe, el campo muestra la opción elegida.
   const query = text ?? "";

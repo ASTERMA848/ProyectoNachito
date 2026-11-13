@@ -1,5 +1,5 @@
 import ContactForm from "../ContactForm";
 
-export default function ContactPage({ params }: { params: { id: string } }) {
-  return <ContactForm id={params.id} />;
+export default async function ContactPage({ params }: { params: Promise<{ id: string }> }) {
+  return <ContactForm id={(await params).id} />;
 }

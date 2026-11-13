@@ -1,7 +1,8 @@
+import { monetaryJson, positiveDecimal } from "@/lib/monetary";
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireAuth } from "@/lib/session";
-import { logAudit } from "@/lib/audit";
+import { AccountingPeriodError } from "@/lib/accounting-period";
 import { can } from "@/lib/permissions";
 import { ListError, parseListParams } from "@/lib/list-query";
 import { GROUP_KEYS, listAccounts, postManualMovement, SEARCH_FIELDS, SORT_KEYS } from "@/lib/resources/accounts";
@@ -63,8 +64,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Tipo de movimiento inválido" }, { status: 400 });
     }
 
-    const val = parseFloat(amount);
-    if (!Number.isFinite(val) || val <= 0) {
+    const val = positiveDecimal(amount);
+    if (!val) {
       return NextResponse.json({ error: "El monto debe ser un número positivo" }, { status: 400 });
     }
 
@@ -92,6 +93,7 @@ export async function POST(req: NextRequest) {
     }
 
     const { account, transaction: newTransaction } = await postManualMovement({
+      userId: user.id,
       contactId,
       currencyId,
       debit,
@@ -100,16 +102,9 @@ export async function POST(req: NextRequest) {
       observations: observations ? String(observations).trim().substring(0, 2000) : null,
     });
 
-    await logAudit({
-      userId: user.id,
-      action: "CREATE",
-      entity: "Transaction",
-      entityId: newTransaction.id,
-      newValues: { accountId: account.id, concept: newTransaction.concept, debit, credit, balance: account.balance },
-    });
-
-    return NextResponse.json({ account, transaction: newTransaction }, { status: 201 });
+    return NextResponse.json(monetaryJson({ account, transaction: newTransaction }), { status: 201 });
   } catch (error: any) {
+    if (error instanceof AccountingPeriodError) return NextResponse.json({ error: error.message }, { status: 400 });
     console.error("Accounts POST error:", error);
     return NextResponse.json({ error: "Error en el servidor" }, { status: 400 });
   }

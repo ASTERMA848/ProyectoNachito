@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client";
+import { Prisma, PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 async function check() {
@@ -9,9 +9,9 @@ async function check() {
   for (const acc of tAccounts) {
     console.log(`\n=== CAJA: ${acc.name} (${acc.currency.code}) ===`);
     console.log(`Saldo Actual DB: ${acc.balance}`);
-    let calcBalance = 0;
+    let calcBalance = new Prisma.Decimal(0);
     for (const mov of acc.movements) {
-      calcBalance += mov.type === 'INCOME' ? mov.amount : -mov.amount;
+      calcBalance = mov.type === 'INCOME' ? calcBalance.plus(mov.amount) : calcBalance.minus(mov.amount);
       console.log(`  [${mov.date.toISOString()}] ${mov.type} ${mov.amount} | Concepto: "${mov.concept}" | Op: ${mov.operation?.operationNumber || 'N/A'}`);
     }
     console.log(`Saldo Calculado Histórico: ${calcBalance}`);

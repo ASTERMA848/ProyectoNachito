@@ -3,6 +3,6 @@ import { handleDistributedSale } from "@/lib/distributed-sale-request";
 
 export const dynamic = "force-dynamic";
 
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
-  return handleDistributedSale(req, params.id);
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  return handleDistributedSale(req, (await params).id);
 }

@@ -1,13 +1,10 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { Spinner } from "@/components/ui";
 import styles from "./logout.module.css";
 
 export default function LogoutPage() {
-  const router = useRouter();
-
   useEffect(() => {
     const performLogout = async () => {
       try {
@@ -15,12 +12,11 @@ export default function LogoutPage() {
       } catch (e) {
         console.error("Logout request failed:", e);
       } finally {
-        router.replace("/login");
-        router.refresh();
+        window.location.replace("/login");
       }
     };
     performLogout();
-  }, [router]);
+  }, []);
 
   return (
     <main className={`ui-app ${styles.page}`} aria-busy="true">

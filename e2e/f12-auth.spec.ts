@@ -5,12 +5,6 @@ import { ROLES } from "./global-setup";
 // F12 iniciar y cerrar sesión. Sin sesión guardada: cada prueba entra por la pantalla de login.
 test.use({ storageState: { cookies: [], origins: [] } });
 
-// El login limita 5 intentos por dirección cada 15 minutos (en memoria del servidor de desarrollo):
-// cada prueba usa una dirección local propia para no depender de las anteriores.
-test.beforeEach(async ({ page }) => {
-  await page.setExtraHTTPHeaders({ "x-forwarded-for": `10.88.${Math.floor(Math.random() * 250)}.${Math.floor(Math.random() * 250)}` });
-});
-
 async function login(page: Page, username: string, password: string) {
   await page.getByLabel("Usuario").fill(username);
   await page.getByLabel("Contraseña", { exact: true }).fill(password);
@@ -46,15 +40,16 @@ test("F12-E1 sin sesión, entrar devuelve a la pantalla pedida", async ({ page }
   await settle(page);
 });
 
-test("F12-E2 una redirección a otro sitio termina en Inicio", async ({ page }) => {
-  await page.goto("/login?next=//otro-sitio.test/robar");
+test("F12-E2 una redirección a otro sitio termina en Inicio", async ({ page, baseURL }) => {
+  await page.goto(`/login?next=${encodeURIComponent("/\\otro-sitio.test/robar")}`);
   await login(page, ROLES.admin.username, ROLES.admin.password);
-  await expect(page).toHaveURL("http://localhost:3000/");
+  await expect(page).toHaveURL(new URL("/", baseURL).href);
 });
 
 test("F12-E3 demasiados intentos fallidos bloquean por un rato", async ({ page }) => {
   await page.goto("/login");
-  for (let attempt = 0; attempt < 5; attempt += 1) await login(page, "admin", `mala-${attempt}`);
-  await login(page, "admin", "mala-final");
+  const username = `prueba-limite-${Date.now()}`;
+  for (let attempt = 0; attempt < 5; attempt += 1) await login(page, username, `mala-${attempt}`);
+  await login(page, username, "mala-final");
   await expect(page.locator("#login-error")).toHaveText(/Demasiados intentos/);
 });

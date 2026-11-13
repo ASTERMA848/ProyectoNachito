@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
-import { Manrope, JetBrains_Mono } from "next/font/google";
+import "@fontsource-variable/manrope/wght.css";
+import "@fontsource-variable/jetbrains-mono/wght.css";
 import "@liquefy-ui/react/styles.css";
 import "./globals.css";
 import "../styles/responsive.css";
@@ -9,19 +10,6 @@ import "../styles/ui-base.css";
 import MainLayout from "@/components/MainLayout";
 import { LiquefyProvider } from "@liquefy-ui/react";
 import FeedbackProvider from "@/components/FeedbackProvider";
-
-const manrope = Manrope({
-  subsets: ["latin"],
-  variable: "--font-manrope",
-  display: "swap",
-  weight: ["300", "400", "500", "600", "700"],
-});
-
-const jetbrainsMono = JetBrains_Mono({
-  subsets: ["latin"],
-  variable: "--font-jetbrains-mono",
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: "Calce | Agencia de cambio",
@@ -35,8 +23,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es" className={`light ${manrope.variable} ${jetbrainsMono.variable}`}>
-      <body className={manrope.className}>
+    <html lang="es" className="light">
+      <body>
         <LiquefyProvider theme="dark">
           <FeedbackProvider><MainLayout>{children}</MainLayout></FeedbackProvider>
         </LiquefyProvider>

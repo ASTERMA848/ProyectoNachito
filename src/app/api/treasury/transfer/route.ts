@@ -1,9 +1,12 @@
+import { monetaryJson, positiveDecimal } from "@/lib/monetary";
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireAuth } from "@/lib/session";
 import { TreasuryError } from "@/lib/manual-treasury";
 import { nextOperationNumber } from "@/lib/distributed-sale";
 import { can } from "@/lib/permissions";
+import { AccountingPeriodError, assertOpenAccountingPeriod, lockAccountingWrites } from "@/lib/accounting-period";
+import { dateOnlyRange } from "@/lib/agency-time";
 
 export const dynamic = "force-dynamic";
 
@@ -28,9 +31,9 @@ export async function POST(req: NextRequest) {
 
     const originAccountId = typeof input.originAccountId === "string" ? input.originAccountId.trim() : "";
     const destAccountId = typeof input.destAccountId === "string" ? input.destAccountId.trim() : "";
-    const originAmount = typeof input.originAmount === "number" ? input.originAmount : Number(input.originAmount);
-    const destAmount = typeof input.destAmount === "number" ? input.destAmount : Number(input.destAmount);
-    const exchangeRate = input.exchangeRate ? Number(input.exchangeRate) : undefined;
+    const originAmount = positiveDecimal(input.originAmount);
+    const destAmount = positiveDecimal(input.destAmount);
+    const exchangeRate = input.exchangeRate == null ? undefined : positiveDecimal(input.exchangeRate);
     const reason = typeof input.reason === "string" ? input.reason.trim() : "";
 
     if (!originAccountId) {
@@ -42,14 +45,17 @@ export async function POST(req: NextRequest) {
     if (originAccountId === destAccountId) {
       throw new TreasuryError("La caja de origen y la caja de destino deben ser distintas.");
     }
-    if (!Number.isFinite(originAmount) || originAmount <= 0) {
+    if (!originAmount) {
       throw new TreasuryError("El monto a debitar de la caja origen debe ser mayor a cero.");
     }
-    if (!Number.isFinite(destAmount) || destAmount <= 0) {
+    if (!destAmount) {
       throw new TreasuryError("El monto a acreditar en la caja destino debe ser mayor a cero.");
     }
 
     const result = await prisma.$transaction(async (tx) => {
+      await lockAccountingWrites(tx);
+      const now = new Date();
+      await assertOpenAccountingPeriod(tx, dateOnlyRange("today", now).gte);
       const originAcc = await tx.treasuryAccount.findUnique({
         where: { id: originAccountId },
         include: { currency: true },
@@ -64,6 +70,20 @@ export async function POST(req: NextRequest) {
       }
       if (!destAcc || !destAcc.isActive || !destAcc.currency.isActive) {
         throw new TreasuryError("La caja de destino ya no está disponible.");
+      }
+      if (originAmount.decimalPlaces() > originAcc.currency.decimals || destAmount.decimalPlaces() > destAcc.currency.decimals) {
+        throw new TreasuryError("Cada importe debe respetar los decimales de su moneda.");
+      }
+
+      const isCrossCurrency = originAcc.currencyId !== destAcc.currencyId;
+      if (!isCrossCurrency && !originAmount.equals(destAmount)) {
+        throw new TreasuryError("Entre cajas de la misma moneda, ambos importes deben coincidir.");
+      }
+      const rate = isCrossCurrency && exchangeRate === undefined
+        ? positiveDecimal(destAmount.div(originAmount).toDecimalPlaces(8).toString())
+        : isCrossCurrency ? exchangeRate : positiveDecimal(1);
+      if (!rate) {
+        throw new TreasuryError("Ingresá una cotización válida y mayor a cero.");
       }
 
       // Igual que en las extracciones: la condición de saldo y el descuento son atómicos.
@@ -93,13 +113,12 @@ export async function POST(req: NextRequest) {
         include: { currency: true },
       });
 
-      const isCrossCurrency = originAcc.currencyId !== destAcc.currencyId;
-      const rateStr = isCrossCurrency && exchangeRate ? ` @ ${exchangeRate}` : "";
+      const rateStr = isCrossCurrency ? ` @ ${rate}` : "";
 
-      const originConcept = `Traspaso a ${destAcc.name} (${destAmount.toLocaleString("es-AR")} ${destAcc.currency.code}${rateStr})`;
-      const destConcept = `Traspaso desde ${originAcc.name} (${originAmount.toLocaleString("es-AR")} ${originAcc.currency.code}${rateStr})`;
+      const originConcept = `Traspaso a ${destAcc.name} (${destAmount.toNumber().toLocaleString("es-AR")} ${destAcc.currency.code}${rateStr})`;
+      const destConcept = `Traspaso desde ${originAcc.name} (${originAmount.toNumber().toLocaleString("es-AR")} ${originAcc.currency.code}${rateStr})`;
 
-      const opNumber = await nextOperationNumber(tx as any);
+      const opNumber = await nextOperationNumber(tx);
 
       const operation = await tx.operation.create({
         data: {
@@ -107,10 +126,10 @@ export async function POST(req: NextRequest) {
           type: "TREASURY_TRANSFER",
           originCurrencyId: originAcc.currencyId,
           destCurrencyId: destAcc.currencyId,
-          originAmount: originAmount,
-          destAmount: destAmount,
-          exchangeRate: exchangeRate || 1,
-          operationDate: new Date(),
+          originAmount,
+          destAmount,
+          exchangeRate: rate,
+          operationDate: now,
           isPaid: true,
           providerIsPaid: true,
           state: "COMPLETED",
@@ -147,16 +166,17 @@ export async function POST(req: NextRequest) {
           userId: user.id,
           action: "CREATE",
           entity: "TreasuryTransfer",
-          newValues: JSON.stringify({
+          entityId: operation.id,
+          newValues: JSON.stringify(monetaryJson({
             originAccountId,
             destAccountId,
             originAmount,
             destAmount,
-            exchangeRate,
+            exchangeRate: rate,
             reason,
             originBalanceAfter: updatedOriginAcc.balance,
             destBalanceAfter: updatedDestAcc.balance,
-          }),
+          })),
         },
       });
 
@@ -168,8 +188,9 @@ export async function POST(req: NextRequest) {
       };
     });
 
-    return NextResponse.json(result, { status: 201 });
+    return NextResponse.json(monetaryJson(result), { status: 201 });
   } catch (error) {
+    if (error instanceof AccountingPeriodError) return NextResponse.json({ error: error.message }, { status: 400 });
     if (error instanceof TreasuryError) return NextResponse.json({ error: error.message }, { status: error.status });
     console.error("Treasury transfer error:", error);
     return NextResponse.json({ error: "No se pudo registrar la transferencia entre cajas." }, { status: 500 });

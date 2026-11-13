@@ -53,19 +53,22 @@ export async function POST(req: NextRequest) {
       safeColor = color;
     }
 
-    const newTag = await prisma.tag.create({
-      data: {
-        name: name.trim().substring(0, 50),
-        color: safeColor,
-      },
-    });
+    const newTag = await prisma.$transaction(async (tx) => {
+      const newTag = await tx.tag.create({
+        data: {
+          name: name.trim().substring(0, 50),
+          color: safeColor,
+        },
+      });
 
-    await logAudit({
-      userId: user.id,
-      action: "CREATE",
-      entity: "Tag",
-      entityId: newTag.id,
-      newValues: { name: newTag.name },
+      await logAudit({
+        userId: user.id,
+        action: "CREATE",
+        entity: "Tag",
+        entityId: newTag.id,
+        newValues: { name: newTag.name },
+      }, tx);
+      return newTag;
     });
 
     return NextResponse.json(newTag, { status: 201 });

@@ -32,7 +32,7 @@ function validateMagicBytes(buffer: Buffer, ext: string): boolean {
 
 export async function POST(request: Request) {
   try {
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const token = cookieStore.get("sessionToken")?.value;
     if (!token) {
       return NextResponse.json({ error: "No autenticado" }, { status: 401 });

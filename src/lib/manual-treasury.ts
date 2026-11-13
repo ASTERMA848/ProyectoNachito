@@ -1,5 +1,8 @@
 import { Prisma } from "@prisma/client";
 import { nextOperationNumber } from "./distributed-sale";
+import { assertOpenAccountingPeriod, lockAccountingWrites } from "./accounting-period";
+import { positiveDecimal } from "./monetary";
+import { dateOnlyRange } from "./agency-time";
 
 export class TreasuryError extends Error {
   constructor(message: string, public status = 400) { super(message); }
@@ -20,33 +23,36 @@ export function parseTreasuryInput(body: unknown) {
 
 export async function recordManualTreasuryMovement(tx: Prisma.TransactionClient, body: unknown, userId: string) {
   const input = parseTreasuryInput(body);
+  await lockAccountingWrites(tx);
+  const now = new Date();
+  await assertOpenAccountingPeriod(tx, dateOnlyRange("today", now).gte);
   const account = await tx.treasuryAccount.findUnique({ where: { id: input.accountId }, include: { currency: true } });
   if (!account || !account.isActive || !account.currency.isActive)
     throw new TreasuryError("La cuenta o su moneda ya no están disponibles. Actualizá tesorería.", 404);
-  const scale = 10 ** account.currency.decimals;
-  if (!Number.isSafeInteger(Math.round(input.amount * scale)) || Math.abs(input.amount * scale - Math.round(input.amount * scale)) > 0.000001)
+  const amount = positiveDecimal(input.amount, Math.min(8, account.currency.decimals));
+  if (!amount)
     throw new TreasuryError(`El importe debe tener como máximo ${account.currency.decimals} decimales.`);
 
   // La condición y el incremento son atómicos: dos extracciones simultáneas
   // no pueden usar el mismo saldo ni sobrescribir otros movimientos.
   const updated = await tx.treasuryAccount.updateMany({
-    where: { id: account.id, isActive: true, ...(input.type === "EXPENSE" ? { balance: { gte: input.amount } } : {}) },
-    data: { balance: { increment: input.type === "INCOME" ? input.amount : -input.amount } },
+    where: { id: account.id, isActive: true, ...(input.type === "EXPENSE" ? { balance: { gte: amount } } : {}) },
+    data: { balance: { increment: input.type === "INCOME" ? amount : amount.negated() } },
   });
   if (updated.count !== 1) throw new TreasuryError("Saldo insuficiente para esta extracción. Actualizá el saldo o reducí el importe.", 409);
   const updatedAccount = await tx.treasuryAccount.findUniqueOrThrow({ where: { id: account.id }, include: { currency: true } });
 
-  const opNumber = await nextOperationNumber(tx as any);
+  const opNumber = await nextOperationNumber(tx);
   const operation = await tx.operation.create({
     data: {
       operationNumber: opNumber,
       type: input.type === "INCOME" ? "TREASURY_INCOME" : "TREASURY_EXPENSE",
       originCurrencyId: account.currencyId,
       destCurrencyId: account.currencyId,
-      originAmount: input.amount,
-      destAmount: input.amount,
+      originAmount: amount,
+      destAmount: amount,
       exchangeRate: 1,
-      operationDate: new Date(),
+      operationDate: now,
       isPaid: true,
       providerIsPaid: true,
       state: "COMPLETED",
@@ -55,13 +61,13 @@ export async function recordManualTreasuryMovement(tx: Prisma.TransactionClient,
   });
 
   const movement = await tx.treasuryMovement.create({
-    data: { treasuryAccountId: account.id, operationId: operation.id, type: input.type, amount: input.amount, concept: input.reason },
+    data: { treasuryAccountId: account.id, operationId: operation.id, type: input.type, amount, concept: input.reason },
     include: { account: { include: { currency: true } }, operation: { select: { operationNumber: true } } },
   });
   await tx.auditLog.create({ data: {
     userId, action: "CREATE", entity: "TreasuryMovement", entityId: movement.id,
-    oldValues: JSON.stringify({ balance: updatedAccount.balance + (input.type === "INCOME" ? -input.amount : input.amount) }),
-    newValues: JSON.stringify({ ...input, currency: account.currency.code, balance: updatedAccount.balance }),
+    oldValues: JSON.stringify({ balance: updatedAccount.balance.plus(input.type === "INCOME" ? amount.negated() : amount).toNumber() }),
+    newValues: JSON.stringify({ ...input, currency: account.currency.code, balance: updatedAccount.balance.toNumber() }),
   } });
   return { account: updatedAccount, movement };
 }

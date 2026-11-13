@@ -89,32 +89,35 @@ export async function POST(req: NextRequest) {
       ? tagIds.filter((id) => typeof id === "string")
       : [];
 
-    const newContact = await prisma.contact.create({
-      data: {
-        name: String(name).trim().substring(0, 200),
-        lastname: lastname ? String(lastname).trim().substring(0, 200) : null,
-        document: document ? String(document).trim().substring(0, 50) : null,
-        cuitCuil: cuitCuil ? String(cuitCuil).trim().substring(0, 20) : null,
-        phone: phone ? String(phone).trim().substring(0, 30) : null,
-        email: email ? String(email).trim().substring(0, 254) : null,
-        address: address ? String(address).trim().substring(0, 500) : null,
-        observations: observations ? String(observations).trim().substring(0, 2000) : null,
-        isClient: Boolean(isClient),
-        isProvider: Boolean(isProvider),
-        tags: {
-          create: sanitizedTagIds.map((tagId) => ({
-            tag: { connect: { id: tagId } },
-          })),
+    const newContact = await prisma.$transaction(async (tx) => {
+      const newContact = await tx.contact.create({
+        data: {
+          name: String(name).trim().substring(0, 200),
+          lastname: lastname ? String(lastname).trim().substring(0, 200) : null,
+          document: document ? String(document).trim().substring(0, 50) : null,
+          cuitCuil: cuitCuil ? String(cuitCuil).trim().substring(0, 20) : null,
+          phone: phone ? String(phone).trim().substring(0, 30) : null,
+          email: email ? String(email).trim().substring(0, 254) : null,
+          address: address ? String(address).trim().substring(0, 500) : null,
+          observations: observations ? String(observations).trim().substring(0, 2000) : null,
+          isClient: Boolean(isClient),
+          isProvider: Boolean(isProvider),
+          tags: {
+            create: sanitizedTagIds.map((tagId) => ({
+              tag: { connect: { id: tagId } },
+            })),
+          },
         },
-      },
-    });
+      });
 
-    await logAudit({
-      userId: user.id,
-      action: "CREATE",
-      entity: "Contact",
-      entityId: newContact.id,
-      newValues: { name: newContact.name, isClient: newContact.isClient, isProvider: newContact.isProvider },
+      await logAudit({
+        userId: user.id,
+        action: "CREATE",
+        entity: "Contact",
+        entityId: newContact.id,
+        newValues: { name: newContact.name, isClient: newContact.isClient, isProvider: newContact.isProvider },
+      }, tx);
+      return newContact;
     });
 
     return NextResponse.json(newContact, { status: 201 });

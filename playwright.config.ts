@@ -1,7 +1,9 @@
 import { defineConfig, devices } from "@playwright/test";
 
-// Pruebas de punta a punta contra el servidor de desarrollo local y la base Docker con datos de prueba.
-// Nunca contra producción: el setup se niega si la base no es la local (ver e2e/global-setup.ts).
+const baseURL = process.env.E2E_BASE_URL ?? "http://localhost:3000";
+const port = new URL(baseURL).port || "80";
+
+// Pruebas de punta a punta contra un servidor propio y una base local con datos de prueba.
 export default defineConfig({
   testDir: "./e2e",
   globalSetup: "./e2e/global-setup.ts",
@@ -13,7 +15,7 @@ export default defineConfig({
   reporter: [["list"], ["html", { open: "never", outputFolder: "e2e/report" }]],
   outputDir: "e2e/results",
   use: {
-    baseURL: process.env.E2E_BASE_URL ?? "http://localhost:3000",
+    baseURL,
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
     navigationTimeout: 60_000,
@@ -26,9 +28,13 @@ export default defineConfig({
     viewport: { width: 1440, height: 900 },
   },
   webServer: {
-    command: "npm run dev",
-    url: "http://localhost:3000/login",
-    reuseExistingServer: true,
+    command: `npm run dev -- --port ${port}`,
+    url: `${baseURL}/login`,
+    reuseExistingServer: false,
+    env: {
+      DATABASE_URL: process.env.E2E_DATABASE_URL ?? "postgresql://invalid@127.0.0.1:1/invalid",
+      NEXT_DIST_DIR: ".next-e2e",
+    },
     timeout: 180_000,
   },
 });

@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -55,10 +55,10 @@ async function deleteDuplicateReversals() {
       orderBy: { date: 'asc' }
     });
 
-    let runningBalance = 0;
+    let runningBalance = new Prisma.Decimal(0);
     for (const atx of accountTxs) {
-      runningBalance += atx.credit;
-      runningBalance -= atx.debit;
+      runningBalance = runningBalance.plus(atx.credit);
+      runningBalance = runningBalance.minus(atx.debit);
       await prisma.transaction.update({
         where: { id: atx.id },
         data: { balance: runningBalance }

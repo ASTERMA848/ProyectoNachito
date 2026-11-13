@@ -54,7 +54,7 @@
 
   /* --- Typography Families & Scales --- */
   --ots-font-sans: 'Plus Jakarta Sans', 'Inter', var(--font-manrope), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --ots-font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --ots-font-mono: "JetBrains Mono Variable", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
 html.dark {

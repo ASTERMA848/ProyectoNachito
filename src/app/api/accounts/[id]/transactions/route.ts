@@ -7,7 +7,7 @@ import { accountMovements } from "@/lib/resources/accounts";
 export const dynamic = "force-dynamic";
 
 // Movimientos de la cuenta, del más nuevo al más viejo: ?offset=0&limit=80
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const user = await requireAuth();
     if (!user) {
@@ -15,7 +15,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     }
 
     // Verificar que la cuenta existe antes de listar transacciones (evitar IDOR)
-    const account = await prisma.account.findUnique({ where: { id: params.id }, select: { id: true } });
+    const account = await prisma.account.findUnique({ where: { id: (await params).id }, select: { id: true } });
     if (!account) {
       return NextResponse.json({ error: "Cuenta no encontrada" }, { status: 404 });
     }

@@ -25,7 +25,7 @@ export type Session = {
  */
 export async function getSession(): Promise<Session | null> {
   try {
-    const token = cookies().get("sessionToken")?.value;
+    const token = (await cookies()).get("sessionToken")?.value;
     if (!token) return null;
 
     const session = await prisma.session.findUnique({

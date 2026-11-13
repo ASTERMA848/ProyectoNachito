@@ -1,5 +1,9 @@
+import { fileURLToPath } from "node:url";
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  outputFileTracingRoot: fileURLToPath(new URL(".", import.meta.url)),
+  distDir: process.env.NEXT_DIST_DIR || ".next",
   // Deshabilitar el header x-powered-by para no revelar la tecnología
   poweredByHeader: false,
 

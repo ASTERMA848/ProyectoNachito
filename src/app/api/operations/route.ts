@@ -1,3 +1,4 @@
+import { monetaryJson, positiveDecimal } from "@/lib/monetary";
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireAuth } from "@/lib/session";
@@ -5,6 +6,7 @@ import { can } from "@/lib/permissions";
 import { nextOperationNumber } from "@/lib/distributed-sale";
 import { ListError, parseListParams } from "@/lib/list-query";
 import { GROUP_KEYS, listOperations, SEARCH_FIELDS, SORT_KEYS } from "@/lib/resources/operations";
+import { AccountingPeriodError, assertOpenAccountingPeriod, lockAccountingWrites } from "@/lib/accounting-period";
 import { randomUUID } from "node:crypto";
 
 export const dynamic = "force-dynamic";
@@ -67,14 +69,14 @@ export async function POST(req: NextRequest) {
     }
 
     // Validar tipos numéricos en backend (no confiar en el frontend)
-    const parsedOriginAmount = parseFloat(originAmount);
-    const parsedDestAmount = parseFloat(destAmount);
-    const parsedExchangeRate = parseFloat(exchangeRate);
+    const parsedOriginAmount = positiveDecimal(originAmount);
+    const parsedDestAmount = positiveDecimal(destAmount);
+    const parsedExchangeRate = positiveDecimal(exchangeRate);
 
     if (
-      isNaN(parsedOriginAmount) || parsedOriginAmount <= 0 ||
-      isNaN(parsedDestAmount) || parsedDestAmount <= 0 ||
-      isNaN(parsedExchangeRate) || parsedExchangeRate <= 0
+      !parsedOriginAmount ||
+      !parsedDestAmount ||
+      !parsedExchangeRate
     ) {
       return NextResponse.json(
         { error: "Los montos y tipo de cambio deben ser números positivos" },
@@ -89,19 +91,10 @@ export async function POST(req: NextRequest) {
     }
 
     // Validar Bloqueo Contable
-    const [settings, contacts, currencies] = await Promise.all([
-      prisma.settings.findFirst({ select: { accountingBlockDate: true } }),
+    const [contacts, currencies] = await Promise.all([
       prisma.contact.findMany({ where: { id: { in: [clientId, providerId] }, deletedAt: null }, select: { id: true } }),
       prisma.currency.findMany({ where: { id: { in: [originCurrencyId, destCurrencyId] }, isActive: true }, select: { id: true } }),
     ]);
-    if (settings?.accountingBlockDate && parsedDate < settings.accountingBlockDate) {
-      const blockDateStr = new Date(settings.accountingBlockDate).toLocaleDateString("es-AR");
-      return NextResponse.json(
-        { error: `No se pueden crear operaciones con fecha previa al bloqueo contable (${blockDateStr}).` },
-        { status: 400 }
-      );
-    }
-
     // Validar longitud de observaciones
     if (observations && typeof observations === "string" && observations.length > 2000) {
       return NextResponse.json({ error: "Las observaciones no pueden superar los 2000 caracteres" }, { status: 400 });
@@ -118,31 +111,34 @@ export async function POST(req: NextRequest) {
 
     // Generar número de operación de forma segura
     const newOp = await prisma.$transaction(async tx => {
+      await lockAccountingWrites(tx);
+      await assertOpenAccountingPeriod(tx, parsedDate);
       const opNumber = await nextOperationNumber(tx);
       const operation = await tx.operation.create({
-      data: {
-        operationNumber: opNumber,
-        id: randomUUID(),
-        clientId,
-        providerId,
-        originCurrencyId,
-        destCurrencyId,
-        originAmount: parsedOriginAmount,
-        destAmount: parsedDestAmount,
-        exchangeRate: parsedExchangeRate,
-        operationDate: parsedDate,
-        observations: observations ? String(observations).substring(0, 2000) : null,
-        state: "PENDING", // Estado siempre fijado desde backend
-      },
+        data: {
+          operationNumber: opNumber,
+          id: randomUUID(),
+          clientId,
+          providerId,
+          originCurrencyId,
+          destCurrencyId,
+          originAmount: parsedOriginAmount,
+          destAmount: parsedDestAmount,
+          exchangeRate: parsedExchangeRate,
+          operationDate: parsedDate,
+          observations: observations ? String(observations).substring(0, 2000) : null,
+          state: "PENDING", // Estado siempre fijado desde backend
+        },
       });
       await tx.auditLog.create({ data: { userId: user.id, action: "CREATE", entity: "Operation", entityId: operation.id,
-        newValues: JSON.stringify({ operationNumber: operation.operationNumber, originAmount: operation.originAmount,
-          destAmount: operation.destAmount, state: operation.state }) } });
+        newValues: JSON.stringify({ operationNumber: operation.operationNumber, originAmount: operation.originAmount.toNumber(),
+          destAmount: operation.destAmount.toNumber(), state: operation.state }) } });
       return operation;
     }, { maxWait: 10000, timeout: 15000 });
 
-    return NextResponse.json(newOp, { status: 201 });
+    return NextResponse.json(monetaryJson(newOp), { status: 201 });
   } catch (error: any) {
+    if (error instanceof AccountingPeriodError) return NextResponse.json({ error: error.message }, { status: 400 });
     console.error("Operations POST error:", error);
     return NextResponse.json({ error: "Error en el servidor" }, { status: 400 });
   }

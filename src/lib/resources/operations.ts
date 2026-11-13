@@ -1,4 +1,5 @@
-import type { Prisma } from "@prisma/client";
+import { monetaryJson } from "@/lib/monetary";
+import { Prisma } from "@prisma/client";
 import prisma from "@/lib/prisma";
 import { dateOnlyRange, monthKey, monthLabel, monthRange, type DatePreset } from "@/lib/agency-time";
 import { combineFilters, ListError, type CurrencySum, type ListParams } from "@/lib/list-query";
@@ -121,7 +122,7 @@ export const operationListInclude = {
 export type GroupRow = { key: string; filter: string; label: string; count: number; origin: CurrencySum[]; dest: CurrencySum[] };
 
 // Prisma no tipa bien un "by" dinámico: se arma por campo y se lee el resultado como filas planas.
-type GroupedRow = Record<string, any> & { _count?: { _all: number }; _sum?: Record<string, number | null> };
+type GroupedRow = Record<string, any> & { _count?: { _all: number }; _sum?: Record<string, Prisma.Decimal | null> };
 const groupBy = (args: Record<string, unknown>) => (prisma.operation.groupBy as unknown as (a: unknown) => Promise<GroupedRow[]>)(args);
 
 const GROUP_FIELD: Record<string, string> = {
@@ -133,9 +134,9 @@ const GROUP_FIELD: Record<string, string> = {
 };
 
 function sumsByCurrency(rows: GroupedRow[], currencyField: string, amountField: string, codes: Map<string, string>): CurrencySum[] {
-  const totals = new Map<string, number>();
-  for (const row of rows) totals.set(row[currencyField], (totals.get(row[currencyField]) ?? 0) + (row._sum?.[amountField] ?? 0));
-  return Array.from(totals, ([currencyId, sum]) => ({ currencyId, code: codes.get(currencyId) ?? "?", sum })).sort((a, b) => a.code.localeCompare(b.code));
+  const totals = new Map<string, Prisma.Decimal>();
+  for (const row of rows) totals.set(row[currencyField], (totals.get(row[currencyField]) ?? new Prisma.Decimal(0)).plus(row._sum?.[amountField] ?? 0));
+  return Array.from(totals, ([currencyId, sum]) => ({ currencyId, code: codes.get(currencyId) ?? "?", sum: sum.toNumber() })).sort((a, b) => a.code.localeCompare(b.code));
 }
 
 async function groupLabels(group: string, keys: (string | null)[], codes: Map<string, string>) {
@@ -228,7 +229,7 @@ export async function listOperations(params: ListParams) {
   ]);
 
   return {
-    operations,
+    operations: monetaryJson(operations),
     total,
     offset: params.offset,
     limit: params.limit,

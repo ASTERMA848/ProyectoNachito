@@ -2,12 +2,12 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireAdminOrAuditor } from "@/lib/session";
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const user = await requireAdminOrAuditor();
     if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
-    const operationId = params.id;
+    const operationId = (await params).id;
 
     const logs = await prisma.auditLog.findMany({
       where: {

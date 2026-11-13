@@ -1,4 +1,5 @@
 "use client";
+import Image from "next/image";
 
 import { useState } from "react";
 import Link from "next/link";
@@ -196,9 +197,12 @@ export default function Header({ user }: { user?: { username: string; role: stri
               }}
             >
               {user.profilePicture ? (
-                <img
+                <Image
                   src={user.profilePicture}
                   alt={user.username}
+                  width={28}
+                  height={28}
+                  unoptimized
                   style={{
                     width: "28px",
                     height: "28px",

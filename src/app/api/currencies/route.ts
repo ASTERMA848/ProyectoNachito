@@ -91,10 +91,10 @@ export async function POST(req: NextRequest) {
       },
       });
       await ensureCurrencyTreasuryAccounts(tx);
+      await logAudit({ userId: user.id, action: "CREATE", entity: "Currency", entityId: created.id, newValues: { code: created.code, name: created.name } }, tx);
       return created;
     });
 
-    await logAudit({ userId: user.id, action: "CREATE", entity: "Currency", entityId: currency.id, newValues: { code: currency.code, name: currency.name } });
     return NextResponse.json({ currency }, { status: 201 });
   } catch (error: any) {
     console.error("Currencies POST error:", error);

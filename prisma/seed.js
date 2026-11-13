@@ -1,3 +1,5 @@
+require("@next/env").loadEnvConfig(process.cwd(), process.env.NODE_ENV === "development");
+
 const { PrismaClient } = require("@prisma/client");
 const bcrypt = require("bcryptjs");
 
@@ -5,6 +7,15 @@ const prisma = new PrismaClient();
 
 async function main() {
   console.log("🌱 Inicializando base de datos local...");
+
+  const existingAdmin = await prisma.user.findFirst({ where: { role: "ADMIN", isActive: true } });
+  const initialPassword = process.env.INITIAL_ADMIN_PASSWORD;
+  if (!existingAdmin && (!initialPassword || initialPassword.length < 12 || Buffer.byteLength(initialPassword) > 72)) {
+    throw new Error("Configurá INITIAL_ADMIN_PASSWORD con al menos 12 caracteres y como máximo 72 bytes.");
+  }
+  if (!existingAdmin && await prisma.user.findUnique({ where: { username: "admin" }, select: { id: true } })) {
+    throw new Error("El usuario admin ya existe. Revisá su rol o estado antes de inicializar un administrador.");
+  }
 
   // 1. Crear Monedas por defecto
   const currencies = [
@@ -37,10 +48,8 @@ async function main() {
   }
 
   // 3. Crear Usuario Admin por defecto si no existe ninguno
-  const userCount = await prisma.user.count();
-  if (userCount === 0) {
-    const defaultPassword = "admin";
-    const passwordHash = await bcrypt.hash(defaultPassword, 12);
+  if (!existingAdmin) {
+    const passwordHash = await bcrypt.hash(initialPassword, 12);
 
     await prisma.user.create({
       data: {
@@ -51,7 +60,7 @@ async function main() {
         isActive: true,
       },
     });
-    console.log("✓ Usuario de administración creado por defecto (Usuario: admin / Clave: admin).");
+    console.log("✓ Usuario de administración creado (usuario: admin).");
   }
 
   console.log("✅ Inicialización completada con éxito.");

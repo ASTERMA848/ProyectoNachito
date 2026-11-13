@@ -1,20 +1,23 @@
 import { randomUUID } from "node:crypto";
 import { Prisma, Operation } from "@prisma/client";
+import { assertOpenAccountingPeriod, lockAccountingWrites } from "./accounting-period";
+import "./monetary";
 
 type Tx = Prisma.TransactionClient;
-export type SaleItem = { clientId: string; amount: number; exchangeRate: number; observations: string | null; isPaid: boolean };
+export type SaleItem = { clientId: string; amount: Prisma.Decimal.Value; exchangeRate: Prisma.Decimal.Value; observations: string | null; isPaid: boolean };
 export type SaleInput = {
   providerId: string; currencyId: string; destCurrencyId: string; currencyCode: string;
-  exchangeRate: number; operationDate: Date; observations: string | null; providerIsPaid: boolean; items: SaleItem[];
+  exchangeRate: Prisma.Decimal.Value; operationDate: Date; observations: string | null; providerIsPaid: boolean; items: SaleItem[];
   operationType?: "DISTRIBUTED_SALE" | "SINGLE_SALE";
   providerPaymentCurrencyId?: string | null;
-  providerPaymentRate?: number | null;
 };
-export class SaleValidationError extends Error {}
+export class SaleValidationError extends Error {
+  constructor(message: string, public status = 400) { super(message); }
+}
 
 // Serializa la numeración sin contar todas las operaciones hijas ni reutilizar números borrados.
 export async function nextOperationNumber(tx: Tx) {
-  await tx.$executeRaw`SELECT pg_advisory_xact_lock(72641001)`;
+  await lockAccountingWrites(tx);
   const [row] = await tx.$queryRaw<{ next: number }[]>`
     SELECT COALESCE(MAX(substring("operationNumber" from '^OP-([0-9]+)')::integer), 0) + 1 AS next
     FROM "Operation" WHERE "parentOperationId" IS NULL`;
@@ -44,32 +47,32 @@ export async function applySaleLedger(tx: Tx, parent: Operation, children: Opera
     skipDuplicates: true,
   });
   // Bloquear y leer los saldos juntos evita sobrescribir cobros concurrentes.
-  const accounts = await tx.$queryRaw<{ id: string; contactId: string; balance: number }[]>`
+  const accounts = await tx.$queryRaw<{ id: string; contactId: string; balance: Prisma.Decimal }[]>`
     SELECT id, "contactId", balance FROM "Account"
     WHERE "currencyId" = ${input.currencyId} AND "contactId" IN (${Prisma.join(contactIds)})
     ORDER BY id FOR UPDATE`;
   const accountMap = new Map(accounts.map(a => [a.contactId, a]));
   const transactions: Prisma.TransactionCreateManyInput[] = [];
-  const record = (contactId: string, op: Operation, debit: number, credit: number, concept: string, observations: string) => {
+  const record = (contactId: string, op: Operation, debit: Prisma.Decimal | 0, credit: Prisma.Decimal | 0, concept: string, observations: string) => {
     const account = accountMap.get(contactId)!;
-    account.balance += credit - debit;
+    account.balance = account.balance.plus(credit).minus(debit);
     transactions.push({ id: randomUUID(), accountId: account.id, operationId: op.id, debit, credit,
       balance: account.balance, concept, observations, date: new Date() });
   };
   record(input.providerId, parent, parent.originAmount, 0, `Compra de divisa (Op Agrupadora: ${parent.operationNumber})`,
-    `Cotización Proveedor: ${input.exchangeRate}. Costo ARS: $${parent.destAmount.toLocaleString("es-AR")}`);
+    `Cotización Proveedor: ${input.exchangeRate}. Costo ARS: $${parent.destAmount.toString()}`);
   if (input.providerIsPaid) record(input.providerId, parent, 0, parent.originAmount,
     `Pago al contado registrado (Op: ${parent.operationNumber})`, "Cancelación de deuda por compra");
   children.forEach((child, index) => {
     const item = input.items[index];
     record(item.clientId, child, 0, child.originAmount, `Venta divisa a cliente (Op: ${child.operationNumber})`,
-      `Cotización Venta: ${item.exchangeRate}. Total ARS: $${child.destAmount.toLocaleString("es-AR")}. ${item.observations || ""}`);
+      `Cotización Venta: ${item.exchangeRate}. Total ARS: $${child.destAmount.toString()}. ${item.observations || ""}`);
     if (item.isPaid) record(item.clientId, child, child.originAmount, 0,
       `Pago al contado registrado (Op: ${child.operationNumber})`, `Cancelación de deuda por venta cobrada en el acto - ${item.observations || ""}`);
   });
   await tx.$executeRaw`
     UPDATE "Account" a SET balance = v.balance FROM (VALUES
-      ${Prisma.join(accounts.map(a => Prisma.sql`(${a.id}::text, ${a.balance}::double precision)`))}
+      ${Prisma.join(accounts.map(a => Prisma.sql`(${a.id}::text, ${a.balance}::numeric)`))}
     ) AS v(id, balance) WHERE a.id = v.id`;
   await tx.transaction.createMany({ data: transactions });
 
@@ -77,8 +80,8 @@ export async function applySaleLedger(tx: Tx, parent: Operation, children: Opera
   const payCurrencyId = (input.providerIsPaid && input.providerPaymentCurrencyId)
     ? input.providerPaymentCurrencyId
     : input.destCurrencyId;
-  const payRate = payCurrencyId === input.destCurrencyId ? input.exchangeRate : 1;
-  const payAmount = parent.originAmount * payRate;
+  const payRate = parent.providerPaymentRate ?? new Prisma.Decimal(1);
+  const payAmount = parent.originAmount.times(payRate).toDecimalPlaces(8);
 
   // Una cuenta por moneda seleccionada una sola vez para todo el lote.
   await tx.$executeRaw`SELECT pg_advisory_xact_lock(72641002)`;
@@ -90,16 +93,16 @@ export async function applySaleLedger(tx: Tx, parent: Operation, children: Opera
     const missingCurrencies = await tx.currency.findMany({ where: { id: { in: missing } }, select: { id: true, code: true } });
     const codeMap = new Map(missingCurrencies.map(c => [c.id, c.code]));
     const created = missing.map(cId => ({ id: randomUUID(), currencyId: cId, name: cId === input.destCurrencyId ? "Caja Base" : `Caja ${codeMap.get(cId) || ""}`,
-      type: "CASH", balance: 0, isActive: true, createdAt: now, updatedAt: now }));
+      type: "CASH", balance: new Prisma.Decimal(0), isActive: true, createdAt: now, updatedAt: now }));
     await tx.treasuryAccount.createMany({ data: created });
     existing.push(...created);
   }
   const byCurrency = new Map(currencyIds.map(id => [id, existing.find(a => a.currencyId === id)!]));
   const movements: Prisma.TreasuryMovementCreateManyInput[] = [];
-  const deltas = new Map<string, number>();
-  const movement = (currencyId: string, op: Operation, type: "INCOME" | "EXPENSE", amount: number, concept: string) => {
+  const deltas = new Map<string, Prisma.Decimal>();
+  const movement = (currencyId: string, op: Operation, type: "INCOME" | "EXPENSE", amount: Prisma.Decimal, concept: string) => {
     const id = byCurrency.get(currencyId)!.id;
-    deltas.set(id, (deltas.get(id) || 0) + (type === "INCOME" ? amount : -amount));
+    deltas.set(id, (deltas.get(id) ?? new Prisma.Decimal(0)).plus(type === "INCOME" ? amount : amount.negated()));
     movements.push({ id: randomUUID(), treasuryAccountId: id, operationId: op.id, type, amount, concept });
   };
   // La divisa se recibe del proveedor y se entrega a TODOS los clientes, incluso fiados.
@@ -115,12 +118,14 @@ export async function applySaleLedger(tx: Tx, parent: Operation, children: Opera
   });
   await tx.$executeRaw`
     UPDATE "TreasuryAccount" a SET balance = a.balance + v.amount, "updatedAt" = NOW() FROM (VALUES
-      ${Prisma.join(Array.from(deltas).sort(([a], [b]) => a.localeCompare(b)).map(([id, amount]) => Prisma.sql`(${id}::text, ${amount}::double precision)`))}
+      ${Prisma.join(Array.from(deltas).sort(([a], [b]) => a.localeCompare(b)).map(([id, amount]) => Prisma.sql`(${id}::text, ${amount}::numeric)`))}
     ) AS v(id, amount) WHERE a.id = v.id`;
   await tx.treasuryMovement.createMany({ data: movements });
 }
 
-export async function saveDistributedSale(tx: Tx, input: SaleInput, parentId?: string) {
+export async function saveDistributedSale(tx: Tx, input: SaleInput, parentId?: string, canEditCompleted = true) {
+  await lockAccountingWrites(tx);
+  await assertOpenAccountingPeriod(tx, input.operationDate);
   if (input.operationType === "SINGLE_SALE" && input.items.length !== 1)
     throw new SaleValidationError("La operación 1 a 1 debe tener exactamente un movimiento de cliente.");
   let existing: (Operation & { childOperations: Operation[] }) | null = null;
@@ -130,20 +135,24 @@ export async function saveDistributedSale(tx: Tx, input: SaleInput, parentId?: s
     existing = await tx.operation.findFirst({ where: { id: parentId, type: { in: ["DISTRIBUTED_SALE", "SINGLE_SALE"] }, parentOperationId: null, deletedAt: null },
       include: { childOperations: { where: { deletedAt: null }, orderBy: { createdAt: "asc" } } } });
     if (!existing) throw new Error("Operación distribuida no encontrada");
+    if (existing.state === "COMPLETED" && !canEditCompleted) {
+      throw new SaleValidationError("Solo el administrador puede modificar una venta completada", 403);
+    }
+    await assertOpenAccountingPeriod(tx, existing.operationDate, ...existing.childOperations.map((child) => child.operationDate));
     if ((existing.type === "SINGLE_SALE" && input.items.length !== 1) || (input.operationType && input.operationType !== existing.type))
       throw new SaleValidationError("No se puede cambiar el tipo de operación. La operación 1 a 1 admite un solo movimiento de cliente.");
     existing.childOperations.sort((a, b) => a.operationNumber.localeCompare(b.operationNumber, undefined, { numeric: true }));
     await reverseSaleLedger(tx, [parentId, ...existing.childOperations.map(c => c.id)]);
   }
-  const total = input.items.reduce((sum, item) => sum + item.amount, 0);
+  const total = input.items.reduce((sum, item) => sum.plus(item.amount), new Prisma.Decimal(0));
   const paid = input.items.filter(i => i.isPaid).length;
   const operationType = existing?.type || input.operationType || "DISTRIBUTED_SALE";
   const payCurrencyId = input.providerIsPaid ? (input.providerPaymentCurrencyId || input.destCurrencyId) : null;
-  const payRate = input.providerIsPaid ? (payCurrencyId === input.destCurrencyId ? input.exchangeRate : 1) : null;
-  const payAmount = input.providerIsPaid ? (total * payRate!) : null;
+  const payRate = input.providerIsPaid ? (payCurrencyId === input.destCurrencyId ? new Prisma.Decimal(input.exchangeRate) : new Prisma.Decimal(1)) : null;
+  const payAmount = input.providerIsPaid ? total.times(payRate!).toDecimalPlaces(8) : null;
 
   const data = { providerId: input.providerId, clientId: operationType === "SINGLE_SALE" ? input.items[0].clientId : null, originCurrencyId: input.currencyId, destCurrencyId: input.destCurrencyId,
-    originAmount: total, destAmount: total * input.exchangeRate, exchangeRate: input.exchangeRate,
+    originAmount: total, destAmount: total.times(input.exchangeRate).toDecimalPlaces(8), exchangeRate: input.exchangeRate,
     operationDate: input.operationDate, observations: input.observations,
     state: paid === input.items.length && input.providerIsPaid ? "COMPLETED" : paid || input.providerIsPaid ? "PARTIAL" : "PENDING",
     isPaid: paid === input.items.length, providerIsPaid: input.providerIsPaid,
@@ -156,7 +165,7 @@ export async function saveDistributedSale(tx: Tx, input: SaleInput, parentId?: s
     id: existing?.childOperations[index]?.id || randomUUID(),
     operationNumber: existing?.childOperations[index]?.operationNumber || `${parent.operationNumber}-${index + 1}`,
     type: "DISTRIBUTED_SALE_ITEM", parentOperationId: parent.id, clientId: item.clientId, providerIsPaid: false,
-    originAmount: item.amount, destAmount: item.amount * item.exchangeRate, exchangeRate: item.exchangeRate,
+    originAmount: new Prisma.Decimal(item.amount), destAmount: new Prisma.Decimal(item.amount).times(item.exchangeRate).toDecimalPlaces(8), exchangeRate: new Prisma.Decimal(item.exchangeRate),
     observations: item.observations, state: item.isPaid ? "COMPLETED" : "PENDING", isPaid: item.isPaid,
     deletedAt: null, createdAt: existing?.childOperations[index]?.createdAt || now, updatedAt: now }));
   if (existing) {

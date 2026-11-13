@@ -1,4 +1,8 @@
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
+import { assertOpenAccountingPeriod, lockAccountingWrites } from "@/lib/accounting-period";
+import { dateOnlyRange } from "@/lib/agency-time";
+import { monetaryJson } from "@/lib/monetary";
+import { logAudit } from "@/lib/audit";
 import prisma from "@/lib/prisma";
 import { combineFilters, ListError, type CurrencySum, type ListParams } from "@/lib/list-query";
 import { contactIdsMatching, textConditions, type ContactColumn } from "@/lib/search";
@@ -67,7 +71,7 @@ async function totalsByCurrency(where: Where) {
     prisma.account.groupBy({ by: ["currencyId"], where: { AND: [where, { balance: { lt: 0 } }] }, _sum: { balance: true } }),
     prisma.currency.findMany({ select: { id: true, code: true, decimals: true }, orderBy: { code: "asc" } }),
   ]);
-  const sum = (rows: typeof positive, id: string) => rows.find((row) => row.currencyId === id)?._sum.balance ?? 0;
+  const sum = (rows: typeof positive, id: string) => Number(rows.find((row) => row.currencyId === id)?._sum.balance ?? 0);
   return currencies
     .map((currency) => ({ currencyId: currency.id, code: currency.code, decimals: currency.decimals, positive: sum(positive, currency.id), negative: sum(negative, currency.id) }))
     .filter((row) => row.positive !== 0 || row.negative !== 0);
@@ -82,7 +86,7 @@ export async function listAccounts(params: ListParams) {
     totalsByCurrency(where),
     accountGroups(params.groupBy, where),
   ]);
-  return { accounts, total, offset: params.offset, limit: params.limit, totals, groups };
+  return { accounts: monetaryJson(accounts), total, offset: params.offset, limit: params.limit, totals, groups };
 }
 
 async function accountGroups(groupBy: string | null, where: Where) {
@@ -95,7 +99,7 @@ async function accountGroups(groupBy: string | null, where: Where) {
     return rows
       .map((row) => {
         const currency = currencies.find((item) => item.id === row.currencyId);
-        return { key: row.currencyId, filter: `currency:${row.currencyId}`, label: currency?.code ?? "—", count: row._count._all, sums: [{ currencyId: row.currencyId, code: currency?.code ?? "", sum: row._sum.balance ?? 0 }] satisfies CurrencySum[] };
+        return { key: row.currencyId, filter: `currency:${row.currencyId}`, label: currency?.code ?? "—", count: row._count._all, sums: [{ currencyId: row.currencyId, code: currency?.code ?? "", sum: Number(row._sum.balance ?? 0) }] satisfies CurrencySum[] };
       })
       .sort((a, b) => a.label.localeCompare(b.label));
   }
@@ -111,7 +115,7 @@ async function accountGroups(groupBy: string | null, where: Where) {
       const entry = byContact.get(row.contactId) ?? { count: 0, sums: [] };
       entry.count += row._count._all;
       const code = currencies.find((currency) => currency.id === row.currencyId)?.code ?? "";
-      entry.sums.push({ currencyId: row.currencyId, code, sum: row._sum.balance ?? 0 });
+      entry.sums.push({ currencyId: row.currencyId, code, sum: Number(row._sum.balance ?? 0) });
       byContact.set(row.contactId, entry);
     }
     return Array.from(byContact, ([contactId, entry]) => {
@@ -149,20 +153,21 @@ export async function accountMovements(accountId: string, offset: number, limit:
   ]);
   // El saldo de cada fila se calcula hacia atrás desde el saldo actual. El guardado en cada
   // movimiento queda viejo cuando se edita una venta y sus asientos se vuelven a cargar.
-  let running = newer.reduce((balance, row) => balance - (row.credit - row.debit), account.balance);
+  let running = newer.reduce((balance, row) => balance.minus(row.credit).plus(row.debit), account.balance);
   const rows = transactions.map((row) => {
-    // Redondeo para que la resta de decimales no deje restos como -0,0000001.
-    const balance = Math.round(running * 1e8) / 1e8;
-    running -= row.credit - row.debit;
+    const balance = running;
+    running = running.minus(row.credit).plus(row.debit);
     return { ...row, balance };
   });
-  return { transactions: rows, total, offset, limit };
+  return { transactions: monetaryJson(rows), total, offset, limit };
 }
 
 // Movimiento manual: el saldo se incrementa en la base para que dos cargas simultáneas no se pisen.
-export async function postManualMovement(input: { contactId: string; currencyId: string; debit: number; credit: number; concept: string; observations: string | null }) {
+export async function postManualMovement(input: { userId: string; contactId: string; currencyId: string; debit: Prisma.Decimal | 0; credit: Prisma.Decimal | 0; concept: string; observations: string | null }) {
   return prisma.$transaction(async (tx) => {
-    const amount = input.credit - input.debit;
+    await lockAccountingWrites(tx);
+    await assertOpenAccountingPeriod(tx, dateOnlyRange("today").gte);
+    const amount = new Prisma.Decimal(input.credit).minus(input.debit);
     const account = await tx.account.upsert({
       where: { contactId_currencyId: { contactId: input.contactId, currencyId: input.currencyId } },
       create: { contactId: input.contactId, currencyId: input.currencyId, balance: amount },
@@ -171,6 +176,10 @@ export async function postManualMovement(input: { contactId: string; currencyId:
     const transaction = await tx.transaction.create({
       data: { accountId: account.id, concept: input.concept, debit: input.debit, credit: input.credit, balance: account.balance, observations: input.observations },
     });
+    await logAudit({
+      userId: input.userId, action: "CREATE", entity: "Transaction", entityId: transaction.id,
+      newValues: { accountId: account.id, concept: input.concept, debit: input.debit, credit: input.credit, balance: account.balance },
+    }, tx);
     return { account, transaction };
   });
 }

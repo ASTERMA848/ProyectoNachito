@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeftRight, BookOpen, Lock, Plus, Trash2 } from "lucide-react";
 import {
@@ -144,6 +144,7 @@ export function SaleForm({ detail, initialType, contacts, onCreateContact, curre
   const [values, setValues] = useState<Values>(initial);
   const [errors, setErrors] = useState<Errors>({});
   const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
   const [tab, setTab] = useState("lines");
   const [unlocked, setUnlocked] = useState(false);
   const [unlockOpen, setUnlockOpen] = useState(false);
@@ -191,12 +192,14 @@ export function SaleForm({ detail, initialType, contacts, onCreateContact, curre
     setValues((current) => ({ ...current, lines: current.lines.map((line) => (line.key === key ? { ...line, ...change } : line)) }));
 
   const save = async () => {
+    if (savingRef.current) return;
     const found = validate(values);
     setErrors(found);
     if (Object.keys(found).length) {
       notify("Revisá los datos marcados", "warning");
       return;
     }
+    savingRef.current = true;
     setSaving(true);
     try {
       const response = await fetch(isNew ? "/api/operations/distributed-sale" : `/api/operations/distributed-sale/${op!.id}`, {
@@ -211,7 +214,6 @@ export function SaleForm({ detail, initialType, contacts, onCreateContact, curre
           observations: values.observations,
           providerIsPaid: providerPaid,
           providerPaymentCurrencyId: providerPaid ? values.providerPaymentCurrencyId : "",
-          providerPaymentRate: "",
           items: values.lines.map((line) => ({
             clientId: line.clientId,
             amount: lineAmount(line),
@@ -232,6 +234,7 @@ export function SaleForm({ detail, initialType, contacts, onCreateContact, curre
     } catch {
       notify("No hay conexión con el servidor", "danger");
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
   };

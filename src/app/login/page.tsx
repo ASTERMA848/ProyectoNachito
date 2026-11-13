@@ -1,19 +1,21 @@
 ﻿"use client";
 
 import { Suspense, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { AlertCircle, ArrowLeftRight, Eye, EyeOff } from "lucide-react";
 import { Button, Field, IconButton, TextInput, iconSize } from "@/components/ui";
 import styles from "./login.module.css";
 
 // Solo se vuelve a rutas internas: nada de "//otro-sitio" ni direcciones completas.
 function safeNext(value: string | null) {
-  if (!value || !value.startsWith("/") || value.startsWith("//") || value.startsWith("/login") || value.startsWith("/logout")) return "/";
-  return value;
+  if (!value || !value.startsWith("/") || value.startsWith("//") || /[\\\x00-\x20]/.test(value)) return "/";
+  const base = "https://calce.invalid";
+  const url = new URL(value, base);
+  if (url.origin !== base || url.pathname.startsWith("//") || ["/login", "/logout"].includes(url.pathname)) return "/";
+  return `${url.pathname}${url.search}${url.hash}`;
 }
 
 function LoginForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const next = safeNext(searchParams.get("next"));
   const [username, setUsername] = useState("");
@@ -35,8 +37,7 @@ function LoginForm() {
     }).catch(() => null);
     const data = await response?.json().catch(() => ({}));
     if (response?.ok) {
-      router.replace(next);
-      router.refresh();
+      window.location.replace(next);
       return;
     }
     setLoading(false);
