@@ -1,15 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { Button, Dialog, Field, Select, TextArea, TextInput } from "@/components/ui";
+import { Button, Dialog, Field, MoneyInput, Select, TextArea, TextInput } from "@/components/ui";
 import { useUiFeedback } from "@/components/shell/UiFeedback";
 import { formatAmount } from "@/lib/format-currency";
 import { parseLocaleNumber } from "@/lib/parse-number";
 import styles from "./treasury.module.css";
 
-export type BoxOption = { id: string; name: string; balance: number; currency: { id: string; code: string; decimals: number; isActive: boolean } };
+export type BoxOption = { id: string; name: string; balance: number; currency: { id: string; code: string; symbol?: string; decimals: number; isActive: boolean } };
 
 const boxLabel = (box: BoxOption) => `${box.name} · ${box.currency.code}`;
+const symbolOf = (box: BoxOption | undefined) => box?.currency.symbol || box?.currency.code || "$";
 const validAmount = (value: number) => Number.isFinite(value) && value > 0;
 
 async function post(url: string, body: unknown) {
@@ -74,7 +75,7 @@ export function CashMovementDialog({ box, onClose, onSaved }: { box: BoxOption |
           </Select>
         </Field>
         <Field label="Importe" required error={showErrors ? errors.amount : undefined}>
-          <TextInput inputMode="decimal" autoComplete="off" value={amount} onChange={(event) => setAmount(event.target.value)} />
+          <MoneyInput symbol={symbolOf(box ?? undefined)} value={amount} onChange={(event) => setAmount(event.target.value)} />
         </Field>
         <Field label="Motivo" required error={showErrors ? errors.reason : undefined}>
           <TextArea rows={2} maxLength={500} value={reason} onChange={(event) => setReason(event.target.value)} />
@@ -195,9 +196,8 @@ export function TransferDialog({ open, boxes, from, onClose, onSaved }: { open: 
           </Select>
         </Field>
         <Field label={origin ? `Importe que sale (${origin.currency.code})` : "Importe que sale"} required error={error("amount")}>
-          <TextInput
-            inputMode="decimal"
-            autoComplete="off"
+          <MoneyInput
+            symbol={symbolOf(origin)}
             value={amount}
             onChange={(event) => {
               setAmount(event.target.value);
@@ -219,7 +219,7 @@ export function TransferDialog({ open, boxes, from, onClose, onSaved }: { open: 
               />
             </Field>
             <Field label={`Importe que entra (${dest.currency.code})`} required help="Se calcula con la cotización; podés corregirlo." error={error("destAmount")}>
-              <TextInput inputMode="decimal" autoComplete="off" value={destAmount} onChange={(event) => setDestAmount(event.target.value)} />
+              <MoneyInput symbol={symbolOf(dest)} value={destAmount} onChange={(event) => setDestAmount(event.target.value)} />
             </Field>
           </>
         )}

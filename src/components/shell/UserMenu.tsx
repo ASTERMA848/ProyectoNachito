@@ -37,7 +37,7 @@ export function UserMenu({ user }: { user: ShellUser }) {
       align="end"
       items={[
         { type: "heading", id: "who", label: `${user.username} · ${ROLE_LABELS[user.role] ?? user.role}` },
-        { id: "profile", label: "Mi perfil", icon: <User size={iconSize.sm} />, onSelect: () => void navigate("/settings") },
+        { id: "profile", label: "Mi perfil", icon: <User size={iconSize.sm} />, onSelect: () => void navigate("/settings/profile") },
         {
           id: "theme",
           label: dark ? "Usar tema claro" : "Usar tema oscuro",

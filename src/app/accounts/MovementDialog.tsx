@@ -2,21 +2,21 @@
 
 import { useState } from "react";
 import useSWR from "swr";
-import { Button, Dialog, Field, Select, TextArea, TextInput } from "@/components/ui";
+import { Button, Combobox, Dialog, Field, MoneyInput, Select, TextArea, TextInput } from "@/components/ui";
 import { useUiFeedback } from "@/components/shell/UiFeedback";
 import { fetchList } from "@/components/shell/list-state";
 import { parseLocaleNumber } from "@/lib/parse-number";
 import styles from "./accounts.module.css";
 
 type ContactOption = { id: string; name: string; lastname: string | null; document: string | null };
-type CurrencyOption = { id: string; code: string; isActive: boolean };
+type CurrencyOption = { id: string; code: string; symbol: string; isActive: boolean };
 
 type MovementDialogProps = {
   open: boolean;
   onClose: () => void;
   onSaved: (accountId: string) => void;
   // Desde una cuenta abierta, el contacto y la moneda ya están decididos.
-  fixed?: { contactId: string; currencyId: string; label: string };
+  fixed?: { contactId: string; currencyId: string; label: string; symbol: string };
 };
 
 const EMPTY = { contactId: "", currencyId: "", type: "CREDIT", amount: "", concept: "", observations: "" };
@@ -82,15 +82,12 @@ export function MovementDialog({ open, onClose, onSaved, fixed }: MovementDialog
         {!fixed && (
           <>
             <Field label="Contacto" required error={error("contact")}>
-              <Select value={values.contactId} onChange={(event) => set("contactId", event.target.value)}>
-                <option value="">{contacts.data ? "Elegí un contacto" : "Cargando..."}</option>
-                {contacts.data?.contacts.map((contact) => (
-                  <option key={contact.id} value={contact.id}>
-                    {[contact.name, contact.lastname].filter(Boolean).join(" ")}
-                    {contact.document ? ` (${contact.document})` : ""}
-                  </option>
-                ))}
-              </Select>
+              <Combobox
+                placeholder={contacts.data ? "Buscar contacto..." : "Cargando..."}
+                value={values.contactId}
+                options={(contacts.data?.contacts ?? []).map((contact) => ({ id: contact.id, label: [contact.name, contact.lastname].filter(Boolean).join(" "), detail: contact.document }))}
+                onChange={(contactId) => set("contactId", contactId)}
+              />
             </Field>
             <Field label="Moneda" required error={error("currency")}>
               <Select value={values.currencyId} onChange={(event) => set("currencyId", event.target.value)}>
@@ -111,7 +108,7 @@ export function MovementDialog({ open, onClose, onSaved, fixed }: MovementDialog
           </Select>
         </Field>
         <Field label="Monto" required error={error("amount")}>
-          <TextInput inputMode="decimal" autoComplete="off" value={values.amount} onChange={(event) => set("amount", event.target.value)} />
+          <MoneyInput symbol={fixed?.symbol ?? currencies.data?.currencies.find((currency) => currency.id === values.currencyId)?.symbol ?? "$"} value={values.amount} onChange={(event) => set("amount", event.target.value)} />
         </Field>
         <Field label="Concepto" required error={error("concept")}>
           <TextInput maxLength={500} value={values.concept} onChange={(event) => set("concept", event.target.value)} />

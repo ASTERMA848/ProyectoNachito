@@ -150,7 +150,7 @@ export default function AccountDetail({ id }: { id: string }) {
 
       <MovementDialog
         open={dialogOpen}
-        fixed={{ contactId: account.contact.id, currencyId: account.currency.id, label: `${name} · ${code}` }}
+        fixed={{ contactId: account.contact.id, currencyId: account.currency.id, label: `${name} · ${code}`, symbol: account.currency.symbol || code }}
         onClose={() => setDialogOpen(false)}
         onSaved={async () => {
           setDialogOpen(false);
