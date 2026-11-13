@@ -17,6 +17,7 @@
     "db:repair-provider-payments": "node scripts/migrate-provider-payments.cjs --repair",
     "test:operations": "node scripts/operations-performance.cjs",
     "test:treasury": "node scripts/treasury-movements.cjs",
+    "test:list-scale": "node scripts/list-scale-check.cjs",
     "bench:operations": "node scripts/operations-performance.cjs --compare",
     "test:e2e": "playwright test"
   },
