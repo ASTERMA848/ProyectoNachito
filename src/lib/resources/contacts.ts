@@ -84,3 +84,18 @@ export async function listContacts(params: ListParams) {
 
 export type ContactListResult = Awaited<ReturnType<typeof listContacts>>;
 export type ContactListItem = ContactListResult["contacts"][number];
+
+// Contactos activos que ya tienen este documento, CUIT/CUIL o email. Es un aviso, no un bloqueo:
+// la agencia puede tener motivos (CUIT compartido entre socios, un email de uso común, etc.).
+export async function findDuplicateContacts(input: { document?: string | null; cuitCuil?: string | null; email?: string | null; excludeId?: string }) {
+  const or: Where[] = [];
+  if (input.document?.trim()) or.push({ document: input.document.trim() });
+  if (input.cuitCuil?.trim()) or.push({ cuitCuil: input.cuitCuil.trim() });
+  if (input.email?.trim()) or.push({ email: { equals: input.email.trim(), mode: "insensitive" } });
+  if (!or.length) return [];
+  return prisma.contact.findMany({
+    where: { deletedAt: null, isActive: true, OR: or, ...(input.excludeId ? { id: { not: input.excludeId } } : {}) },
+    select: { id: true, name: true, lastname: true, document: true, cuitCuil: true, email: true },
+    take: 5,
+  });
+}

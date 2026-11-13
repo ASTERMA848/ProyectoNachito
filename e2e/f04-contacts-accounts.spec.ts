@@ -75,6 +75,35 @@ test.describe("F04 administrador", () => {
 test.describe("F04 API de contactos", () => {
   test.use(asRole("admin"));
 
+  test("F04-E5 aviso de contacto duplicado: avisa pero no bloquea", async ({ page, request }) => {
+    const cuit = `30-${Date.now() % 100000000}-4`;
+    const first = await (await request.post("/api/contacts", { data: { name: unique("Original"), isClient: true, cuitCuil: cuit } })).json();
+    try {
+      await page.goto("/contacts/new");
+      await settle(page);
+      await page.getByLabel(/^Nombre/).fill(unique("Repetido"));
+      await page.getByLabel("CUIT / CUIL").fill(cuit);
+      await page.getByRole("button", { name: "Guardar" }).click();
+      const dialog = page.getByRole("dialog", { name: "Contacto parecido a otro ya cargado" });
+      await expect(dialog).toContainText(first.name);
+      // Cancelar no crea nada.
+      await dialog.getByRole("button", { name: "Cancelar" }).click();
+      await expect(dialog).toBeHidden();
+      expect(await (await request.get(`/api/contacts/check-duplicate?cuitCuil=${cuit}`)).json()).toMatchObject({ matches: [{ id: first.id }] });
+      // Guardar igual sí lo crea, con el mismo CUIT.
+      await page.getByRole("button", { name: "Guardar" }).click();
+      await page.getByRole("dialog", { name: "Contacto parecido a otro ya cargado" }).getByRole("button", { name: "Guardar igual" }).click();
+      await expect(page.getByRole("status").filter({ hasText: "Contacto creado" })).toBeVisible();
+      await expect(page).toHaveURL(/\/contacts\/[0-9a-f-]{36}$/);
+      const createdId = page.url().split("/").pop()!;
+      const created = await (await request.get(`/api/contacts/${createdId}`)).json();
+      expect(created.contact.cuitCuil).toBe(cuit);
+      await request.delete(`/api/contacts/${createdId}`);
+    } finally {
+      await request.delete(`/api/contacts/${first.id}`);
+    }
+  });
+
   test("F04-E4 editar un contacto sin mandar etiquetas no se las borra", async ({ request }) => {
     const tags = (await (await request.get("/api/tags")).json()).tags;
     test.skip(!tags.length, "no hay etiquetas");
@@ -83,6 +112,8 @@ test.describe("F04 API de contactos", () => {
     expect(response.ok()).toBe(true);
     const detail = await (await request.get(`/api/contacts/${created.id}`)).json();
     expect(detail.contact.tags.map((row: { tag: { id: string } }) => row.tag.id)).toEqual([tags[0].id]);
+    // No dejar el contacto de prueba en la base.
+    await request.delete(`/api/contacts/${created.id}`);
   });
 });
 

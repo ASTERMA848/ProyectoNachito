@@ -138,6 +138,26 @@ export default function ContactForm({ id }: { id?: string }) {
       setShowErrors(true);
       return notify("Faltan datos para guardar el contacto", "warning");
     }
+    // Aviso, no bloqueo: la agencia puede tener un motivo real para repetir un documento o un email.
+    const changedIdentity = values.document !== initial.document || values.cuitCuil !== initial.cuitCuil || values.email !== initial.email;
+    if (changedIdentity) {
+      const params = new URLSearchParams();
+      if (values.document.trim()) params.set("document", values.document.trim());
+      if (values.cuitCuil.trim()) params.set("cuitCuil", values.cuitCuil.trim());
+      if (values.email.trim()) params.set("email", values.email.trim());
+      if (id) params.set("excludeId", id);
+      if (params.toString()) {
+        const matches = await fetchList<{ matches: { id: string; name: string; lastname: string | null }[] }>(`/api/contacts/check-duplicate?${params}`).catch(() => ({ matches: [] }));
+        if (matches.matches.length) {
+          const names = matches.matches.map((match) => [match.name, match.lastname].filter(Boolean).join(" ")).join(", ");
+          const accepted = await confirm(`Ya hay un contacto activo con el mismo documento, CUIT/CUIL o email: ${names}. ¿Guardar igual?`, {
+            title: "Contacto parecido a otro ya cargado",
+            confirmLabel: "Guardar igual",
+          });
+          if (!accepted) return;
+        }
+      }
+    }
     setBusy(true);
     const response = await fetch(id ? `/api/contacts/${id}` : "/api/contacts", {
       method: id ? "PUT" : "POST",
