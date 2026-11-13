@@ -71,8 +71,9 @@ Paleta de comandos (Ctrl+K), arrastrar tarjetas entre columnas, creación rápid
 
 ## Siguientes pasos del método
 
-1. `/replica-diff`: puntaje de paridad con `features.csv`. La comparación de capturas no se puede hacer todavía: el recon usó solo fuentes públicas y no hay capturas de referencia en `replica/screens/`.
-2. Después, `/replica-entrepreneur`, `/replica-brand` (nombre y marca propios; correr la búsqueda de restos del original) y recién ahí el lanzamiento.
+1. Hecho el 2026-11-13: `/replica-diff`. Paridad de funciones 70,3 / 100; 34 de 42 imprescindibles. Detalle y las cinco prioridades en `replica/parity.md`. Las capturas del clon están en `replica/clone-screens/`; faltan las del original para medir el diseño.
+2. `/replica-build` para las 8 imprescindibles que faltan (orden en `replica/parity.md`).
+3. Después, `/replica-entrepreneur`, `/replica-brand` (nombre y marca propios; correr la búsqueda de restos del original) y recién ahí el lanzamiento.
 
 ## Documentos relacionados
 

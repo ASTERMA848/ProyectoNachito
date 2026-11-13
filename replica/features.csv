@@ -37,7 +37,7 @@ Kanban agrupado por estado con contador por columna,kanban,should,yes,yes,Operac
 Arrastrar tarjetas entre columnas para cambiar de estado,kanban,could,yes,no,Respetar permisos: solo ADMIN reabre una operación completada
 "Tarjetas de contacto con avatar, datos clave y etiquetas",kanban,must,yes,yes,Directorio de Contactos
 Creación rápida desde la columna,kanban,could,yes,no,
-Barra de progreso por columna,kanban,could,yes,no,
+Barra de progreso por columna,kanban,could,yes,yes,Barra por estado de cobro con el total de la columna (kanban de operaciones)
 Plegar columnas,kanban,could,yes,no,
 Formulario en página con hoja centrada y grupos en dos columnas,formulario,must,yes,yes,Reemplaza los modales de ficha de operación y de contacto; Operaciones y contactos
 Barra de estados en el encabezado con botones de acción,formulario,must,yes,yes,Estado de la operación
