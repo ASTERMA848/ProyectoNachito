@@ -52,10 +52,24 @@ Paleta de comandos (Ctrl+K), arrastrar tarjetas, creación rápida en kanban, pl
 
 1. Hecho el 2026-11-13: `/replica-diff`. Paridad de funciones 70,3 / 100; 34 de 42 imprescindibles. Detalle y las cinco prioridades en `replica/parity.md`. Las capturas del clon están en `replica/clone-screens/`; faltan las del original para medir el diseño.
 2. Hecho el 2026-11-13: `/replica-build` de las 8 imprescindibles, y después las 2 convenientes que faltaban para pasar de 80. Paridad final: 80,2 con 42 de 42 imprescindibles. **El clon es publicable según el método** (`replica/parity.md`).
-3. Siguiente: `/replica-entrepreneur` (en qué conviene ser mejor que el original) y después `/replica-brand` antes de publicar. Después, `/replica-entrepreneur`, `/replica-brand` (nombre y marca propios; correr la búsqueda de restos del original) y recién ahí el lanzamiento.
+3. Hecho el 2026-11-13: `/replica-entrepreneur`. 32 reseñas reales de Odoo (Software Advice, Hacker News, TrustRadius — G2 y Capterra bloquearon el acceso; Reddit no es accesible en este entorno) en `replica/reviews.csv`, rankeadas en `replica/feedback.md`. Las tres listas, el plan de arreglos y el ángulo de posicionamiento quedaron en `replica/fixes.md`; 5 filas nuevas en `features.csv` con `original=no` (diferenciadores, no paridad). Ángulo elegido: "una sola cosa, bien hecha" en vez de un ERP genérico.
+4. Siguiente: construir las 5 filas del plan de arreglos (`replica/fixes.md`, sección "Plan de arreglos") cuando haya tiempo — ninguna bloquea publicar. Después, `/replica-brand` (nombre y marca propios; correr la búsqueda de restos del original) y recién ahí el lanzamiento.
+
+## Diferenciadores sobre el original (de `/replica-entrepreneur`)
+
+Pendientes de construir, ninguno bloquea publicar (detalle y evidencia en `replica/fixes.md`):
+
+- Aviso de contacto duplicado al crear o editar (S).
+- Prueba de concurrencia en la numeración de operaciones — el candado ya existe, falta la prueba (S).
+- Recorrido de primeros pasos sin depender de un consultor (M).
+- Historial inline junto al importe o la cotización (S).
+- Ayuda en el campo de cotización multimoneda (S).
+- Verificar el rendimiento de las listas con una base grande (M, prueba, no pantalla).
+- Terminar la consola SQL y el manual con el mismo sistema de diseño (ya estaba pendiente; reforzado por la investigación).
 
 ## Documentos relacionados
 
 - `replica/recon.md`, `replica/architecture.md`, `replica/design/`: mapa, arquitectura y sistema de diseño.
+- `replica/reviews.csv`, `replica/feedback.md`, `replica/fixes.md`: investigación de usuarios de Odoo, ranking y plan de arreglos.
 - `replica/build-log.md`: qué se hizo en cada pantalla y qué costó.
 - `replica/test-plan.md` y `replica/bugs.md`: casos probados, resultados y errores.

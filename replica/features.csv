@@ -77,7 +77,7 @@ Inicio de sesión en tarjeta centrada,acceso,must,yes,yes,Vuelve a la pantalla p
 Llave de acceso (passkey) para iniciar sesión,acceso,could,yes,no,Mejora de seguridad opcional
 Diseño adaptable con kanban por defecto en móvil,móvil,must,yes,yes,Contactos y operaciones abren en tarjetas en el teléfono
 Tema claro y oscuro,general,should,no,no,Ya existe en tu web; no verifiqué si Odoo lo tiene
-Consola SQL con el estilo nuevo,general,could,no,no,Propia de tu web
+Consola SQL con el estilo nuevo,general,could,no,no,Propia de tu web; reforzado por quejas de apps que se ven distintas entre sí en Odoo (Software Advice; replica-entrepreneur: replica/fixes.md #6)
 Manual de uso con el estilo nuevo,general,could,no,no,Propio de tu web
 "Logo, íconos de apps y marca de Odoo",marca,could,yes,skip,Propiedad de Odoo: se usan íconos abiertos y una marca propia
 Textos de la interfaz de Odoo,marca,could,yes,skip,Se escriben textos propios
@@ -93,3 +93,8 @@ Multiempresa y selector de compañía,plataforma,could,yes,skip,Tu web es de una
 Chat interno (Discuss),comunicación,could,yes,skip,Fuera de alcance
 Gestor de bases de datos en el inicio de sesión,acceso,could,yes,skip,No corresponde y expone un riesgo
 Idiomas y traducciones,general,could,yes,skip,La web es solo en español
+Aviso de contacto duplicado al crear o editar,contactos,should,no,no,"Odoo arrastra perfiles de contacto duplicados sin avisar (TrustRadius, replica-entrepreneur: replica/fixes.md #1)"
+Prueba de concurrencia en la numeración de operaciones (sin huecos ni choques),auditoría,should,no,no,"Usuarios de Odoo reportan saltos en la numeración de documentos (TrustRadius); el candado pg_advisory_xact_lock ya existe en nextOperationNumber, falta la prueba (replica-entrepreneur: replica/fixes.md #2)"
+Recorrido de primeros pasos sin depender de un consultor,general,should,no,no,"22 de 32 reseñas de Odoo citan implementación, soporte o documentación como la barrera para empezar (replica-entrepreneur: replica/fixes.md #3)"
+Historial inline junto al importe o la cotización (quién lo cambió),historial,could,no,no,Quejas de cambios de cobro o precio sin aviso en Odoo (TrustRadius; replica-entrepreneur: replica/fixes.md #4)
+Ayuda en el campo de cotización multimoneda (ejemplo al lado del campo),campos,could,no,no,"""Three hours of trial-and-error to set up multiple currencies"" (Software Advice; replica-entrepreneur: replica/fixes.md #7)"
