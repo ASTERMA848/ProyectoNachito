@@ -126,3 +126,10 @@
   --ui-heading-weight: var(--ui-fw-semibold);
   --ui-heading-color: var(--ui-text-strong);
 }
+
+.subtotals {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--ui-space-2);
+}

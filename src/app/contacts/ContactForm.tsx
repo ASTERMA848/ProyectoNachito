@@ -307,6 +307,8 @@ export default function ContactForm({ id }: { id?: string }) {
                 columns={balanceColumns}
                 rows={detail.data?.balances ?? []}
                 rowKey={(row) => row.accountId}
+                rowLabel={(row) => `Estado de cuenta en ${row.currency.code}`}
+                onRowOpen={(row) => router.push(`/accounts/${row.accountId}`)}
                 empty={<EmptyState title="Sin cuenta corriente">Se abre sola con la primera operación del contacto.</EmptyState>}
               />
             </div>

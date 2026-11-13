@@ -5,7 +5,7 @@ import { combineFilters, ListError, type CurrencySum, type ListParams } from "@/
 type Where = Prisma.AccountWhereInput;
 
 export const SORT_KEYS = ["contact", "currency", "balance"] as const;
-export const GROUP_KEYS = ["currency", "sign"] as const;
+export const GROUP_KEYS = ["currency", "sign", "contact"] as const;
 
 // Saldo = haber - debe. Positivo: la agencia le debe al contacto; negativo: el contacto le debe a la agencia.
 const SIGNS: Record<string, { label: string; where: Where }> = {
@@ -25,6 +25,9 @@ function resolveFilter(group: string, value: string): Where | null {
       if (value === "provider") return { contact: { isProvider: true } };
       return null;
     case "contact":
+      return { contactId: value };
+    // Fila de grupo por contacto: mismo contacto, pero respeta el filtro de saldo de la lista.
+    case "contactGroup":
       return { contactId: value };
     default:
       return null;
@@ -95,6 +98,32 @@ async function accountGroups(groupBy: string | null, where: Where) {
         return { key: row.currencyId, filter: `currency:${row.currencyId}`, label: currency?.code ?? "—", count: row._count._all, sums: [{ currencyId: row.currencyId, code: currency?.code ?? "", sum: row._sum.balance ?? 0 }] satisfies CurrencySum[] };
       })
       .sort((a, b) => a.label.localeCompare(b.label));
+  }
+  if (groupBy === "contact") {
+    // Un grupo por contacto con el saldo de cada moneda por separado: nunca se suman monedas distintas.
+    const [rows, currencies] = await Promise.all([
+      prisma.account.groupBy({ by: ["contactId", "currencyId"], where, _count: { _all: true }, _sum: { balance: true } }),
+      prisma.currency.findMany({ select: { id: true, code: true } }),
+    ]);
+    const contacts = await prisma.contact.findMany({ where: { id: { in: Array.from(new Set(rows.map((row) => row.contactId))) } }, select: { id: true, name: true, lastname: true } });
+    const byContact = new Map<string, { count: number; sums: CurrencySum[] }>();
+    for (const row of rows) {
+      const entry = byContact.get(row.contactId) ?? { count: 0, sums: [] };
+      entry.count += row._count._all;
+      const code = currencies.find((currency) => currency.id === row.currencyId)?.code ?? "";
+      entry.sums.push({ currencyId: row.currencyId, code, sum: row._sum.balance ?? 0 });
+      byContact.set(row.contactId, entry);
+    }
+    return Array.from(byContact, ([contactId, entry]) => {
+      const contact = contacts.find((item) => item.id === contactId);
+      return {
+        key: contactId,
+        filter: `contactGroup:${contactId}`,
+        label: contact ? [contact.name, contact.lastname].filter(Boolean).join(" ") : "Contacto eliminado",
+        count: entry.count,
+        sums: entry.sums.sort((a, b) => a.code.localeCompare(b.code)),
+      };
+    }).sort((a, b) => a.label.localeCompare(b.label));
   }
   if (groupBy === "sign") {
     const counts = await Promise.all(Object.entries(SIGNS).map(async ([key, sign]) => ({ key, sign, count: await prisma.account.count({ where: { AND: [where, sign.where] } }) })));

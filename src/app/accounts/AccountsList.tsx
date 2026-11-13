@@ -34,6 +34,7 @@ const DEFAULT_SORT: SortState = { key: "contact", dir: "asc" };
 const GROUP_OPTIONS: GroupOption[] = [
   { id: "currency", label: "Moneda" },
   { id: "sign", label: "Situación" },
+  { id: "contact", label: "Contacto" },
 ];
 
 type CurrencyRow = { id: string; code: string; decimals: number };
@@ -126,15 +127,18 @@ export default function AccountsList() {
   ];
 
   const tableGroups: TableGroup<AccountListItem>[] | undefined = data?.groups?.map((group) => {
-    const sum = group.sums[0];
-    const currency = sum && currencyData?.currencies.find((item) => item.id === sum.currencyId);
+    // Subtotal por moneda: un contacto puede tener saldo en varias.
+    const subtotals = group.sums.map((sum) => {
+      const currency = currencyData?.currencies.find((item) => item.id === sum.currencyId);
+      return <Balance key={sum.currencyId} value={sum.sum} code={sum.code} decimals={currency?.decimals ?? 2} />;
+    });
     return {
       key: group.key,
       label: group.label,
       count: group.count,
       expanded: openGroups.has(group.key),
       rows: groupRows?.[group.filter] ?? [],
-      totals: sum ? { balance: <Balance value={sum.sum} code={sum.code} decimals={currency?.decimals ?? 2} /> } : undefined,
+      totals: subtotals.length ? { balance: <span className={styles.subtotals}>{subtotals}</span> } : undefined,
     };
   });
 
