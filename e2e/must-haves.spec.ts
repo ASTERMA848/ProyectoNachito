@@ -141,7 +141,7 @@ test.describe("convenientes para pasar de 80", () => {
     await settle(page);
     const names = await page.getByRole("checkbox", { name: /^Seleccionar / }).evaluateAll((boxes) => boxes.map((box) => box.getAttribute("aria-label")!.replace("Seleccionar ", "")).filter((name) => name !== "todas las filas visibles"));
     test.skip(names.length < 2, "hacen falta dos contactos");
-    await page.getByRole("row", { name: new RegExp(names[0]) }).getByText(names[0], { exact: true }).first().click();
+    await page.getByRole("row").filter({ hasText: names[0] }).getByText(names[0], { exact: true }).first().click();
     await settle(page);
     await page.getByLabel("Teléfono").fill("11 0000 0000");
     await page.getByRole("group", { name: "Contactos de la lista" }).getByRole("button", { name: "Siguiente" }).click();

@@ -1,32 +1,24 @@
 # Paridad con el original
 
-Fecha: 2026-11-13 (segunda medición, después de construir los imprescindibles). Rama `feat/interfaz-azul`. Fuente: `replica/features.csv`, calculado con `parity.py` (imprescindible pesa 3, conveniente 2 y opcional 1; "a medias" cuenta la mitad; las filas `skip` no cuentan).
+Fecha: 2026-11-13 (tercera medición, después de las dos funciones convenientes). Rama `feat/interfaz-azul`. Fuente: `replica/features.csv`, calculado con `parity.py`.
 
-## Veredicto: casi publicable
+## Veredicto: se puede publicar
 
-| | primera medición | ahora |
-| --- | --- | --- |
-| Puntaje de funciones | 70,3 | **78,0 / 100** (77 funciones contadas) |
-| Imprescindibles | 34 de 42 | **42 de 42** |
-| Puntaje de diseño | sin medir | sin medir: no hay capturas del original (ver más abajo) |
-| Errores abiertos | 1 S3 | **ninguno** |
+| | primera medición | segunda | ahora |
+| --- | --- | --- | --- |
+| Puntaje de funciones | 70,3 | 78,0 | **80,2 / 100** |
+| Imprescindibles | 34 de 42 | 42 de 42 | **42 de 42** |
+| Puntaje de diseño | sin medir | sin medir | sin medir: no hay capturas del original (ver más abajo) |
+| Errores abiertos | 1 S3 | ninguno | **ninguno** |
 
-El método pide tres cosas para "se puede publicar": todos los imprescindibles, 80 puntos de funciones y ningún error S1 ni S2 abierto. Los imprescindibles y los errores ya están. **Faltan 2 puntos**: con dos funciones convenientes de las de abajo se pasa de 80. Las más baratas son "filtros por defecto al abrir una vista" y "paginador entre registros dentro del formulario".
+Las tres condiciones del método están cubiertas: todos los imprescindibles, 80 puntos o más de funciones (80,2) y ningún error S1 ni S2 abierto. **El clon pasa a "shippable."** Para llegar a "mejor que el original" falta `/replica-entrepreneur`: decidir en qué conviene superar a Odoo, no solo igualarlo.
 
 ## Qué se construyó en esta tanda
 
-| imprescindible | cómo quedó |
+| conveniente | cómo quedó |
 | --- | --- |
-| Selector de contacto con autocompletar y crear | Selector con búsqueda sin tildes, teclado y "Crear «…»" en ventas, operaciones estándar y movimientos de cuenta |
-| Buscador con sugerencias por campo | "Buscar «x» en todo" y una opción por campo, con flechas y Enter; cada búsqueda por campo es una faceta propia |
-| Agrupar por varios campos | Dos niveles (por ejemplo, estado y después cliente) en operaciones, cuentas corrientes y auditoría |
-| Campos de importe con símbolo | El símbolo de la moneda en ventas, operaciones estándar, movimientos de caja, traspasos y movimientos de cuenta |
-| Cuentas agrupadas por contacto | Un grupo por contacto con un subtotal por moneda; los saldos de la ficha del contacto abren su estado de cuenta |
-| Historial en todos los registros | Además de operaciones y contactos: cuentas, cajas, usuarios y monedas |
-| Kanban por defecto en el teléfono | Ya estaba hecho en operaciones (la matriz lo marcaba mal); ahora tiene su prueba |
-| Menú de usuario con perfil | "Mi perfil" abre su propia página |
-
-De paso se cerraron dos errores: BUG-004 (la búsqueda distinguía tildes) y BUG-007 (un grupo traía filas de otros valores del mismo campo cuando el filtro tenía varios). Ver `replica/bugs.md`.
+| Filtros por defecto al abrir una vista | Auditoría abre en "Últimos 7 días"; se ve como una faceta común y se puede quitar sin que vuelva. Un enlace con su propia búsqueda (por ejemplo, desde la ficha de un usuario) no recibe el filtro por defecto |
+| Paginador entre registros dentro del formulario | "2 / 16" con anterior y siguiente en operaciones, contactos, cuentas y usuarios. Recorre el mismo orden que se veía en la lista al abrir el registro (se guarda por pestaña del navegador); respeta el aviso de cambios sin guardar |
 
 ## Por área, de la más floja a la más completa
 
@@ -35,21 +27,21 @@ De paso se cerraron dos errores: BUG-004 (la búsqueda distinguía tildes) y BUG
 | actividades | 0 | 1 |
 | historial | 33,3 | 5 |
 | auditoría | 60 | 2 |
-| búsqueda | 63,2 | 8 |
 | kanban | 66,7 | 6 |
 | lista | 69,2 | 13 |
 | navegación | 73,7 | 9 |
+| búsqueda | 73,7 | 8 |
 | acceso | 75 | 2 |
 | campos | 85,7 | 5 |
-| formulario | 87,5 | 9 |
 | ajustes | 90 | 4 |
+| formulario | 95,8 | 9 |
 | panel de control, tablero, cuentas, general y móvil | 100 | 13 |
 
 ## Lo que falta, en orden de construcción
 
-### Convenientes (con dos de estas se pasa de 80)
+### Convenientes
 
-Filtros por defecto al abrir una vista, paginador entre registros dentro del formulario, bloquear el borrado de registros auditados, favoritos de búsqueda, filtros por período con flechas, separador decimal con punto o coma, notas internas y adjuntos, columnas opcionales, atajos de teclado y exportar eligiendo campos (y en XLSX).
+Bloquear el borrado de registros auditados, favoritos de búsqueda, filtros por período con flechas, separador decimal con punto o coma, notas internas y adjuntos, columnas opcionales, atajos de teclado con superposición al mantener Alt, exportar eligiendo campos (y en XLSX).
 
 ### Opcionales
 
@@ -96,12 +88,12 @@ Errores en pantalla: los dos marcan el campo con problema y muestran un aviso. E
 
 Lo que el original recuerda y el clon no: la vista elegida (lista o kanban) y los filtros entre una visita y otra. El clon los guarda en la dirección de la página, así que se conservan al volver atrás o al compartir el enlace, pero no al entrar de nuevo desde el menú.
 
-## Lo que conviene construir ahora
+## Lo que conviene construir después
 
-1. **Filtros por defecto al abrir una vista** (por ejemplo, Operaciones abre en "Pendientes"). Con esta y la siguiente se pasa de 80.
-2. **Paginador entre registros dentro del formulario** (anterior y siguiente sin volver a la lista).
-3. **Bloquear el borrado de registros auditados**: hoy un administrador puede eliminar una operación; el original solo deja cancelar o archivar.
-4. **Notas internas en cada ficha**: es lo que más pesa en el área de historial.
-5. **Favoritos de búsqueda**: guardar la búsqueda actual con nombre, predeterminada o compartida.
+1. **Notas internas en cada ficha**: es lo que más pesa en el área de historial.
+2. **Bloquear el borrado de registros auditados**: hoy un administrador puede eliminar una operación; el original solo deja cancelar o archivar.
+3. **Favoritos de búsqueda**: guardar la búsqueda actual con nombre, predeterminada o compartida.
+4. **Adjuntos en el registro**: hoy no están en ninguna pantalla.
+5. **Columnas opcionales**: cada usuario elige qué columnas ve en una lista.
 
-Después, `/replica-entrepreneur` para decidir en qué conviene ser mejor que el original, y `/replica-brand` antes de publicar.
+Ninguna de estas bloquea publicar. El siguiente paso del método es `/replica-entrepreneur`, para decidir en qué conviene ser mejor que el original, y después `/replica-brand` antes de publicar.

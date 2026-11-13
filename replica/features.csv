@@ -17,7 +17,7 @@ Facetas de búsqueda que se quitan con un clic,búsqueda,must,yes,yes,
 Filtros predefinidos en grupos (O dentro del grupo e Y entre grupos),búsqueda,must,yes,yes,Reemplaza los filtros avanzados de estado y fecha
 Filtros por período con flechas para cambiar de período,búsqueda,should,yes,no,Las flechas son novedad de Odoo 20
 Agrupar por uno o varios campos,búsqueda,must,yes,yes,"Dos niveles (groupBy=a,b) en operaciones, cuentas y auditoría"
-Filtros por defecto al abrir una vista,búsqueda,should,yes,no,Ej.: operaciones pendientes
+Filtros por defecto al abrir una vista,búsqueda,should,yes,yes,Auditoría abre en los últimos 7 días; se ve como faceta y se quita
 Favoritos con nombre y opciones de predeterminado y compartido,búsqueda,should,yes,no,Requiere guardar favoritos por usuario
 Editor de filtro personalizado con reglas,búsqueda,could,yes,no,
 Lista con columnas ordenables,lista,must,yes,yes,
@@ -45,7 +45,7 @@ Botones inteligentes con contador,formulario,must,yes,yes,Contacto: operaciones 
 Pestañas dentro del formulario,formulario,must,yes,yes,
 Líneas embebidas editables con Agregar línea,formulario,must,yes,yes,Ítems de la venta distribuida
 Aviso de cambios sin guardar con guardar o descartar,formulario,must,yes,yes,Comportamiento exacto a confirmar con capturas
-Paginador entre registros dentro del formulario,formulario,should,yes,no,A confirmar con capturas
+Paginador entre registros dentro del formulario,formulario,should,yes,yes,"RecordPager (anterior/siguiente) en operaciones, contactos, cuentas y usuarios, respeta cambios sin guardar"
 Cinta sobre la hoja para archivado o cancelado,formulario,could,yes,no,A confirmar con capturas
 Confirmación antes de acciones sensibles,formulario,must,yes,yes,"Eliminar una operación, reabrir una completada"
 Selector de relación con autocompletar y crear,campos,must,yes,yes,"Combobox con búsqueda sin tildes y ""Crear «…»"" en ventas, operaciones y movimientos de cuenta"

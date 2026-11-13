@@ -21,4 +21,6 @@ test("F07-H1 y E1 exportar contactos seleccionados; una celda que empieza con = 
   // La celda no puede quedar como fórmula para la planilla.
   expect(text).not.toMatch(/(^|;)"?=1\+1/m);
   expect(text).toContain("Prueba");
+  // No dejar el contacto de prueba para que no aparezca en otras pruebas ni en la lista real.
+  await request.delete(`/api/contacts/${(await created.json()).id}`);
 });

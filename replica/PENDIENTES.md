@@ -20,7 +20,7 @@ Para retomar hay que decidir:
 - `.env.development.local` (no se versiona) apunta a esa base. **No usar `.env` (Neon) para desarrollo ni pruebas.**
 - Servidor: `npm run dev` (puerto 3000).
 - Datos de prueba: `npm run db:seed-demo` (se niega a correr contra una base que no sea la local). Usuarios: `admin`, `operador` y `auditora`; las contraseñas están en `prisma/seed.js` y `scripts/seed-demo.cjs`.
-- Pruebas: `npm run test:e2e` (58 pruebas, todas pasan). Usa el Chrome instalado; `E2E_CHANNEL` permite cambiarlo.
+- Pruebas: `npm run test:e2e` (61 pruebas, todas pasan). Usa el Chrome instalado; `E2E_CHANNEL` permite cambiarlo.
 - Los contenedores `odoo-ee-web-1` y `odoo-ee-db-1` son de otro proyecto: no se tocaron.
 
 ## Errores abiertos
@@ -38,16 +38,11 @@ Ninguno. BUG-004 (búsqueda con tildes) y BUG-007 (grupos con filtros del mismo 
 
 ## Funciones que faltan
 
-Fuente: `replica/features.csv`. **Imprescindibles: 42 de 42.** Paridad de funciones 78,0 / 100: faltan 2 puntos para el umbral de 80 del método. Detalle y orden en `replica/parity.md`.
+Fuente: `replica/features.csv`. **Imprescindibles: 42 de 42. Paridad de funciones: 80,2 / 100 — por encima del umbral de 80 del método.** El clon es "shippable". Detalle en `replica/parity.md`.
 
-### Convenientes (con dos de estas se pasa de 80)
+### Convenientes
 
-- Filtros por defecto al abrir una vista.
-- Paginador entre registros dentro del formulario.
-- Bloquear el borrado de registros auditados (hoy se puede eliminar una operación).
-- Notas internas y adjuntos.
-- Favoritos de búsqueda.
-- Filtros por período con flechas, separador decimal con punto o coma, columnas opcionales, atajos de teclado y exportar eligiendo campos (y en XLSX).
+Bloquear el borrado de registros auditados, favoritos de búsqueda, filtros por período con flechas, separador decimal con punto o coma, notas internas y adjuntos, columnas opcionales, atajos de teclado y exportar eligiendo campos (y en XLSX).
 
 ### Opcionales
 
@@ -56,8 +51,8 @@ Paleta de comandos (Ctrl+K), arrastrar tarjetas, creación rápida en kanban, pl
 ## Siguientes pasos del método
 
 1. Hecho el 2026-11-13: `/replica-diff`. Paridad de funciones 70,3 / 100; 34 de 42 imprescindibles. Detalle y las cinco prioridades en `replica/parity.md`. Las capturas del clon están en `replica/clone-screens/`; faltan las del original para medir el diseño.
-2. Hecho el 2026-11-13: `/replica-build` de las 8 imprescindibles que faltaban. Paridad 78,0 con 42 de 42.
-3. Siguiente: dos funciones convenientes para pasar de 80 (las primeras de `replica/parity.md`). Después, `/replica-entrepreneur`, `/replica-brand` (nombre y marca propios; correr la búsqueda de restos del original) y recién ahí el lanzamiento.
+2. Hecho el 2026-11-13: `/replica-build` de las 8 imprescindibles, y después las 2 convenientes que faltaban para pasar de 80. Paridad final: 80,2 con 42 de 42 imprescindibles. **El clon es publicable según el método** (`replica/parity.md`).
+3. Siguiente: `/replica-entrepreneur` (en qué conviene ser mejor que el original) y después `/replica-brand` antes de publicar. Después, `/replica-entrepreneur`, `/replica-brand` (nombre y marca propios; correr la búsqueda de restos del original) y recién ahí el lanzamiento.
 
 ## Documentos relacionados
 

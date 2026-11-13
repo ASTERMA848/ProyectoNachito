@@ -15,6 +15,7 @@ Rama `feat/interfaz-azul`. Nada subido al remoto.
 | S15, S16, S17 | Configuración, usuarios y monedas | 2026-10-23 | hecho | Buscador de ajustes; la confirmación con contraseña al borrar una moneda sigue siendo solo de la interfaz, como antes | Borrar una moneda fallaba con error 500 por la caja que se crea sola; un administrador podía quitarse su propio rol y dejar el sistema sin administradores; cualquier sesión, incluso de auditoría, podía crear y borrar etiquetas |
 | S01, S02 | Inicio de sesión e inicio | 2026-10-23 | hecho | Llave de acceso (opcional) | Al venir del login el diseño principal mostraba la barra sin usuario cargado y fallaba; los títulos h1 a h3 toman el tamaño de las variables `--ui-heading-*`, no de `font-size` |
 | — | Imprescindibles pendientes (segunda tanda) | 2026-11-13 | hecho | — | La búsqueda sin tildes se resolvió con `translate()` de PostgreSQL para no depender de la extensión `unaccent`; agrupar en dos niveles destapó que el filtro de un grupo se sumaba con O a los del mismo campo (BUG-007); el kanban en el teléfono ya estaba hecho y la matriz lo marcaba mal |
+| — | Convenientes para pasar de 80 (filtros por defecto, paginador entre registros) | 2026-11-13 | hecho | — | Una prueba de exportación dejaba contactos de prueba sin borrar en la base local (12 acumulados); se corrigió la prueba y se limpiaron |
 
 ## Notas
 
