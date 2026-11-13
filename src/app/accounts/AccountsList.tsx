@@ -21,7 +21,7 @@ import {
 } from "@/components/ui";
 import { useShellUser } from "@/components/shell/AppShell";
 import { useUiFeedback } from "@/components/shell/UiFeedback";
-import { buildFacets, buildPanel, facetRemoval, fetchList, toggleFilter, useListUrlState, type FilterGroup, type GroupOption, clearSearch, searchChange, type SearchField } from "@/components/shell/list-state";
+import { buildFacets, buildPanel, facetRemoval, fetchList, toggleFilter, useListUrlState, type FilterGroup, type GroupOption, clearSearch, searchChange, type SearchField, toggleGroupBy, useGroupTree, subgroupKey } from "@/components/shell/list-state";
 import { can } from "@/lib/permissions";
 import { downloadCsv } from "@/lib/csv";
 import type { AccountListItem, AccountListResult } from "@/lib/resources/accounts";
@@ -92,18 +92,16 @@ export default function AccountsList() {
   }, [baseQuery, groupBy, offset]);
   const { data, error, isLoading, mutate } = useSWR(listUrl, fetchList<AccountListResult>, { keepPreviousData: true });
 
-  const groupFilters = useMemo(() => (groupBy && data?.groups ? data.groups.filter((group) => openGroups.has(group.key)).map((group) => group.filter) : []), [groupBy, data, openGroups]);
-  const { data: groupRows, mutate: mutateGroups } = useSWR(groupFilters.length ? ["account-groups", baseQuery, ...groupFilters] : null, async () => {
-    const entries = await Promise.all(
-      groupFilters.map(async (filter) => {
-        const params = new URLSearchParams(baseQuery);
-        params.append("filter", filter);
-        params.set("limit", String(PAGE_SIZE));
-        const result = await fetchList<AccountListResult>(`/api/accounts?${params}`);
-        return [filter, result.accounts] as const;
-      }),
-    );
-    return Object.fromEntries(entries);
+  // Grupos y subgrupos que se abren a pedido (hasta dos niveles de agrupación).
+  const tree = useGroupTree<AccountListResult["groups"] extends (infer G)[] | null ? G : never, AccountListResult["accounts"][number]>({
+    endpoint: "/api/accounts",
+    baseQuery,
+    groupKeys: list.groupKeys,
+    topGroups: data?.groups,
+    open: openGroups,
+    limit: PAGE_SIZE,
+    readRows: (result) => (result as AccountListResult).accounts,
+    readGroups: (result) => (result as AccountListResult).groups,
   });
 
   const canWrite = can(user, "accounts.write");
@@ -112,7 +110,7 @@ export default function AccountsList() {
   const panelSections = buildPanel(list, filterGroups, GROUP_OPTIONS, openPanelGroups);
 
   const rows = data?.accounts ?? [];
-  const visible = groupBy ? Object.values(groupRows ?? {}).flat() : rows;
+  const visible = groupBy ? Object.values(tree.rows).flat() : rows;
   const selectedAccounts = visible.filter((account) => selected.has(account.id));
 
   const exportSelected = () => {
@@ -131,21 +129,29 @@ export default function AccountsList() {
     { key: "balance", label: "Saldo", align: "end", sortable: true, render: (account) => <Balance value={account.balance} code={account.currency.code} decimals={account.currency.decimals} /> },
   ];
 
-  const tableGroups: TableGroup<AccountListItem>[] | undefined = data?.groups?.map((group) => {
-    // Subtotal por moneda: un contacto puede tener saldo en varias.
-    const subtotals = group.sums.map((sum) => {
+  // Subtotal por moneda: un contacto puede tener saldo en varias.
+  const subtotalsOf = (sums: { currencyId: string; code: string; sum: number }[]) => {
+    const parts = sums.map((sum) => {
       const currency = currencyData?.currencies.find((item) => item.id === sum.currencyId);
       return <Balance key={sum.currencyId} value={sum.sum} code={sum.code} decimals={currency?.decimals ?? 2} />;
     });
-    return {
-      key: group.key,
-      label: group.label,
-      count: group.count,
-      expanded: openGroups.has(group.key),
-      rows: groupRows?.[group.filter] ?? [],
-      totals: subtotals.length ? { balance: <span className={styles.subtotals}>{subtotals}</span> } : undefined,
-    };
-  });
+    return parts.length ? { balance: <span className={styles.subtotals}>{parts}</span> } : undefined;
+  };
+
+  const tableGroups: TableGroup<AccountListItem>[] | undefined = data?.groups?.map((group) => ({
+    key: group.key,
+    label: group.label,
+    count: group.count,
+    expanded: openGroups.has(group.key),
+    rows: tree.rows[group.key] ?? [],
+    totals: subtotalsOf(group.sums),
+    subgroups: list.groupKeys[1]
+      ? (tree.subgroups[group.key] ?? []).map((child) => {
+          const key = subgroupKey(group.key, child.key);
+          return { key, label: child.label, count: child.count, expanded: openGroups.has(key), rows: tree.rows[key] ?? [], totals: subtotalsOf(child.sums) };
+        })
+      : undefined,
+  }));
 
   const empty = hasSearch ? (
     <EmptyState icon={<Inbox size={iconSize.lg} />} title="Ninguna cuenta coincide con la búsqueda" action={<Button onClick={() => update(clearSearch)}>Quitar filtros</Button>}>
@@ -197,7 +203,7 @@ export default function AccountsList() {
               <FilterPanel
                 sections={panelSections}
                 onToggle={(sectionId, optionId) =>
-                  sectionId === "groupBy" ? update({ groupBy: groupBy === optionId ? null : optionId }) : update({ filter: toggleFilter(filters, optionId) })
+                  sectionId === "groupBy" ? update(toggleGroupBy(list, optionId)) : update({ filter: toggleFilter(filters, optionId) })
                 }
                 onExpand={(_section, id) =>
                   setOpenPanelGroups((current) => {
@@ -271,7 +277,7 @@ export default function AccountsList() {
         onClose={() => setDialogOpen(false)}
         onSaved={async () => {
           setDialogOpen(false);
-          await Promise.all([mutate(), mutateGroups()]);
+          await Promise.all([mutate(), tree.reload()]);
         }}
       />
     </div>

@@ -118,7 +118,7 @@ export const operationListInclude = {
   },
 } satisfies Prisma.OperationInclude;
 
-type GroupRow = { key: string; filter: string; label: string; count: number; origin: CurrencySum[]; dest: CurrencySum[] };
+export type GroupRow = { key: string; filter: string; label: string; count: number; origin: CurrencySum[]; dest: CurrencySum[] };
 
 // Prisma no tipa bien un "by" dinámico: se arma por campo y se lee el resultado como filas planas.
 type GroupedRow = Record<string, any> & { _count?: { _all: number }; _sum?: Record<string, number | null> };

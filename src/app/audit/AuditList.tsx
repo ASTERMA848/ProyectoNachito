@@ -23,7 +23,7 @@ import {
   type TableGroup,
 } from "@/components/ui";
 import { useUiFeedback } from "@/components/shell/UiFeedback";
-import { buildFacets, buildPanel, facetRemoval, fetchList, toggleFilter, useListUrlState, type FilterGroup, type GroupOption, clearSearch, searchChange } from "@/components/shell/list-state";
+import { buildFacets, buildPanel, facetRemoval, fetchList, toggleFilter, useListUrlState, type FilterGroup, type GroupOption, clearSearch, searchChange, toggleGroupBy, useGroupTree, subgroupKey } from "@/components/shell/list-state";
 import { downloadCsv } from "@/lib/csv";
 import { dayKey, formatDateOnly, formatTime } from "@/lib/agency-time";
 import { AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-labels";
@@ -185,18 +185,16 @@ export default function AuditList() {
   }, [baseQuery, groupBy, offset]);
   const { data, error, isLoading, mutate } = useSWR(listUrl, fetchList<AuditListResult>, { keepPreviousData: true });
 
-  const groupFilters = useMemo(() => (groupBy && data?.groups ? data.groups.filter((group) => openGroups.has(group.key)).map((group) => group.filter) : []), [groupBy, data, openGroups]);
-  const { data: groupRows } = useSWR(groupFilters.length ? ["audit-groups", baseQuery, ...groupFilters] : null, async () => {
-    const entries = await Promise.all(
-      groupFilters.map(async (filter) => {
-        const params = new URLSearchParams(baseQuery);
-        params.append("filter", filter);
-        params.set("limit", String(PAGE_SIZE));
-        const result = await fetchList<AuditListResult>(`/api/audit?${params}`);
-        return [filter, result.logs] as const;
-      }),
-    );
-    return Object.fromEntries(entries);
+  // Grupos y subgrupos que se abren a pedido (hasta dos niveles de agrupación).
+  const tree = useGroupTree<AuditListResult["groups"] extends (infer G)[] | null ? G : never, AuditListResult["logs"][number]>({
+    endpoint: "/api/audit",
+    baseQuery,
+    groupKeys: list.groupKeys,
+    topGroups: data?.groups,
+    open: openGroups,
+    limit: PAGE_SIZE,
+    readRows: (result) => (result as AuditListResult).logs,
+    readGroups: (result) => (result as AuditListResult).groups,
   });
 
   const hasSearch = filters.length > 0 || terms.length > 0 || list.fieldTerms.length > 0;
@@ -204,7 +202,7 @@ export default function AuditList() {
   const panelSections = buildPanel(list, filterGroups, GROUP_OPTIONS, openPanelGroups);
 
   const rows = data?.logs ?? [];
-  const visible = groupBy ? Object.values(groupRows ?? {}).flat() : rows;
+  const visible = groupBy ? Object.values(tree.rows).flat() : rows;
   const selectedRows = visible.filter((row) => selected.has(row.id));
 
   const exportSelected = () => {
@@ -228,7 +226,13 @@ export default function AuditList() {
     label: group.label,
     count: group.count,
     expanded: openGroups.has(group.key),
-    rows: groupRows?.[group.filter] ?? [],
+    rows: tree.rows[group.key] ?? [],
+    subgroups: list.groupKeys[1]
+      ? (tree.subgroups[group.key] ?? []).map((child) => {
+          const key = subgroupKey(group.key, child.key);
+          return { key, label: child.label, count: child.count, expanded: openGroups.has(key), rows: tree.rows[key] ?? [] };
+        })
+      : undefined,
   }));
 
   const empty = hasSearch ? (
@@ -274,7 +278,7 @@ export default function AuditList() {
               <FilterPanel
                 sections={panelSections}
                 onToggle={(sectionId, optionId) =>
-                  sectionId === "groupBy" ? update({ groupBy: groupBy === optionId ? null : optionId }) : update({ filter: toggleFilter(filters, optionId) })
+                  sectionId === "groupBy" ? update(toggleGroupBy(list, optionId)) : update({ filter: toggleFilter(filters, optionId) })
                 }
                 onExpand={(_section, id) =>
                   setOpenPanelGroups((current) => {

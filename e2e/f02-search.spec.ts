@@ -1,3 +1,4 @@
+import type { Page } from "@playwright/test";
 import { asRole, expect, expectAccessible, settle, test } from "./fixtures";
 
 // F02 buscar, filtrar y agrupar en Operaciones.
@@ -100,4 +101,35 @@ test("F02-E7 la búsqueda ignora tildes y mayúsculas en operaciones, contactos 
   // Los comodines de SQL se buscan como texto.
   expect(await total("/api/contacts?q=%25")).toBe(0);
   expect((await request.get("/api/operations?qf=clave:x")).status()).toBe(400);
+});
+
+// Botón de un grupo de la tabla: "Pendiente (17)".
+const escapeRegex = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const groupButton = (page: Page, label: string) => page.getByRole("button", { name: new RegExp(`^${escapeRegex(label)}\\s*\\(\\d+\\)$`) });
+
+test("F02-E8 agrupar por dos campos: estado y después cliente", async ({ page, request }) => {
+  await page.goto("/operations?groupBy=state,client");
+  await settle(page);
+  await expect(page.getByRole("list", { name: "Filtros aplicados" })).toContainText("Estado > Cliente");
+  const top = await (await request.get("/api/operations?groupBy=state")).json();
+  const pending = top.groups.find((group: { key: string }) => group.key === "PENDING");
+  await groupButton(page, pending.label).click();
+  // Los subgrupos de clientes suman lo mismo que el grupo de arriba.
+  const sub = await (await request.get(`/api/operations?filter=${pending.filter}&groupBy=client&limit=1`)).json();
+  expect(sub.groups.reduce((total: number, group: { count: number }) => total + group.count, 0)).toBe(pending.count);
+  const first = sub.groups[0];
+  await groupButton(page, first.label).click();
+  await expect(page.getByRole("checkbox", { name: /^Seleccionar OP-/ })).toHaveCount(Math.min(first.count, 80));
+  await expectAccessible(page, "S04 lista agrupada en dos niveles");
+});
+
+test("F02-E9 un grupo abre solo sus filas aunque el filtro tenga varios valores del mismo campo (BUG-007)", async ({ page, request }) => {
+  const base = "filter=state:pending&filter=state:completed";
+  const grouped = await (await request.get(`/api/operations?${base}&groupBy=state`)).json();
+  const completed = grouped.groups.find((group: { key: string }) => group.key === "COMPLETED");
+  test.skip(!completed, "no hay operaciones completadas");
+  await page.goto(`/operations?${base}&groupBy=state`);
+  await settle(page);
+  await groupButton(page, completed.label).click();
+  await expect(page.getByRole("checkbox", { name: /^Seleccionar OP-/ })).toHaveCount(Math.min(completed.count, 80));
 });

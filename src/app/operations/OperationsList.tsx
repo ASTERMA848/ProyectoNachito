@@ -28,14 +28,29 @@ import {
 } from "@/components/ui";
 import { useShellUser } from "@/components/shell/AppShell";
 import { useUiFeedback } from "@/components/shell/UiFeedback";
-import { buildFacets, buildPanel, facetRemoval, fetchList, toggleFilter, useListUrlState, type FilterGroup, type GroupOption, clearSearch, searchChange, type SearchField } from "@/components/shell/list-state";
+import {
+  buildFacets,
+  buildPanel,
+  clearSearch,
+  facetRemoval,
+  fetchList,
+  searchChange,
+  subgroupKey,
+  toggleFilter,
+  toggleGroupBy,
+  useGroupTree,
+  useListUrlState,
+  type FilterGroup,
+  type GroupOption,
+  type SearchField,
+} from "@/components/shell/list-state";
 import { can } from "@/lib/permissions";
 import { formatAmount, formatMoney } from "@/lib/format-currency";
 import { formatDateOnly } from "@/lib/agency-time";
 import { downloadCsv } from "@/lib/csv";
 import { OPERATION_STATE_TONES, OPERATION_STATES, OPERATION_TYPES } from "@/lib/operation-labels";
 import type { CurrencySum } from "@/lib/list-query";
-import type { OperationListResult } from "@/lib/resources/operations";
+import type { GroupRow, OperationListResult } from "@/lib/resources/operations";
 import { GROUP_ROW_LIMIT, useGroupRows } from "./useGroupRows";
 import styles from "./operations.module.css";
 
@@ -152,7 +167,18 @@ export default function OperationsList() {
 
   // En kanban todas las columnas cargan sus tarjetas; en lista, solo los grupos abiertos.
   const kanbanKeys = useMemo(() => new Set((view === "kanban" ? groups : [])?.map((group) => group.key) ?? []), [view, groups]);
-  const { byKey, reload } = useGroupRows(baseQuery, groups, view === "kanban" ? kanbanKeys : openGroups);
+  // Kanban: una columna por grupo con sus tarjetas. Lista: grupos y subgrupos que se abren a pedido.
+  const { byKey, reload } = useGroupRows(baseQuery, view === "kanban" ? groups : null, kanbanKeys);
+  const tree = useGroupTree<GroupRow, Op>({
+    endpoint: "/api/operations",
+    baseQuery,
+    groupKeys: list.groupKeys,
+    topGroups: view === "list" ? groups : null,
+    open: openGroups,
+    limit: GROUP_ROW_LIMIT,
+    readRows: (result) => (result as OperationListResult).operations,
+    readGroups: (result) => (result as OperationListResult).groups,
+  });
 
   const canWrite = can(user, "operations.write");
   const canDelete = can(user, "operations.delete");
@@ -161,7 +187,7 @@ export default function OperationsList() {
   const facets = buildFacets(list, FILTER_GROUPS, GROUP_OPTIONS, {}, SEARCH_FIELDS);
   const panelSections = buildPanel(list, FILTER_GROUPS, GROUP_OPTIONS, openPanelGroups);
   const onPanelToggle = (sectionId: string, optionId: string) => {
-    if (sectionId === "groupBy") return update({ groupBy: groupBy === optionId ? null : optionId });
+    if (sectionId === "groupBy") return update(toggleGroupBy(list, optionId));
     update({ filter: toggleFilter(filters, optionId) });
   };
   const onPanelExpand = (_sectionId: string, groupId: string) =>
@@ -172,7 +198,11 @@ export default function OperationsList() {
       return next;
     });
 
-  const visibleRows: Op[] = activeGroup ? Object.values(byKey).flatMap((group) => group.rows) : data?.operations ?? [];
+  const visibleRows: Op[] = !activeGroup
+    ? data?.operations ?? []
+    : view === "kanban"
+      ? Object.values(byKey).flatMap((group) => group.rows)
+      : Object.values(tree.rows).flat();
   const selectedOps = visibleRows.filter((op) => selected.has(op.id));
 
   const exportSelected = () => {
@@ -207,6 +237,7 @@ export default function OperationsList() {
     }
     setSelected(new Set());
     reload();
+    void tree.reload();
     await mutate();
     if (failed) notify(`No se pudieron eliminar ${failed} operaciones`, "danger", "Revisá los permisos o probá de nuevo.");
     else notify("Operaciones eliminadas", "success", "Los saldos quedaron ajustados.");
@@ -233,8 +264,21 @@ export default function OperationsList() {
     label: group.label,
     count: group.count,
     expanded: openGroups.has(group.key),
-    rows: byKey[group.key]?.rows ?? [],
+    rows: tree.rows[group.key] ?? [],
     totals: { origin: joinSums(group.origin), dest: joinSums(group.dest) },
+    subgroups: list.groupKeys[1]
+      ? (tree.subgroups[group.key] ?? []).map((child) => {
+          const key = subgroupKey(group.key, child.key);
+          return {
+            key,
+            label: child.label,
+            count: child.count,
+            expanded: openGroups.has(key),
+            rows: tree.rows[key] ?? [],
+            totals: { origin: joinSums(child.origin), dest: joinSums(child.dest) },
+          };
+        })
+      : undefined,
   }));
 
   const toggleGroup = (key: string) =>

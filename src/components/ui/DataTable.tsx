@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, type ReactNode } from "react";
+import { Fragment, type CSSProperties, type ReactNode } from "react";
 import { ArrowDown, ArrowUp, ChevronDown, ChevronRight } from "lucide-react";
 import { Checkbox } from "./Checkbox";
 import { cx } from "./cx";
@@ -24,7 +24,13 @@ export type TableGroup<T> = {
   expanded: boolean;
   totals?: Record<string, ReactNode>;
   rows?: T[];
+  // Segundo nivel de agrupación: si hay subgrupos, el grupo abierto los muestra en lugar de filas.
+  subgroups?: TableGroup<T>[];
 };
+
+// Filas visibles de un grupo abierto, bajando a sus subgrupos abiertos.
+const openRows = <T,>(group: TableGroup<T>): T[] =>
+  !group.expanded ? [] : group.subgroups ? group.subgroups.flatMap(openRows) : group.rows ?? [];
 
 type DataTableProps<T> = {
   caption: string;
@@ -67,7 +73,7 @@ export function DataTable<T>({
   loading = false,
   empty,
 }: DataTableProps<T>) {
-  const visibleRows = groups ? groups.flatMap((group) => (group.expanded ? group.rows ?? [] : [])) : rows ?? [];
+  const visibleRows = groups ? groups.flatMap(openRows) : rows ?? [];
   const visibleKeys = visibleRows.map(rowKey);
   const selectedCount = visibleKeys.filter((key) => selected.has(key)).length;
   const columnCount = columns.length + (selectable ? 1 : 0);
@@ -112,6 +118,34 @@ export function DataTable<T>({
       </tr>
     );
   };
+
+  const renderGroup = (group: TableGroup<T>, depth: number): ReactNode => (
+    <Fragment key={group.key}>
+      <tr className={cx(styles.groupRow, depth > 0 && styles.subgroupRow)}>
+        {columns.map((column, index) =>
+          index === 0 ? (
+            <th key={column.key} scope="rowgroup" colSpan={selectable ? 2 : 1} className={styles.start}>
+              <button
+                type="button"
+                className={styles.groupToggle}
+                // La sangría marca el nivel: el valor es un número de pasos, el tamaño sale del token.
+                style={depth ? ({ "--group-depth": depth } as CSSProperties) : undefined}
+                aria-expanded={group.expanded}
+                onClick={() => onToggleGroup?.(group.key)}
+              >
+                {group.expanded ? <ChevronDown size={iconSize.sm} /> : <ChevronRight size={iconSize.sm} />}
+                {group.label}
+                <span className={styles.count}>({group.count})</span>
+              </button>
+            </th>
+          ) : (
+            <td key={column.key} className={alignClass(column)}>{group.totals?.[column.key]}</td>
+          ),
+        )}
+      </tr>
+      {group.expanded && (group.subgroups ? group.subgroups.map((subgroup) => renderGroup(subgroup, depth + 1)) : group.rows?.map(renderRow))}
+    </Fragment>
+  );
 
   return (
     <div className={styles.wrap}>
@@ -169,32 +203,7 @@ export function DataTable<T>({
                 ))}
               </tr>
             ))}
-          {!loading &&
-            groups?.map((group) => (
-              <Fragment key={group.key}>
-                <tr className={styles.groupRow}>
-                  {columns.map((column, index) =>
-                    index === 0 ? (
-                      <th key={column.key} scope="rowgroup" colSpan={selectable ? 2 : 1} className={styles.start}>
-                        <button
-                          type="button"
-                          className={styles.groupToggle}
-                          aria-expanded={group.expanded}
-                          onClick={() => onToggleGroup?.(group.key)}
-                        >
-                          {group.expanded ? <ChevronDown size={iconSize.sm} /> : <ChevronRight size={iconSize.sm} />}
-                          {group.label}
-                          <span className={styles.count}>({group.count})</span>
-                        </button>
-                      </th>
-                    ) : (
-                      <td key={column.key} className={alignClass(column)}>{group.totals?.[column.key]}</td>
-                    ),
-                  )}
-                </tr>
-                {group.expanded && group.rows?.map(renderRow)}
-              </Fragment>
-            ))}
+          {!loading && groups?.map((group) => renderGroup(group, 0))}
           {!loading && !groups && visibleRows.map(renderRow)}
           {isEmpty && (
             <tr>

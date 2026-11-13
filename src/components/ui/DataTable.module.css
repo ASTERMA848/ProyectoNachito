@@ -114,6 +114,8 @@
   display: inline-flex;
   align-items: center;
   gap: var(--ui-space-6);
+  /* Sangría de los subgrupos: un paso por nivel. */
+  margin-left: calc(var(--group-depth, 0) * var(--ui-space-20));
   padding: 0;
   border: 0;
   background: none;
@@ -158,4 +160,11 @@
   height: auto;
   padding: 0;
   white-space: normal;
+}
+
+/* Los subgrupos se distinguen del grupo de arriba con un fondo más suave. */
+.subgroupRow th,
+.subgroupRow td {
+  background: var(--ui-surface);
+  font-weight: var(--ui-fw-regular);
 }

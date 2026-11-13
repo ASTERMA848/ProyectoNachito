@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useMemo } from "react";
+import useSWR from "swr";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Filter, Layers } from "lucide-react";
 import { iconSize, type Facet, type PanelSection, type SortState } from "@/components/ui";
@@ -13,6 +14,8 @@ export type GroupOption = { id: string; label: string };
 
 export type ListChanges = { filter?: string[]; q?: string[]; qf?: string[]; groupBy?: string | null; sort?: string | null; offset?: number; view?: string };
 export type SearchField = { id: string; label: string };
+
+export const MAX_GROUP_LEVELS = 2;
 
 export function useListUrlState(defaultSort: SortState, onSearchChange?: () => void) {
   const router = useRouter();
@@ -28,7 +31,9 @@ export function useListUrlState(defaultSort: SortState, onSearchChange?: () => v
       terms: params.getAll("q"),
       // Búsquedas en un campo: "client:Benítez".
       fieldTerms: params.getAll("qf"),
-      groupBy: params.get("groupBy"),
+      // groupBy=state,client agrupa en dos niveles; la API recibe un nivel por pedido.
+      groupKeys: (params.get("groupBy") ?? "").split(",").filter(Boolean).slice(0, MAX_GROUP_LEVELS),
+      groupBy: params.get("groupBy")?.split(",")[0] || null,
       sort: sortKey ? { key: sortKey, dir: sortDir === "asc" ? "asc" : "desc" } as SortState : defaultSort,
       offset: Math.max(0, Number(params.get("offset")) || 0),
       view: params.get("view"),
@@ -77,7 +82,7 @@ export function useListUrlState(defaultSort: SortState, onSearchChange?: () => v
   return { ...state, update, baseQuery };
 }
 
-type FacetState = { filters: string[]; terms: string[]; fieldTerms: string[]; groupBy: string | null };
+type FacetState = { filters: string[]; terms: string[]; fieldTerms: string[]; groupBy: string | null; groupKeys: string[] };
 
 // Una faceta por término, una por grupo de filtros (valores unidos con "o") y una por agrupación.
 export function buildFacets(
@@ -101,7 +106,9 @@ export function buildFacets(
       kind: "filter" as const,
       values: state.filters.filter((filter) => filter.startsWith(`${groupId}:`)).map((filter) => labels.get(filter) ?? extraLabels[filter] ?? filter),
     })),
-    ...(state.groupBy ? [{ id: "groupBy", kind: "group" as const, values: [groupOptions.find((option) => option.id === state.groupBy)?.label ?? state.groupBy] }] : []),
+    ...(state.groupKeys.length
+      ? [{ id: "groupBy", kind: "group" as const, values: [state.groupKeys.map((key) => groupOptions.find((option) => option.id === key)?.label ?? key).join(" > ")] }]
+      : []),
   ];
 }
 
@@ -124,6 +131,23 @@ export function searchChange(state: FacetState, text: string, field: string | nu
 
 // Quita todo lo que se buscó y filtró.
 export const clearSearch: ListChanges = { filter: [], q: [], qf: [] };
+
+// Agregar o quitar un campo de agrupación: se suma al final (hasta dos niveles), como un "y después por".
+export function toggleGroupBy(state: FacetState, id: string): ListChanges {
+  const keys = state.groupKeys.includes(id) ? state.groupKeys.filter((key) => key !== id) : [...state.groupKeys, id].slice(-MAX_GROUP_LEVELS);
+  return { groupBy: keys.length ? keys.join(",") : null };
+}
+
+// Consulta de las filas de un grupo: el filtro del grupo reemplaza los que el usuario puso en ese mismo grupo.
+// Si no, "Pendiente" con el filtro "Pendiente o Completada" traería también las completadas (se combinan con O).
+export function withGroupFilters(baseQuery: string, groupFilters: string[]) {
+  const params = new URLSearchParams(baseQuery);
+  const groups = new Set(groupFilters.map((filter) => filter.split(":")[0]));
+  const kept = params.getAll("filter").filter((filter) => !groups.has(filter.split(":")[0]));
+  params.delete("filter");
+  [...kept, ...groupFilters].forEach((filter) => params.append("filter", filter));
+  return params;
+}
 
 export const toggleFilter = (filters: string[], id: string) => (filters.includes(id) ? filters.filter((filter) => filter !== id) : [...filters, id]);
 
@@ -148,7 +172,7 @@ export function buildPanel(state: FacetState, filterGroups: FilterGroup[], group
       title: "Agrupar por",
       icon: <Layers size={iconSize.sm} />,
       iconTone: "action",
-      groups: [groupOptions.map((option) => ({ ...option, active: state.groupBy === option.id }))],
+      groups: [groupOptions.map((option) => ({ ...option, active: state.groupKeys.includes(option.id) }))],
     });
   }
   return sections;
@@ -159,4 +183,61 @@ export async function fetchList<T>(url: string): Promise<T> {
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(data.error || "No se pudo cargar la lista");
   return data as T;
+}
+
+// Grupo tal como lo devuelve la API de una lista (?groupBy=…).
+export type ApiGroup = { key: string; filter: string };
+
+type GroupTreeOptions<G extends ApiGroup, R> = {
+  endpoint: string;
+  baseQuery: string;
+  groupKeys: string[];
+  topGroups: G[] | null | undefined;
+  // Claves abiertas: "PENDING" para un grupo, "PENDING/cliente-id" para un subgrupo.
+  open: Set<string>;
+  limit: number;
+  readRows: (data: unknown) => R[];
+  readGroups: (data: unknown) => G[] | null;
+};
+
+export const subgroupKey = (parent: string, child: string) => `${parent}/${child}`;
+
+// Árbol de grupos de una lista: los subgrupos de cada grupo abierto (si hay segundo nivel) y las filas de cada
+// grupo hoja abierto. Cada pedido usa el filtro del grupo (y el del subgrupo) con withGroupFilters.
+export function useGroupTree<G extends ApiGroup, R>({ endpoint, baseQuery, groupKeys, topGroups, open, limit, readRows, readGroups }: GroupTreeOptions<G, R>) {
+  const second = groupKeys[1] ?? null;
+  const openTop = (topGroups ?? []).filter((group) => open.has(group.key));
+  const swrKey = openTop.length ? ["group-tree", endpoint, baseQuery, groupKeys.join(","), ...Array.from(open).sort()] : null;
+
+  const { data, isLoading, mutate } = useSWR(swrKey, async () => {
+    const subgroups: Record<string, G[]> = {};
+    const rows: Record<string, R[]> = {};
+    await Promise.all(
+      openTop.map(async (group) => {
+        if (!second) {
+          const params = withGroupFilters(baseQuery, [group.filter]);
+          params.set("limit", String(limit));
+          rows[group.key] = readRows(await fetchList(`${endpoint}?${params}`));
+          return;
+        }
+        const params = withGroupFilters(baseQuery, [group.filter]);
+        params.set("groupBy", second);
+        params.set("limit", "1");
+        const children = readGroups(await fetchList(`${endpoint}?${params}`)) ?? [];
+        subgroups[group.key] = children;
+        await Promise.all(
+          children
+            .filter((child) => open.has(subgroupKey(group.key, child.key)))
+            .map(async (child) => {
+              const childParams = withGroupFilters(baseQuery, [group.filter, child.filter]);
+              childParams.set("limit", String(limit));
+              rows[subgroupKey(group.key, child.key)] = readRows(await fetchList(`${endpoint}?${childParams}`));
+            }),
+        );
+      }),
+    );
+    return { subgroups, rows };
+  });
+
+  return { subgroups: data?.subgroups ?? {}, rows: data?.rows ?? {}, loading: isLoading, reload: mutate };
 }

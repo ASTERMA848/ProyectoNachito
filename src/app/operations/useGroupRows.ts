@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { withGroupFilters } from "@/components/shell/list-state";
 import type { OperationListResult } from "@/lib/resources/operations";
 
 type Row = OperationListResult["operations"][number];
@@ -24,8 +25,8 @@ export function useGroupRows(baseQuery: string, groups: { key: string; filter: s
       if (!open.has(group.key) || byKey[group.key]) continue;
       const query = baseQuery;
       setByKey((state) => ({ ...state, [group.key]: { status: "loading", rows: [] } }));
-      const params = new URLSearchParams(query);
-      params.append("filter", group.filter);
+      // El filtro de la columna reemplaza los del usuario en ese mismo grupo (si no, se sumarían con O).
+      const params = withGroupFilters(query, [group.filter]);
       params.set("limit", String(GROUP_ROW_LIMIT));
       fetch(`/api/operations?${params}`)
         .then(async (response) => {
