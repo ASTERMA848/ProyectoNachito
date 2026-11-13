@@ -8,6 +8,7 @@ import { ArrowLeftRight, Inbox, Plus } from "lucide-react";
 import { Button, DataTable, EmptyState, FormGroup, FormGroups, Pager, ReadonlyField, Sheet, SheetTitle, Spinner, iconSize, type Column } from "@/components/ui";
 import { useShellUser } from "@/components/shell/AppShell";
 import { FormPage, Notice } from "@/components/shell/FormPage";
+import { RecordHistory } from "@/components/shell/RecordHistory";
 import { fetchList } from "@/components/shell/list-state";
 import { can } from "@/lib/permissions";
 import { formatAmount } from "@/lib/format-currency";
@@ -84,6 +85,7 @@ export default function TreasuryBox({ id }: { id: string }) {
     <FormPage
       breadcrumbs={[{ label: "Tesorería", href: "/treasury" }, { label: `${account.name} · ${code}` }]}
       header={null}
+      aside={<RecordHistory entity="TreasuryAccount" id={account.id} refreshKey={account.balance} emptyText="Todavía no hay movimientos manuales ni traspasos." />}
       actions={
         writable ? (
           <>

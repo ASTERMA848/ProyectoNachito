@@ -7,6 +7,7 @@ import { Breadcrumbs, Button, ControlPanel, DataTable, Dialog, EmptyState, Field
 import { useShellUser } from "@/components/shell/AppShell";
 import { useUiFeedback } from "@/components/shell/UiFeedback";
 import { AdminConfirmDialog } from "@/components/shell/AdminConfirmDialog";
+import { RecordHistory } from "@/components/shell/RecordHistory";
 import { fetchList } from "@/components/shell/list-state";
 import { can } from "@/lib/permissions";
 import styles from "../settings.module.css";
@@ -166,6 +167,12 @@ export default function CurrenciesList() {
           {field("name", "Nombre", { maxLength: 100 })}
           {field("symbol", "Símbolo", { maxLength: 10 })}
           {field("decimals", "Decimales", { inputMode: "numeric", maxLength: 1, help: "Cuántos decimales se muestran y se aceptan en los importes." })}
+          {draft?.id && (
+            <section aria-label="Historial de la moneda">
+              <h3 className={styles.blockTitle}>Historial</h3>
+              <RecordHistory entity="Currency" id={draft.id} refreshKey={data} />
+            </section>
+          )}
         </div>
       </Dialog>
 

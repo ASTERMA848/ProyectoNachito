@@ -27,6 +27,7 @@ import { useShellUser } from "@/components/shell/AppShell";
 import { useLeaveGuard } from "@/components/shell/LeaveGuard";
 import { useUiFeedback } from "@/components/shell/UiFeedback";
 import { FormPage, Notice } from "@/components/shell/FormPage";
+import { RecordHistory } from "@/components/shell/RecordHistory";
 import { fetchList } from "@/components/shell/list-state";
 import { can, ROLE_LABELS } from "@/lib/permissions";
 import { dayKey, dayLabel, formatTime } from "@/lib/agency-time";
@@ -157,6 +158,7 @@ export default function UserForm({ id }: { id?: string }) {
       breadcrumbs={[{ label: "Configuración", href: "/settings" }, { label: "Usuarios", href: "/settings/users" }, { label: user?.username ?? "Nuevo" }]}
       dirty={dirty && Boolean(id)}
       header={header}
+      aside={id ? <RecordHistory entity="User" id={id} refreshKey={detail.data} /> : undefined}
       notice={
         !editable ? (
           <Notice>Tu rol puede consultar los usuarios pero no modificarlos.</Notice>

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import type { Prisma } from "@prisma/client";
 import prisma from "@/lib/prisma";
 import { requireAuth } from "@/lib/session";
 import { can } from "@/lib/permissions";
@@ -7,9 +8,31 @@ import { describeAuditLog, type HistoryEntry } from "@/lib/history";
 
 export const dynamic = "force-dynamic";
 
-// Entidades con historial en la interfaz nueva; se suman a medida que se migra cada pantalla.
-const ENTITIES = new Set(["Operation", "Contact"]);
+// Entidades con historial en la interfaz nueva.
+const ENTITIES = new Set(["Operation", "Contact", "User", "Currency", "Account", "TreasuryAccount"]);
 const MAX_ENTRIES = 200;
+
+// Qué registros de auditoría forman el historial de cada tipo de ficha.
+async function historyWhere(entity: string, entityId: string): Promise<Prisma.AuditLogWhereInput> {
+  // Una venta distribuida registra los cambios en la operación agrupadora; se suman sus líneas por las dudas.
+  if (entity === "Operation") {
+    const children = await prisma.operation.findMany({ where: { parentOperationId: entityId }, select: { id: true } });
+    return { entity, entityId: { in: [entityId, ...children.map((child) => child.id)] } };
+  }
+  // Los movimientos manuales de una cuenta guardan su accountId en los valores nuevos.
+  if (entity === "Account") return { entity: "Transaction", newValues: { contains: `"accountId":"${entityId}"` } };
+  // Movimientos de una caja y traspasos donde la caja es origen o destino.
+  if (entity === "TreasuryAccount") {
+    return {
+      OR: [
+        { entity: "TreasuryMovement", newValues: { contains: `"accountId":"${entityId}"` } },
+        { entity: "TreasuryTransfer", newValues: { contains: `"originAccountId":"${entityId}"` } },
+        { entity: "TreasuryTransfer", newValues: { contains: `"destAccountId":"${entityId}"` } },
+      ],
+    };
+  }
+  return { entity, entityId };
+}
 
 // GET /api/history?entity=Operation&id=<id>: historial agrupado por día local de la agencia.
 export async function GET(req: NextRequest) {
@@ -26,15 +49,13 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Registro inválido" }, { status: 400 });
     }
 
-    // Una venta distribuida registra los cambios en la operación agrupadora; se suman sus líneas por las dudas.
-    const ids = [entityId];
-    if (entity === "Operation") {
-      const children = await prisma.operation.findMany({ where: { parentOperationId: entityId }, select: { id: true } });
-      ids.push(...children.map((child) => child.id));
+    // Los cambios de usuarios los ven quienes administran o auditan, y cada uno los propios.
+    if (entity === "User" && entityId !== user.id && !can(user, "settings.write") && !can(user, "audit.read")) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 403 });
     }
 
     const logs = await prisma.auditLog.findMany({
-      where: { entity, entityId: { in: ids } },
+      where: await historyWhere(entity, entityId),
       include: { user: { select: { username: true } } },
       orderBy: { createdAt: "desc" },
       take: MAX_ENTRIES,

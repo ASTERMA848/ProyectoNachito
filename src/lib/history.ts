@@ -87,7 +87,14 @@ export function describeAuditLog(log: LogWithUser, detailed: boolean): HistoryEn
   const before = parse(log.oldValues);
   const after = parse(log.newValues);
   const { article, noun } = nounOf(log.entity);
-  const reference = typeof after?.operationNumber === "string" ? ` ${after.operationNumber}` : typeof after?.name === "string" ? ` ${after.name}` : "";
+  const reference =
+    typeof after?.operationNumber === "string"
+      ? ` ${after.operationNumber}`
+      : typeof after?.name === "string"
+        ? ` ${after.name}`
+        : typeof after?.concept === "string"
+          ? ` «${after.concept}»`
+          : "";
 
   if (log.action === "LOGIN") return { ...base, kind: "event", text: "Inició sesión." };
   if (log.action === "SQL_QUERY") {
@@ -96,7 +103,9 @@ export function describeAuditLog(log: LogWithUser, detailed: boolean): HistoryEn
   }
 
   if (log.action === "CREATE") {
-    const amount = after?.totalAmount ?? after?.originAmount ?? after?.amount;
+    // Los movimientos de cuenta guardan el importe como debe o haber.
+    const ledger = typeof after?.debit === "number" && after.debit > 0 ? after.debit : after?.credit;
+    const amount = after?.totalAmount ?? after?.originAmount ?? after?.amount ?? ledger;
     const suffix = detailed && typeof amount === "number" ? ` por ${formatMoney(amount)}` : "";
     return { ...base, kind: "event", text: `Registró ${article} ${noun}${reference}${suffix}.` };
   }

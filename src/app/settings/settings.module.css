@@ -170,3 +170,10 @@
   flex-direction: column;
   gap: var(--ui-space-12);
 }
+
+.blockTitle {
+  --ui-heading-size: var(--ui-fs-sm);
+  --ui-heading-weight: var(--ui-fw-semibold);
+  --ui-heading-color: var(--ui-text-muted);
+  margin-bottom: var(--ui-space-4);
+}
