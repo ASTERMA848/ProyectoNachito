@@ -1,6 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import prisma from "@/lib/prisma";
 import { combineFilters, ListError, type CurrencySum, type ListParams } from "@/lib/list-query";
+import { contactIdsMatching, textConditions, type ContactColumn } from "@/lib/search";
 
 type Where = Prisma.AccountWhereInput;
 
@@ -34,18 +35,17 @@ function resolveFilter(group: string, value: string): Where | null {
   }
 }
 
-const wordWhere = (word: string): Where => ({
-  contact: { OR: ["name", "lastname", "document", "cuitCuil"].map((field) => ({ [field]: { contains: word, mode: "insensitive" } })) },
-});
+// Campos por los que se puede buscar puntualmente (qf=contact:Sosa).
+const SEARCH_BY: Record<string, readonly ContactColumn[]> = { contact: ["name", "lastname"], document: ["document", "cuitCuil"] };
+export const SEARCH_FIELDS = Object.keys(SEARCH_BY);
 
-// Cada palabra tiene que aparecer en algún campo del contacto: "Carlos Benítez" junta nombre y apellido.
-const termWhere = (term: string): Where => ({ AND: term.split(/\s+/).filter(Boolean).slice(0, 6).map(wordWhere) });
+const matching = (columns: readonly ContactColumn[]) => async (word: string): Promise<Where> => ({ contactId: { in: await contactIdsMatching(word, columns) } });
 
-export function accountsWhere(params: Pick<ListParams, "terms" | "filters">): Where {
+export async function accountsWhere(params: Pick<ListParams, "terms" | "filters" | "fieldTerms">): Promise<Where> {
   const and = combineFilters<Where>(params.filters, resolveFilter);
   // Las cuentas saldadas solo aparecen si se piden, o al mirar las de un contacto.
   if (!params.filters.some((filter) => filter.startsWith("sign:") || filter.startsWith("contact:"))) and.push({ balance: { not: 0 } });
-  if (params.terms.length) and.push({ OR: params.terms.map(termWhere) });
+  and.push(...(await textConditions<Where>(params, matching(["name", "lastname", "document", "cuitCuil"]), Object.fromEntries(Object.entries(SEARCH_BY).map(([field, columns]) => [field, matching(columns)])))));
   return { contact: { deletedAt: null }, AND: and };
 }
 
@@ -74,7 +74,7 @@ async function totalsByCurrency(where: Where) {
 }
 
 export async function listAccounts(params: ListParams) {
-  const where = accountsWhere(params);
+  const where = await accountsWhere(params);
   const sort = params.sort ?? { key: "contact", dir: "asc" as const };
   const [accounts, total, totals, groups] = await Promise.all([
     prisma.account.findMany({ where, include: accountInclude, orderBy: [...ORDER[sort.key](sort.dir), { id: "asc" }], skip: params.offset, take: params.limit }),

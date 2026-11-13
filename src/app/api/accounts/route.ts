@@ -4,7 +4,7 @@ import { requireAuth } from "@/lib/session";
 import { logAudit } from "@/lib/audit";
 import { can } from "@/lib/permissions";
 import { ListError, parseListParams } from "@/lib/list-query";
-import { GROUP_KEYS, listAccounts, postManualMovement, SORT_KEYS } from "@/lib/resources/accounts";
+import { GROUP_KEYS, listAccounts, postManualMovement, SEARCH_FIELDS, SORT_KEYS } from "@/lib/resources/accounts";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Contrato de listas: ?q=&filter=currency:<id>&filter=sign:negative&groupBy=currency&sort=balance:asc&offset=0&limit=80
-    const params = parseListParams(req.nextUrl.searchParams, { sortKeys: SORT_KEYS, groupKeys: GROUP_KEYS });
+    const params = parseListParams(req.nextUrl.searchParams, { sortKeys: SORT_KEYS, groupKeys: GROUP_KEYS, searchFields: SEARCH_FIELDS });
     return NextResponse.json(await listAccounts(params));
   } catch (error: any) {
     if (error instanceof ListError) {

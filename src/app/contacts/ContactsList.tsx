@@ -27,7 +27,7 @@ import {
 } from "@/components/ui";
 import { useShellUser } from "@/components/shell/AppShell";
 import { useUiFeedback } from "@/components/shell/UiFeedback";
-import { buildFacets, buildPanel, facetRemoval, fetchList, toggleFilter, useListUrlState, type FilterGroup, type GroupOption } from "@/components/shell/list-state";
+import { buildFacets, buildPanel, facetRemoval, fetchList, toggleFilter, useListUrlState, type FilterGroup, type GroupOption, clearSearch, searchChange, type SearchField } from "@/components/shell/list-state";
 import { can } from "@/lib/permissions";
 import { downloadCsv } from "@/lib/csv";
 import type { ContactListItem, ContactListResult } from "@/lib/resources/contacts";
@@ -36,6 +36,13 @@ import styles from "./contacts.module.css";
 const PAGE_SIZE = 80;
 const DEFAULT_SORT: SortState = { key: "name", dir: "asc" };
 const GROUP_OPTIONS: GroupOption[] = [{ id: "role", label: "Rol" }];
+// Campos del buscador: "Buscar Cliente: …" filtra solo por ese campo.
+const SEARCH_FIELDS: SearchField[] = [
+  { id: "name", label: "Nombre" },
+  { id: "document", label: "Documento" },
+  { id: "email", label: "Email" },
+  { id: "phone", label: "Teléfono" },
+];
 
 type TagRow = { id: string; name: string; color: string | null };
 
@@ -138,8 +145,8 @@ export default function ContactsList() {
   });
 
   const canWrite = can(user, "contacts.write");
-  const hasSearch = filters.length > 0 || terms.length > 0;
-  const facets = buildFacets(list, filterGroups, GROUP_OPTIONS);
+  const hasSearch = filters.length > 0 || terms.length > 0 || list.fieldTerms.length > 0;
+  const facets = buildFacets(list, filterGroups, GROUP_OPTIONS, {}, SEARCH_FIELDS);
   const panelSections = buildPanel(list, filterGroups, GROUP_OPTIONS, openPanelGroups);
 
   const rows = data?.contacts ?? [];
@@ -226,7 +233,7 @@ export default function ContactsList() {
   const openContact = (contact: ContactListItem) => router.push(`/contacts/${contact.id}`);
 
   const empty = hasSearch ? (
-    <EmptyState icon={<Inbox size={iconSize.lg} />} title="Ningún contacto coincide con la búsqueda" action={<Button onClick={() => update({ filter: [], q: [] })}>Quitar filtros</Button>}>
+    <EmptyState icon={<Inbox size={iconSize.lg} />} title="Ningún contacto coincide con la búsqueda" action={<Button onClick={() => update(clearSearch)}>Quitar filtros</Button>}>
       Probá con otro nombre, documento o teléfono.
     </EmptyState>
   ) : (
@@ -273,8 +280,14 @@ export default function ContactsList() {
             query={query}
             onQueryChange={setQuery}
             onSubmit={() => {
-              const text = query.trim();
-              if (text && !terms.includes(text)) update({ q: [...terms, text] });
+              const change = searchChange(list, query, null);
+              if (change) update(change);
+              setQuery("");
+            }}
+            fields={SEARCH_FIELDS}
+            onSearchField={(field) => {
+              const change = searchChange(list, query, field);
+              if (change) update(change);
               setQuery("");
             }}
             onRemoveFacet={(id) => update(facetRemoval(id, list))}

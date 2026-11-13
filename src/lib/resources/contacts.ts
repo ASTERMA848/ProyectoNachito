@@ -1,6 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import prisma from "@/lib/prisma";
 import { combineFilters, type ListParams } from "@/lib/list-query";
+import { CONTACT_COLUMNS, contactIdsMatching, textConditions, type ContactColumn } from "@/lib/search";
 
 type Where = Prisma.ContactWhereInput;
 
@@ -36,18 +37,22 @@ function resolveFilter(group: string, value: string): Where | null {
   }
 }
 
-const wordWhere = (word: string): Where => ({
-  OR: ["name", "lastname", "document", "cuitCuil", "email", "phone"].map((field) => ({ [field]: { contains: word, mode: "insensitive" } })),
-});
+// Campos por los que se puede buscar puntualmente (qf=document:20123456).
+const SEARCH_BY: Record<string, readonly ContactColumn[]> = {
+  name: ["name", "lastname"],
+  document: ["document", "cuitCuil"],
+  email: ["email"],
+  phone: ["phone"],
+};
+export const SEARCH_FIELDS = Object.keys(SEARCH_BY);
 
-// Cada palabra tiene que aparecer en algún campo: "Carlos Benítez" junta nombre y apellido.
-const termWhere = (term: string): Where => ({ AND: term.split(/\s+/).filter(Boolean).slice(0, 6).map(wordWhere) });
+const matching = (columns: readonly ContactColumn[]) => async (word: string): Promise<Where> => ({ id: { in: await contactIdsMatching(word, columns) } });
 
-export function contactsWhere(params: Pick<ListParams, "terms" | "filters">): Where {
+export async function contactsWhere(params: Pick<ListParams, "terms" | "filters" | "fieldTerms">): Promise<Where> {
   const and = combineFilters<Where>(params.filters, resolveFilter);
   // Los archivados no aparecen salvo que se filtren.
   if (!params.filters.some((filter) => filter.startsWith("status:"))) and.push({ isActive: true });
-  if (params.terms.length) and.push({ OR: params.terms.map(termWhere) });
+  and.push(...(await textConditions<Where>(params, matching(CONTACT_COLUMNS), Object.fromEntries(Object.entries(SEARCH_BY).map(([field, columns]) => [field, matching(columns)])))));
   return { deletedAt: null, AND: and };
 }
 
@@ -61,7 +66,7 @@ export const contactInclude = {
 } satisfies Prisma.ContactInclude;
 
 export async function listContacts(params: ListParams) {
-  const where = contactsWhere(params);
+  const where = await contactsWhere(params);
   const sort = params.sort ?? { key: "name", dir: "asc" as const };
   const [contacts, total, roles] = await Promise.all([
     prisma.contact.findMany({ where, include: contactInclude, orderBy: [...ORDER[sort.key](sort.dir), { id: "asc" }], skip: params.offset, take: params.limit }),

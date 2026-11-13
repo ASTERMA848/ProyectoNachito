@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useId, type ReactNode } from "react";
+import { Fragment, useId, useState, type ReactNode } from "react";
 import { ChevronDown, Filter, Layers, Search, Star, X } from "lucide-react";
 import { cx } from "./cx";
 import { iconSize } from "./tokens.generated";
@@ -23,6 +23,10 @@ type SearchBarProps = {
   onTogglePanel?: () => void;
   label?: string;
   placeholder?: string;
+  // Campos por los que se puede buscar: mientras se escribe aparecen "Buscar «x» en todo" y "Buscar Cliente: x".
+  fields?: { id: string; label: string }[];
+  // null es "en todo" (el término libre); si no, el id del campo elegido.
+  onSearchField?: (field: string | null) => void;
 };
 
 export function SearchBar({
@@ -36,9 +40,21 @@ export function SearchBar({
   onTogglePanel,
   label = "Buscar",
   placeholder = "Buscar...",
+  fields,
+  onSearchField,
 }: SearchBarProps) {
   const inputId = useId();
   const panelId = useId();
+  const listId = useId();
+  const [focused, setFocused] = useState(false);
+  const [active, setActive] = useState(0);
+  const text = query.trim();
+  const suggestions = fields && onSearchField && text ? [{ id: null, label: "" }, ...fields] : [];
+  const showSuggestions = focused && suggestions.length > 0;
+  const choose = (index: number) => {
+    onSearchField?.(suggestions[index]?.id ?? null);
+    setActive(0);
+  };
 
   return (
     <div className={styles.root}>
@@ -61,9 +77,27 @@ export function SearchBar({
             value={query}
             placeholder={placeholder}
             autoComplete="off"
-            onChange={(event) => onQueryChange(event.target.value)}
+            role={onSearchField ? "combobox" : undefined}
+            aria-expanded={onSearchField ? showSuggestions : undefined}
+            aria-controls={onSearchField ? listId : undefined}
+            aria-autocomplete={onSearchField ? "list" : undefined}
+            aria-activedescendant={showSuggestions ? `${listId}-${active}` : undefined}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
+            onChange={(event) => {
+              onQueryChange(event.target.value);
+              setActive(0);
+            }}
             onKeyDown={(event) => {
-              if (event.key === "Enter") onSubmit?.();
+              if (showSuggestions && (event.key === "ArrowDown" || event.key === "ArrowUp")) {
+                event.preventDefault();
+                setActive((current) => (current + (event.key === "ArrowDown" ? 1 : -1) + suggestions.length) % suggestions.length);
+                return;
+              }
+              if (event.key === "Enter") {
+                if (showSuggestions) choose(active);
+                else onSubmit?.();
+              }
               // Con el campo vacío, Retroceso quita la última faceta.
               if (event.key === "Backspace" && !query && facets.length > 0) onRemoveFacet(facets[facets.length - 1].id);
             }}
@@ -82,6 +116,32 @@ export function SearchBar({
           </button>
         )}
       </div>
+      {showSuggestions && (
+        <ul id={listId} role="listbox" aria-label="Buscar en" className={styles.suggestions}>
+          {suggestions.map((suggestion, index) => (
+            <li
+              key={suggestion.id ?? "all"}
+              id={`${listId}-${index}`}
+              role="option"
+              aria-selected={index === active}
+              className={cx(styles.suggestion, index === active && styles.suggestionActive)}
+              onMouseDown={(event) => event.preventDefault()}
+              onMouseEnter={() => setActive(index)}
+              onClick={() => choose(index)}
+            >
+              {suggestion.id === null ? (
+                <>
+                  Buscar <strong>«{text}»</strong> en todo
+                </>
+              ) : (
+                <>
+                  Buscar {suggestion.label}: <strong>{text}</strong>
+                </>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
       {panelOpen && panel && (
         <div id={panelId} className={styles.panel}>
           {panel}

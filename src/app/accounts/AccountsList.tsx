@@ -21,7 +21,7 @@ import {
 } from "@/components/ui";
 import { useShellUser } from "@/components/shell/AppShell";
 import { useUiFeedback } from "@/components/shell/UiFeedback";
-import { buildFacets, buildPanel, facetRemoval, fetchList, toggleFilter, useListUrlState, type FilterGroup, type GroupOption } from "@/components/shell/list-state";
+import { buildFacets, buildPanel, facetRemoval, fetchList, toggleFilter, useListUrlState, type FilterGroup, type GroupOption, clearSearch, searchChange, type SearchField } from "@/components/shell/list-state";
 import { can } from "@/lib/permissions";
 import { downloadCsv } from "@/lib/csv";
 import type { AccountListItem, AccountListResult } from "@/lib/resources/accounts";
@@ -35,6 +35,11 @@ const GROUP_OPTIONS: GroupOption[] = [
   { id: "currency", label: "Moneda" },
   { id: "sign", label: "Situación" },
   { id: "contact", label: "Contacto" },
+];
+// Campos del buscador: "Buscar Cliente: …" filtra solo por ese campo.
+const SEARCH_FIELDS: SearchField[] = [
+  { id: "contact", label: "Contacto" },
+  { id: "document", label: "Documento" },
 ];
 
 type CurrencyRow = { id: string; code: string; decimals: number };
@@ -102,8 +107,8 @@ export default function AccountsList() {
   });
 
   const canWrite = can(user, "accounts.write");
-  const hasSearch = filters.length > 0 || terms.length > 0;
-  const facets = buildFacets(list, filterGroups, GROUP_OPTIONS);
+  const hasSearch = filters.length > 0 || terms.length > 0 || list.fieldTerms.length > 0;
+  const facets = buildFacets(list, filterGroups, GROUP_OPTIONS, {}, SEARCH_FIELDS);
   const panelSections = buildPanel(list, filterGroups, GROUP_OPTIONS, openPanelGroups);
 
   const rows = data?.accounts ?? [];
@@ -143,7 +148,7 @@ export default function AccountsList() {
   });
 
   const empty = hasSearch ? (
-    <EmptyState icon={<Inbox size={iconSize.lg} />} title="Ninguna cuenta coincide con la búsqueda" action={<Button onClick={() => update({ filter: [], q: [] })}>Quitar filtros</Button>}>
+    <EmptyState icon={<Inbox size={iconSize.lg} />} title="Ninguna cuenta coincide con la búsqueda" action={<Button onClick={() => update(clearSearch)}>Quitar filtros</Button>}>
       Probá con otro contacto o quitá algún filtro.
     </EmptyState>
   ) : (
@@ -173,8 +178,14 @@ export default function AccountsList() {
             query={query}
             onQueryChange={setQuery}
             onSubmit={() => {
-              const text = query.trim();
-              if (text && !terms.includes(text)) update({ q: [...terms, text] });
+              const change = searchChange(list, query, null);
+              if (change) update(change);
+              setQuery("");
+            }}
+            fields={SEARCH_FIELDS}
+            onSearchField={(field) => {
+              const change = searchChange(list, query, field);
+              if (change) update(change);
               setQuery("");
             }}
             onRemoveFacet={(id) => update(facetRemoval(id, list))}

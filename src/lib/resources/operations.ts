@@ -2,6 +2,7 @@ import type { Prisma } from "@prisma/client";
 import prisma from "@/lib/prisma";
 import { dateOnlyRange, monthKey, monthLabel, monthRange, type DatePreset } from "@/lib/agency-time";
 import { combineFilters, ListError, type CurrencySum, type ListParams } from "@/lib/list-query";
+import { contactIdsMatching, numberContains, textConditions } from "@/lib/search";
 import { OPERATION_STATES, OPERATION_TYPES, TREASURY_TYPES } from "@/lib/operation-labels";
 
 type Where = Prisma.OperationWhereInput;
@@ -58,26 +59,35 @@ function resolveFilter(group: string, value: string): Where | null {
   }
 }
 
-// Nombre o apellido del contacto: "Benítez" encuentra a Carlos Benítez.
-const contactMatch = (term: string): Prisma.ContactWhereInput => ({
-  OR: [{ name: { contains: term, mode: "insensitive" } }, { lastname: { contains: term, mode: "insensitive" } }],
-});
+// Búsqueda por nombre o apellido del contacto, sin tildes: "benitez" encuentra a Carlos Benítez.
+const contactIds = (word: string) => contactIdsMatching(word, ["name", "lastname"]);
 
-const wordWhere = (word: string): Where => ({
-  OR: [
-    { operationNumber: { contains: word, mode: "insensitive" } },
-    { client: contactMatch(word) },
-    { provider: contactMatch(word) },
-    { childOperations: { some: { deletedAt: null, client: contactMatch(word) } } },
-  ],
-});
+const byNumber = async (word: string): Promise<Where> => ({ operationNumber: numberContains(word) });
+const byClient = async (word: string): Promise<Where> => {
+  const ids = await contactIds(word);
+  return { OR: [{ clientId: { in: ids } }, { childOperations: { some: { deletedAt: null, clientId: { in: ids } } } }] };
+};
+const byProvider = async (word: string): Promise<Where> => ({ providerId: { in: await contactIds(word) } });
 
-// Cada palabra tiene que aparecer en algún campo: "Carlos Benítez" junta nombre y apellido.
-const termWhere = (term: string): Where => ({ AND: term.split(/\s+/).filter(Boolean).slice(0, 6).map(wordWhere) });
+// Campos por los que se puede buscar puntualmente (qf=client:Benítez).
+const SEARCH_BY: Record<string, (word: string) => Promise<Where>> = { number: byNumber, client: byClient, provider: byProvider };
+export const SEARCH_FIELDS = Object.keys(SEARCH_BY);
 
-export function operationsWhere(params: Pick<ListParams, "terms" | "filters">): Where {
+const anyField = async (word: string): Promise<Where> => {
+  const ids = await contactIds(word);
+  return {
+    OR: [
+      { operationNumber: numberContains(word) },
+      { clientId: { in: ids } },
+      { providerId: { in: ids } },
+      { childOperations: { some: { deletedAt: null, clientId: { in: ids } } } },
+    ],
+  };
+};
+
+export async function operationsWhere(params: Pick<ListParams, "terms" | "filters" | "fieldTerms">): Promise<Where> {
   const and = combineFilters<Where>(params.filters, resolveFilter);
-  if (params.terms.length) and.push({ OR: params.terms.map(termWhere) });
+  and.push(...(await textConditions<Where>(params, anyField, SEARCH_BY)));
   return { deletedAt: null, parentOperationId: null, AND: and };
 }
 
@@ -197,7 +207,7 @@ async function monthGroups(where: Where, codes: Map<string, string>): Promise<Gr
 }
 
 export async function listOperations(params: ListParams) {
-  const where = operationsWhere(params);
+  const where = await operationsWhere(params);
   const sort = params.sort ?? { key: "date", dir: "desc" as const };
   const currencies = await prisma.currency.findMany({ select: { id: true, code: true } });
   const codes = new Map(currencies.map((currency) => [currency.id, currency.code]));

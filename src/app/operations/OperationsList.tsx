@@ -28,7 +28,7 @@ import {
 } from "@/components/ui";
 import { useShellUser } from "@/components/shell/AppShell";
 import { useUiFeedback } from "@/components/shell/UiFeedback";
-import { buildFacets, buildPanel, facetRemoval, fetchList, toggleFilter, useListUrlState, type FilterGroup, type GroupOption } from "@/components/shell/list-state";
+import { buildFacets, buildPanel, facetRemoval, fetchList, toggleFilter, useListUrlState, type FilterGroup, type GroupOption, clearSearch, searchChange, type SearchField } from "@/components/shell/list-state";
 import { can } from "@/lib/permissions";
 import { formatAmount, formatMoney } from "@/lib/format-currency";
 import { formatDateOnly } from "@/lib/agency-time";
@@ -95,6 +95,12 @@ const GROUP_OPTIONS: GroupOption[] = [
   { id: "provider", label: "Proveedor" },
   { id: "month", label: "Mes" },
 ];
+// Campos del buscador: "Buscar Cliente: …" filtra solo por ese campo.
+const SEARCH_FIELDS: SearchField[] = [
+  { id: "number", label: "Número" },
+  { id: "client", label: "Cliente" },
+  { id: "provider", label: "Proveedor" },
+];
 
 const groupLabel = (id: string | null) => GROUP_OPTIONS.find((option) => option.id === id)?.label ?? id ?? "";
 const joinSums = (sums: CurrencySum[]) => sums.map((sum) => formatAmount(sum.sum, sum.code)).join(" · ");
@@ -150,9 +156,9 @@ export default function OperationsList() {
 
   const canWrite = can(user, "operations.write");
   const canDelete = can(user, "operations.delete");
-  const hasSearch = filters.length > 0 || terms.length > 0;
+  const hasSearch = filters.length > 0 || terms.length > 0 || list.fieldTerms.length > 0;
 
-  const facets = buildFacets(list, FILTER_GROUPS, GROUP_OPTIONS);
+  const facets = buildFacets(list, FILTER_GROUPS, GROUP_OPTIONS, {}, SEARCH_FIELDS);
   const panelSections = buildPanel(list, FILTER_GROUPS, GROUP_OPTIONS, openPanelGroups);
   const onPanelToggle = (sectionId: string, optionId: string) => {
     if (sectionId === "groupBy") return update({ groupBy: groupBy === optionId ? null : optionId });
@@ -255,7 +261,7 @@ export default function OperationsList() {
   ) : null;
 
   const empty = hasSearch ? (
-    <EmptyState icon={<Inbox size={iconSize.lg} />} title="Ninguna operación coincide con la búsqueda" action={<Button onClick={() => update({ filter: [], q: [] })}>Quitar filtros</Button>}>
+    <EmptyState icon={<Inbox size={iconSize.lg} />} title="Ninguna operación coincide con la búsqueda" action={<Button onClick={() => update(clearSearch)}>Quitar filtros</Button>}>
       Probá con otro texto o sacá alguno de los filtros.
     </EmptyState>
   ) : (
@@ -301,8 +307,14 @@ export default function OperationsList() {
             query={query}
             onQueryChange={setQuery}
             onSubmit={() => {
-              const text = query.trim();
-              if (text && !terms.includes(text)) update({ q: [...terms, text] });
+              const change = searchChange(list, query, null);
+              if (change) update(change);
+              setQuery("");
+            }}
+            fields={SEARCH_FIELDS}
+            onSearchField={(field) => {
+              const change = searchChange(list, query, field);
+              if (change) update(change);
               setQuery("");
             }}
             onRemoveFacet={(id) => update(facetRemoval(id, list))}

@@ -4,7 +4,7 @@ import { requireAuth } from "@/lib/session";
 import { logAudit } from "@/lib/audit";
 import { can } from "@/lib/permissions";
 import { ListError, parseListParams } from "@/lib/list-query";
-import { GROUP_KEYS, listContacts, SORT_KEYS } from "@/lib/resources/contacts";
+import { GROUP_KEYS, listContacts, SEARCH_FIELDS, SORT_KEYS } from "@/lib/resources/contacts";
 
 export async function GET(req: NextRequest) {
   try {
@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ contacts });
     }
     // Contrato de listas: ?q=&filter=role:client&filter=tag:<id>&groupBy=role&sort=name:asc&offset=0&limit=80
-    const params = parseListParams(req.nextUrl.searchParams, { sortKeys: SORT_KEYS, groupKeys: GROUP_KEYS });
+    const params = parseListParams(req.nextUrl.searchParams, { sortKeys: SORT_KEYS, groupKeys: GROUP_KEYS, searchFields: SEARCH_FIELDS });
     return NextResponse.json(await listContacts(params));
   } catch (error: any) {
     if (error instanceof ListError) {

@@ -175,3 +175,39 @@
     width: max(100%, min(var(--ui-panel-min-w), calc(100vw - var(--ui-space-48))));
   }
 }
+
+/* Sugerencias de "buscar en": debajo del buscador, por encima del panel de filtros. */
+.suggestions {
+  position: absolute;
+  top: calc(100% + var(--ui-space-4));
+  left: 0;
+  z-index: 45;
+  width: 100%;
+  margin: 0;
+  padding: var(--ui-space-4) 0;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-surface);
+  box-shadow: var(--ui-shadow-pop);
+  list-style: none;
+}
+
+.suggestion {
+  display: flex;
+  align-items: center;
+  gap: var(--ui-space-4);
+  min-height: var(--ui-menu-item-h);
+  padding: 0 var(--ui-space-16);
+  color: var(--ui-text);
+  cursor: pointer;
+}
+
+.suggestionActive {
+  background: var(--ui-surface-hover);
+}
+
+.suggestion strong {
+  font-weight: var(--ui-fw-semibold);
+  color: var(--ui-text-strong);
+  overflow-wrap: anywhere;
+}

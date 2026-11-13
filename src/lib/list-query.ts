@@ -11,6 +11,8 @@ export type ListParams = {
   terms: string[];
   // "grupo:valor", por ejemplo "state:pending" o "date:this_month".
   filters: string[];
+  // Búsquedas en un campo puntual (qf=client:Benítez): cada recurso define qué campos acepta.
+  fieldTerms: FieldTerm[];
   groupBy: string | null;
   sort: { key: string; dir: SortDir } | null;
   offset: number;
@@ -18,6 +20,8 @@ export type ListParams = {
 };
 
 export class ListError extends Error {}
+
+export type FieldTerm = { field: string; text: string };
 
 const FILTER_PATTERN = /^[a-zA-Z]+:[\w-]{1,64}$/;
 
@@ -29,13 +33,21 @@ const clamp = (value: number, min: number, max: number) => Math.min(max, Math.ma
 
 export function parseListParams(
   searchParams: URLSearchParams,
-  config: { sortKeys: readonly string[]; groupKeys: readonly string[] },
+  config: { sortKeys: readonly string[]; groupKeys: readonly string[]; searchFields?: readonly string[] },
 ): ListParams {
   const terms = searchParams.getAll("q").map((term) => term.trim().slice(0, 200)).filter(Boolean).slice(0, 5);
   const filters = searchParams.getAll("filter").map((filter) => filter.trim());
   const badFilter = filters.find((filter) => !FILTER_PATTERN.test(filter));
   if (badFilter !== undefined) throw new ListError(`Filtro inválido: ${badFilter.slice(0, 80)}`);
   if (filters.length > 30) throw new ListError("Demasiados filtros");
+
+  const fieldTerms = searchParams.getAll("qf").slice(0, 10).map((value) => {
+    const separator = value.indexOf(":");
+    const field = value.slice(0, separator);
+    const text = value.slice(separator + 1).trim().slice(0, 200);
+    if (separator < 1 || !text || !config.searchFields?.includes(field)) throw new ListError(`Búsqueda inválida: ${value.slice(0, 80)}`);
+    return { field, text };
+  });
 
   const groupParam = searchParams.get("groupBy");
   if (groupParam && !config.groupKeys.includes(groupParam)) throw new ListError(`No se puede agrupar por ${groupParam.slice(0, 40)}`);
@@ -46,6 +58,7 @@ export function parseListParams(
   return {
     terms,
     filters,
+    fieldTerms,
     groupBy: groupParam || null,
     sort,
     offset: clamp(toInt(searchParams.get("offset")), 0, 1_000_000),

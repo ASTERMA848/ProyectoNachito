@@ -7,10 +7,11 @@ test("F02-H1 buscar y filtrar", async ({ page, request }) => {
   await page.goto("/operations");
   await settle(page);
   await expectAccessible(page, "S03 lista de operaciones");
-  const search = page.getByLabel("Buscar operaciones");
+  const search = page.getByRole("combobox", { name: "Buscar operaciones" });
   await search.fill("Casa Norte");
   await search.press("Enter");
   await expect(page.getByRole("list", { name: "Filtros aplicados" })).toContainText("Casa Norte");
+  await expect(page).toHaveURL(/q=Casa/);
   await page.getByRole("button", { name: "Opciones de búsqueda" }).click();
   await page.getByRole("button", { name: "Pendientes", exact: true }).click();
   await expect(page.getByRole("button", { name: "Pendientes", exact: true })).toHaveAttribute("aria-pressed", "true");
@@ -68,4 +69,35 @@ test("F02-E5 se encuentra un cliente por su apellido", async ({ request }) => {
   expect(byFullName.total).toBe(byName.total);
   const contacts = await (await request.get("/api/contacts?q=Carlos+Ben%C3%ADtez")).json();
   expect(contacts.total).toBe(1);
+});
+
+test("F02-E6 buscar en un campo desde las sugerencias, con el teclado", async ({ page, request }) => {
+  await page.goto("/operations");
+  await settle(page);
+  const search = page.getByRole("combobox", { name: "Buscar operaciones" });
+  await search.fill("benitez");
+  const options = page.getByRole("listbox", { name: "Buscar en" }).getByRole("option");
+  await expect(options).toHaveText(["Buscar «benitez» en todo", "Buscar Número: benitez", "Buscar Cliente: benitez", "Buscar Proveedor: benitez"]);
+  await search.press("ArrowDown");
+  await search.press("ArrowDown");
+  await search.press("Enter");
+  await expect(page).toHaveURL(/qf=client(%3A|:)benitez/);
+  await expect(page.getByRole("list", { name: "Filtros aplicados" })).toContainText("Cliente: benitez");
+  const api = await (await request.get("/api/operations?qf=client:benitez&limit=1")).json();
+  expect(api.total).toBeGreaterThan(0);
+  await expect(page.getByText(new RegExp(`/ ${api.total}$`)).first()).toBeVisible();
+  // Quitar la faceta vuelve a la lista completa.
+  await page.getByRole("button", { name: /Quitar búsqueda Cliente: benitez/ }).click();
+  await expect(page).not.toHaveURL(/qf=/);
+});
+
+test("F02-E7 la búsqueda ignora tildes y mayúsculas en operaciones, contactos y cuentas (BUG-004)", async ({ request }) => {
+  const total = async (url: string) => (await (await request.get(url)).json()).total as number;
+  expect(await total("/api/contacts?q=benitez")).toBe(await total("/api/contacts?q=Ben%C3%ADtez"));
+  expect(await total("/api/contacts?q=benitez")).toBeGreaterThan(0);
+  expect(await total("/api/operations?q=BENITEZ")).toBe(await total("/api/operations?q=Ben%C3%ADtez"));
+  expect(await total("/api/accounts?q=perez")).toBe(await total("/api/accounts?q=P%C3%A9rez"));
+  // Los comodines de SQL se buscan como texto.
+  expect(await total("/api/contacts?q=%25")).toBe(0);
+  expect((await request.get("/api/operations?qf=clave:x")).status()).toBe(400);
 });

@@ -4,7 +4,7 @@ import { requireAuth } from "@/lib/session";
 import { can } from "@/lib/permissions";
 import { nextOperationNumber } from "@/lib/distributed-sale";
 import { ListError, parseListParams } from "@/lib/list-query";
-import { GROUP_KEYS, listOperations, SORT_KEYS } from "@/lib/resources/operations";
+import { GROUP_KEYS, listOperations, SEARCH_FIELDS, SORT_KEYS } from "@/lib/resources/operations";
 import { randomUUID } from "node:crypto";
 
 export const dynamic = "force-dynamic";
@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "No autenticado" }, { status: 401 });
     }
 
-    const params = parseListParams(new URL(req.url).searchParams, { sortKeys: SORT_KEYS, groupKeys: GROUP_KEYS });
+    const params = parseListParams(new URL(req.url).searchParams, { sortKeys: SORT_KEYS, groupKeys: GROUP_KEYS, searchFields: SEARCH_FIELDS });
     return NextResponse.json(await listOperations(params), { status: 200 });
   } catch (error: any) {
     if (error instanceof ListError) {

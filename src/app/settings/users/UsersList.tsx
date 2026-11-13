@@ -22,7 +22,7 @@ import {
 } from "@/components/ui";
 import { useShellUser } from "@/components/shell/AppShell";
 import { useUiFeedback } from "@/components/shell/UiFeedback";
-import { buildFacets, buildPanel, facetRemoval, fetchList, toggleFilter, useListUrlState, type FilterGroup, type GroupOption } from "@/components/shell/list-state";
+import { buildFacets, buildPanel, facetRemoval, fetchList, toggleFilter, useListUrlState, type FilterGroup, type GroupOption, clearSearch, searchChange } from "@/components/shell/list-state";
 import { can, ROLE_LABELS } from "@/lib/permissions";
 import { dayKey, formatDateOnly } from "@/lib/agency-time";
 import styles from "../settings.module.css";
@@ -154,8 +154,8 @@ export default function UsersList() {
             query={query}
             onQueryChange={setQuery}
             onSubmit={() => {
-              const text = query.trim();
-              if (text && !terms.includes(text)) update({ q: [...terms, text] });
+              const change = searchChange(list, query, null);
+              if (change) update(change);
               setQuery("");
             }}
             onRemoveFacet={(id) => update(facetRemoval(id, list))}
@@ -209,7 +209,7 @@ export default function UsersList() {
           rowTone={(user) => (user.isActive ? undefined : "muted")}
           loading={isLoading && !data}
           empty={
-            <EmptyState icon={<Inbox size={iconSize.lg} />} title="Ningún usuario coincide" action={<Button onClick={() => update({ filter: [], q: [] })}>Quitar filtros</Button>}>
+            <EmptyState icon={<Inbox size={iconSize.lg} />} title="Ningún usuario coincide" action={<Button onClick={() => update(clearSearch)}>Quitar filtros</Button>}>
               Los pausados aparecen con el filtro Pausados.
             </EmptyState>
           }

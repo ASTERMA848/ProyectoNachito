@@ -23,7 +23,7 @@ import {
   type TableGroup,
 } from "@/components/ui";
 import { useUiFeedback } from "@/components/shell/UiFeedback";
-import { buildFacets, buildPanel, facetRemoval, fetchList, toggleFilter, useListUrlState, type FilterGroup, type GroupOption } from "@/components/shell/list-state";
+import { buildFacets, buildPanel, facetRemoval, fetchList, toggleFilter, useListUrlState, type FilterGroup, type GroupOption, clearSearch, searchChange } from "@/components/shell/list-state";
 import { downloadCsv } from "@/lib/csv";
 import { dayKey, formatDateOnly, formatTime } from "@/lib/agency-time";
 import { AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-labels";
@@ -199,7 +199,7 @@ export default function AuditList() {
     return Object.fromEntries(entries);
   });
 
-  const hasSearch = filters.length > 0 || terms.length > 0;
+  const hasSearch = filters.length > 0 || terms.length > 0 || list.fieldTerms.length > 0;
   const facets = buildFacets(list, filterGroups, GROUP_OPTIONS);
   const panelSections = buildPanel(list, filterGroups, GROUP_OPTIONS, openPanelGroups);
 
@@ -232,7 +232,7 @@ export default function AuditList() {
   }));
 
   const empty = hasSearch ? (
-    <EmptyState icon={<Inbox size={iconSize.lg} />} title="Ningún registro coincide con la búsqueda" action={<Button onClick={() => update({ filter: [], q: [] })}>Quitar filtros</Button>}>
+    <EmptyState icon={<Inbox size={iconSize.lg} />} title="Ningún registro coincide con la búsqueda" action={<Button onClick={() => update(clearSearch)}>Quitar filtros</Button>}>
       Probá con otro período, usuario o tipo de registro.
     </EmptyState>
   ) : (
@@ -261,8 +261,8 @@ export default function AuditList() {
             query={query}
             onQueryChange={setQuery}
             onSubmit={() => {
-              const text = query.trim();
-              if (text && !terms.includes(text)) update({ q: [...terms, text] });
+              const change = searchChange(list, query, null);
+              if (change) update(change);
               setQuery("");
             }}
             onRemoveFacet={(id) => update(facetRemoval(id, list))}
