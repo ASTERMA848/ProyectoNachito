@@ -71,7 +71,18 @@ export default function OperationForm({ id, initialType = "SINGLE_SALE" }: Opera
   const operation = detail.data?.operation;
 
   if (operation && !isSale(operation.type)) {
-    return <StandardForm detail={detail.data!} contacts={contacts.data.contacts} onCreateContact={createContact} currencies={currencies.data.currencies} history={historyPanel} pager={pager} onSaved={() => refresh()} />;
+    return (
+      <StandardForm
+        detail={detail.data!}
+        contacts={contacts.data.contacts}
+        onCreateContact={createContact}
+        currencies={currencies.data.currencies}
+        history={historyPanel}
+        historyGroups={history.data?.groups}
+        pager={pager}
+        onSaved={() => refresh()}
+      />
+    );
   }
   return (
     <SaleForm
@@ -81,6 +92,7 @@ export default function OperationForm({ id, initialType = "SINGLE_SALE" }: Opera
       onCreateContact={createContact}
       currencies={currencies.data.currencies}
       history={historyPanel}
+      historyGroups={history.data?.groups}
       pager={pager}
       onSaved={(savedId) => refresh(savedId)}
     />

@@ -205,3 +205,54 @@ test.describe("F01 permisos de la auditora", () => {
     expect(response.status()).toBe(403);
   });
 });
+
+test.describe("F01 historial inline (administrador)", () => {
+  test.use(asRole("admin"));
+
+  test("F01-E6 la cotización muestra su último cambio sin abrir el historial", async ({ page, request }) => {
+    const [contacts, currencies] = await Promise.all([
+      request.get("/api/contacts?options=1").then((response) => response.json()),
+      request.get("/api/currencies").then((response) => response.json()),
+    ]);
+    const provider = contacts.contacts.find((contact: { isProvider: boolean; isActive: boolean }) => contact.isProvider && contact.isActive);
+    const client = contacts.contacts.find((contact: { isClient: boolean; isActive: boolean }) => contact.isClient && contact.isActive);
+    const usd = currencies.currencies.find((item: { code: string }) => item.code === "USD");
+    const ars = currencies.currencies.find((item: { code: string }) => item.code === "ARS");
+    const created = await (
+      await request.post("/api/operations", {
+        data: {
+          clientId: client.id,
+          providerId: provider.id,
+          originCurrencyId: usd.id,
+          destCurrencyId: ars.id,
+          originAmount: 100,
+          destAmount: 120000,
+          exchangeRate: 1200,
+          operationDate: new Date().toISOString().slice(0, 10),
+        },
+      })
+    ).json();
+    try {
+      const base = {
+        clientId: client.id,
+        providerId: provider.id,
+        originCurrencyId: usd.id,
+        originAmount: 100,
+        destCurrencyId: ars.id,
+        destAmount: 125000,
+        operationDate: new Date().toISOString().slice(0, 10),
+        observations: "",
+      };
+      expect((await request.put(`/api/operations/${created.id}`, { data: { ...base, exchangeRate: 1250 } })).ok()).toBe(true);
+
+      await page.goto(`/operations/${created.id}`);
+      await settle(page);
+      await expect(page.getByText("Último cambio: 1200 → 1250", { exact: false })).toBeVisible();
+      // El historial, no solo el campo, también tiene que nombrar el cambio (no "Actualizó la operación" a secas).
+      await expect(page.getByText("(Cotización)", { exact: false })).toBeVisible();
+      await expectAccessible(page, "S07 operación estándar con historial inline");
+    } finally {
+      await request.delete(`/api/operations/${created.id}`);
+    }
+  });
+});

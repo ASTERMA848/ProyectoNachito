@@ -28,6 +28,7 @@ import {
   TextInput,
   iconSize,
   type Column,
+  type HistoryGroup,
 } from "@/components/ui";
 import { useShellUser } from "@/components/shell/AppShell";
 import { useLeaveGuard } from "@/components/shell/LeaveGuard";
@@ -39,6 +40,7 @@ import { parseLocaleNumber } from "@/lib/parse-number";
 import { OPERATION_TYPES } from "@/lib/operation-labels";
 import { AdminConfirmDialog } from "@/components/shell/AdminConfirmDialog";
 import { FormPage, Notice } from "@/components/shell/FormPage";
+import { FieldChangeNote } from "@/components/shell/RecordHistory";
 import { contactChoices, contactLabel, decimalText, type ContactOption, type CreateContact, type Currency, type OperationDetailResponse } from "./types";
 import styles from "./form.module.css";
 
@@ -125,11 +127,12 @@ type SaleFormProps = {
   onCreateContact?: CreateContact;
   currencies: Currency[];
   history?: ReactNode;
+  historyGroups?: HistoryGroup[];
   pager?: ReactNode;
   onSaved: (id: string) => void;
 };
 
-export function SaleForm({ detail, initialType, contacts, onCreateContact, currencies, history, pager, onSaved }: SaleFormProps) {
+export function SaleForm({ detail, initialType, contacts, onCreateContact, currencies, history, historyGroups, pager, onSaved }: SaleFormProps) {
   const router = useRouter();
   const user = useShellUser();
   const { notify, confirm } = useUiFeedback();
@@ -450,7 +453,18 @@ export function SaleForm({ detail, initialType, contacts, onCreateContact, curre
                     ))}
                   </Select>
                 </Field>
-                <Field label="Cotización" layout="inline" required error={errors.exchangeRate} help={`Pesos por cada ${code || "unidad"}`}>
+                <Field
+                  label="Cotización"
+                  layout="inline"
+                  required
+                  error={errors.exchangeRate}
+                  help={
+                    <>
+                      Pesos por cada {code || "unidad"}
+                      <FieldChangeNote groups={historyGroups} field="Cotización" />
+                    </>
+                  }
+                >
                   <TextInput inputMode="decimal" value={values.exchangeRate} onChange={(event) => set("exchangeRate", event.target.value)} />
                 </Field>
                 <Field label="Fecha" layout="inline" required error={errors.operationDate}>
@@ -461,7 +475,10 @@ export function SaleForm({ detail, initialType, contacts, onCreateContact, curre
               <>
                 <ReadonlyField label="Proveedor">{contactLabel(op?.provider) || "—"}</ReadonlyField>
                 <ReadonlyField label="Moneda">{code}</ReadonlyField>
-                <ReadonlyField label="Cotización">{decimalText(headerRate)}</ReadonlyField>
+                <ReadonlyField label="Cotización">
+                  {decimalText(headerRate)}
+                  <FieldChangeNote groups={historyGroups} field="Cotización" />
+                </ReadonlyField>
                 <ReadonlyField label="Fecha">{values.operationDate.split("-").reverse().join("/")}</ReadonlyField>
               </>
             )}

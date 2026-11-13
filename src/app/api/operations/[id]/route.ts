@@ -163,13 +163,23 @@ export async function PUT(
       },
     });
 
+    // Los mismos campos de los dos lados: si no, el historial no detecta qué cambió (ver describeAuditLog)
+    // y solo dice "Actualizó la operación", sin decir qué. exchangeRate quedaba afuera: nadie veía cuándo
+    // cambiaba la cotización de una operación estándar. clientId y providerId quedan afuera del diff:
+    // son ids, y el historial no tiene forma de mostrarlos como el nombre del contacto.
     await logAudit({
       userId: user.id,
       action: "UPDATE",
       entity: "Operation",
       entityId: operationId,
-      oldValues: { state: oldOperation.state, originAmount: oldOperation.originAmount },
-      newValues: { originAmount: updatedOperation.originAmount, destAmount: updatedOperation.destAmount },
+      oldValues: {
+        originAmount: oldOperation.originAmount, destAmount: oldOperation.destAmount, exchangeRate: oldOperation.exchangeRate,
+        observations: oldOperation.observations,
+      },
+      newValues: {
+        originAmount: updatedOperation.originAmount, destAmount: updatedOperation.destAmount, exchangeRate: updatedOperation.exchangeRate,
+        observations: updatedOperation.observations,
+      },
     });
 
     return NextResponse.json(updatedOperation, { status: 200 });

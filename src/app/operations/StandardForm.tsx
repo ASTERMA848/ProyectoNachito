@@ -20,6 +20,7 @@ import {
   SmartButtons,
   StatusBar,
   TextArea,
+  type HistoryGroup,
   TextInput,
   iconSize,
 } from "@/components/ui";
@@ -32,6 +33,7 @@ import { parseLocaleNumber } from "@/lib/parse-number";
 import { isTreasury, OPERATION_STATES, OPERATION_TYPES, TREASURY_LOCKED_MESSAGE } from "@/lib/operation-labels";
 import { AdminConfirmDialog } from "@/components/shell/AdminConfirmDialog";
 import { FormPage, Notice } from "@/components/shell/FormPage";
+import { FieldChangeNote, findLatestFieldChange } from "@/components/shell/RecordHistory";
 import { contactChoices, contactLabel, decimalText, type ContactOption, type CreateContact, type Currency, type OperationDetailResponse } from "./types";
 
 type Values = {
@@ -64,12 +66,13 @@ type StandardFormProps = {
   onCreateContact?: CreateContact;
   currencies: Currency[];
   history?: ReactNode;
+  historyGroups?: HistoryGroup[];
   pager?: ReactNode;
   onSaved: () => void;
 };
 
 // Operaciones estándar anteriores a las ventas: el estado se cambia a mano, como en la pantalla anterior.
-export function StandardForm({ detail, contacts, onCreateContact, currencies, history, pager, onSaved }: StandardFormProps) {
+export function StandardForm({ detail, contacts, onCreateContact, currencies, history, historyGroups, pager, onSaved }: StandardFormProps) {
   const router = useRouter();
   const user = useShellUser();
   const { notify, confirm } = useUiFeedback();
@@ -87,6 +90,9 @@ export function StandardForm({ detail, contacts, onCreateContact, currencies, hi
 
   const dirty = JSON.stringify(values) !== JSON.stringify(initial);
   useLeaveGuard(dirty);
+
+  // Imprescindible de replica-entrepreneur: el último cambio de cotización, visible sin abrir el historial.
+  const rateChanged = Boolean(findLatestFieldChange(historyGroups, "Cotización"));
 
   const completed = op.state === "COMPLETED";
   const canWrite = can(user, "operations.write");
@@ -248,7 +254,7 @@ export function StandardForm({ detail, contacts, onCreateContact, currencies, hi
               <Field label="Monto que recibe" layout="inline">
                 <MoneyInput symbol={symbolOf(values.destCurrencyId)} value={values.destAmount} onChange={(event) => set("destAmount", event.target.value)} />
               </Field>
-              <Field label="Cotización" layout="inline">
+              <Field label="Cotización" layout="inline" help={rateChanged ? <FieldChangeNote groups={historyGroups} field="Cotización" /> : undefined}>
                 <TextInput inputMode="decimal" value={values.exchangeRate} onChange={(event) => set("exchangeRate", event.target.value)} />
               </Field>
             </FormGroup>
@@ -263,7 +269,10 @@ export function StandardForm({ detail, contacts, onCreateContact, currencies, hi
             <FormGroup title="Importes">
               <ReadonlyField label="Entrega">{formatAmount(op.originAmount, op.originCurrency.code, op.originCurrency.decimals)}</ReadonlyField>
               <ReadonlyField label="Recibe">{formatAmount(op.destAmount, op.destCurrency.code, op.destCurrency.decimals)}</ReadonlyField>
-              <ReadonlyField label="Cotización">{decimalText(op.exchangeRate)}</ReadonlyField>
+              <ReadonlyField label="Cotización">
+                {decimalText(op.exchangeRate)}
+                <FieldChangeNote groups={historyGroups} field="Cotización" />
+              </ReadonlyField>
             </FormGroup>
           </FormGroups>
         )}

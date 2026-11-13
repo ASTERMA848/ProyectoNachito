@@ -1,0 +1,8 @@
+/* Aviso de cambio al lado de un campo: discreto, sin pedir un clic para verlo.
+   Es <span>, no <p>: convive con el "help" de Field (que ya es un párrafo) y con ReadonlyField. */
+.note {
+  display: block;
+  margin-top: var(--ui-space-2);
+  font-size: var(--ui-fs-sm);
+  color: var(--ui-text-muted);
+}
