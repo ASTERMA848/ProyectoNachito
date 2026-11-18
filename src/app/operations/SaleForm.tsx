@@ -24,6 +24,7 @@ import {
   StatusBar,
   TabPanel,
   Tabs,
+  Tag,
   TextArea,
   TextInput,
   iconSize,
@@ -37,7 +38,7 @@ import { can } from "@/lib/permissions";
 import { agencyToday } from "@/lib/agency-time";
 import { formatAmount } from "@/lib/format-currency";
 import { parseLocaleNumber } from "@/lib/parse-number";
-import { OPERATION_TYPES } from "@/lib/operation-labels";
+import { OPERATION_TYPE_COLORS, OPERATION_TYPES } from "@/lib/operation-labels";
 import { AdminConfirmDialog } from "@/components/shell/AdminConfirmDialog";
 import { FormPage, Notice } from "@/components/shell/FormPage";
 import { FieldChangeNote } from "@/components/shell/RecordHistory";
@@ -408,7 +409,7 @@ export function SaleForm({ detail, initialType, contacts, onCreateContact, curre
     >
       <Sheet>
         <SheetTitle
-          eyebrow={typeLabel}
+          eyebrow={<Tag color={OPERATION_TYPE_COLORS[values.type] ?? "gray"}>{typeLabel}</Tag>}
           aside={
             detail ? (
               <SmartButtons>

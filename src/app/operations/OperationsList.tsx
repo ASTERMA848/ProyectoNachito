@@ -49,7 +49,7 @@ import { can } from "@/lib/permissions";
 import { formatAmount, formatMoney } from "@/lib/format-currency";
 import { formatDateOnly } from "@/lib/agency-time";
 import { downloadCsv } from "@/lib/csv";
-import { OPERATION_STATE_TONES, OPERATION_STATES, OPERATION_TYPES } from "@/lib/operation-labels";
+import { OPERATION_STATE_TONES, OPERATION_STATES, OPERATION_TYPE_COLORS, OPERATION_TYPES } from "@/lib/operation-labels";
 import type { CurrencySum } from "@/lib/list-query";
 import type { GroupRow, OperationListResult } from "@/lib/resources/operations";
 import type { TreasuryDashboard } from "@/lib/resources/treasury";
@@ -254,7 +254,7 @@ export default function OperationsList() {
   const columns: Column<Op>[] = [
     { key: "number", label: "Número", sortable: true, render: (op) => <span className={styles.number}>{op.operationNumber}</span> },
     { key: "date", label: "Fecha", sortable: true, render: (op) => formatDateOnly(op.operationDate) },
-    { key: "type", label: "Tipo", render: (op) => <span className={styles.muted}>{OPERATION_TYPES[op.type] ?? op.type}</span> },
+    { key: "type", label: "Tipo", render: (op) => <Tag color={OPERATION_TYPE_COLORS[op.type] ?? "gray"}>{OPERATION_TYPES[op.type] ?? op.type}</Tag> },
     { key: "client", label: "Cliente", sortable: true, render: (op) => <span className={styles.truncate}>{clientLabel(op)}</span> },
     { key: "provider", label: "Proveedor", sortable: true, render: (op) => <span className={styles.truncate}>{contactName(op.provider) || "—"}</span> },
     { key: "origin", label: "Monto", align: "end", sortable: true, render: (op) => formatAmount(op.originAmount, op.originCurrency.code, op.originCurrency.decimals) },
@@ -464,9 +464,7 @@ export default function OperationsList() {
                     onOpen={() => openOperation(op)}
                     footer={
                       <>
-                        <Tag color={op.type === "DISTRIBUTED_SALE" ? "indigo" : op.type === "SINGLE_SALE" ? "blue" : "gray"}>
-                          {OPERATION_TYPES[op.type] ?? op.type}
-                        </Tag>
+                        <Tag color={OPERATION_TYPE_COLORS[op.type] ?? "gray"}>{OPERATION_TYPES[op.type] ?? op.type}</Tag>
                         {op.client && <Avatar name={contactName(op.client)} size="sm" />}
                       </>
                     }

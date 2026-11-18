@@ -19,6 +19,7 @@ import {
   SmartButton,
   SmartButtons,
   StatusBar,
+  Tag,
   TextArea,
   type HistoryGroup,
   TextInput,
@@ -30,7 +31,7 @@ import { useUiFeedback } from "@/components/shell/UiFeedback";
 import { can } from "@/lib/permissions";
 import { formatAmount } from "@/lib/format-currency";
 import { parseLocaleNumber } from "@/lib/parse-number";
-import { isTreasury, OPERATION_STATES, OPERATION_TYPES, TREASURY_LOCKED_MESSAGE } from "@/lib/operation-labels";
+import { isTreasury, OPERATION_STATES, OPERATION_TYPE_COLORS, OPERATION_TYPES, TREASURY_LOCKED_MESSAGE } from "@/lib/operation-labels";
 import { AdminConfirmDialog } from "@/components/shell/AdminConfirmDialog";
 import { FormPage, Notice } from "@/components/shell/FormPage";
 import { FieldChangeNote, findLatestFieldChange } from "@/components/shell/RecordHistory";
@@ -226,7 +227,11 @@ export function StandardForm({ detail, contacts, onCreateContact, currencies, hi
     >
       <Sheet>
         <SheetTitle
-          eyebrow={treasury ? OPERATION_TYPES[op.type] : "Operación estándar"}
+          eyebrow={
+            <Tag color={treasury ? OPERATION_TYPE_COLORS[op.type] ?? "gray" : OPERATION_TYPE_COLORS.STANDARD}>
+              {treasury ? OPERATION_TYPES[op.type] : "Operación estándar"}
+            </Tag>
+          }
           aside={
             <SmartButtons>
               <SmartButton icon={<BookOpen size={iconSize.md} />} value={detail.counts.transactions} label="Movimientos de cuenta" href="/accounts" />

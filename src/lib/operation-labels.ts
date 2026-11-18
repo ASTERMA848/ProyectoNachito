@@ -24,6 +24,16 @@ export const OPERATION_TYPES: Record<string, string> = {
   TREASURY_TRANSFER: "Traspaso entre cajas",
 };
 
+// Un color de etiqueta por tipo, para distinguirlos de un vistazo en la lista y en el detalle.
+export const OPERATION_TYPE_COLORS: Record<string, import("@/components/ui/Tag").TagColor> = {
+  SINGLE_SALE: "blue",
+  DISTRIBUTED_SALE: "indigo",
+  STANDARD: "gray",
+  TREASURY_INCOME: "green",
+  TREASURY_EXPENSE: "red",
+  TREASURY_TRANSFER: "orange",
+};
+
 // Las genera Tesorería al mover dinero de una caja: no se reabren ni se editan, solo se eliminan
 // (eliminar revierte sus movimientos de caja).
 export const TREASURY_TYPES = ["TREASURY_INCOME", "TREASURY_EXPENSE", "TREASURY_TRANSFER"];
