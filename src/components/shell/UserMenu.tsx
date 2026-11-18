@@ -7,7 +7,7 @@ import { ROLE_LABELS } from "@/lib/permissions";
 import { useLeaveGuardContext } from "./LeaveGuard";
 import { useUiFeedback } from "./UiFeedback";
 
-export type ShellUser = { id: string; username: string; role: string; theme?: string; profilePicture?: string | null };
+export type ShellUser = { id: string; username: string; role: string; theme?: string; showHelpTips?: boolean; profilePicture?: string | null };
 
 export function UserMenu({ user }: { user: ShellUser }) {
   const { navigate } = useLeaveGuardContext();

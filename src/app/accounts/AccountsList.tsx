@@ -20,6 +20,7 @@ import {
   type TableGroup,
 } from "@/components/ui";
 import { useShellUser } from "@/components/shell/AppShell";
+import { HelpTip } from "@/components/shell/HelpTip";
 import { rememberRecordList } from "@/components/shell/RecordPager";
 import { useUiFeedback } from "@/components/shell/UiFeedback";
 import { buildFacets, buildPanel, facetRemoval, fetchList, toggleFilter, useListUrlState, type FilterGroup, type GroupOption, clearSearch, searchChange, type SearchField, toggleGroupBy, useGroupTree, subgroupKey } from "@/components/shell/list-state";
@@ -230,11 +231,20 @@ export default function AccountsList() {
 
       {data && data.totals.length > 0 && (
         <section className={styles.summary} aria-label="Totales por moneda">
-          {data.totals.map((total) => (
+          {data.totals.map((total, index) => (
             <div key={total.currencyId} className={styles.summaryItem}>
               <span className={styles.summaryCode}>{total.code}</span>
               <span className={styles.summaryLine}>
-                <span className={styles.muted}>Deuda de contactos</span>
+                <span className={styles.muted}>
+                  Deuda de contactos
+                  {index === 0 && (
+                    <HelpTip>
+                      &quot;Deuda de contactos&quot; es lo que te deben (cobrar pendiente). &quot;A favor de contactos&quot; es lo
+                      que vos les debés a ellos (pagar pendiente). El saldo de cada cuenta se ve en rojo o verde según de qué
+                      lado está.
+                    </HelpTip>
+                  )}
+                </span>
                 <Balance value={total.negative} code={total.code} decimals={total.decimals} />
               </span>
               <span className={styles.summaryLine}>

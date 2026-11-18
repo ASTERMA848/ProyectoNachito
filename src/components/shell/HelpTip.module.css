@@ -1,0 +1,26 @@
+.root {
+  position: relative;
+  display: inline-flex;
+  vertical-align: middle;
+}
+
+.trigger {
+  color: var(--ui-text-muted);
+}
+
+.tip {
+  position: absolute;
+  top: calc(100% + var(--ui-space-4));
+  left: 0;
+  z-index: 50;
+  width: max-content;
+  max-width: 260px;
+  padding: var(--ui-space-8) var(--ui-space-12);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-surface);
+  box-shadow: var(--ui-shadow-pop);
+  font-size: var(--ui-fs-sm);
+  line-height: var(--ui-lh-sm);
+  color: var(--ui-text);
+}

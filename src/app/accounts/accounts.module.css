@@ -49,6 +49,12 @@
   white-space: nowrap;
 }
 
+.withIcon {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ui-space-2);
+}
+
 .positive {
   color: var(--ui-success-text);
 }

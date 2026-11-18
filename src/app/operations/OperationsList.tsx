@@ -27,6 +27,7 @@ import {
   type TableGroup,
 } from "@/components/ui";
 import { useShellUser } from "@/components/shell/AppShell";
+import { HelpTip } from "@/components/shell/HelpTip";
 import { rememberRecordList } from "@/components/shell/RecordPager";
 import { useUiFeedback } from "@/components/shell/UiFeedback";
 import {
@@ -254,7 +255,19 @@ export default function OperationsList() {
   const columns: Column<Op>[] = [
     { key: "number", label: "Número", sortable: true, render: (op) => <span className={styles.number}>{op.operationNumber}</span> },
     { key: "date", label: "Fecha", sortable: true, render: (op) => formatDateOnly(op.operationDate) },
-    { key: "type", label: "Tipo", render: (op) => <Tag color={OPERATION_TYPE_COLORS[op.type] ?? "gray"}>{OPERATION_TYPES[op.type] ?? op.type}</Tag> },
+    {
+      key: "type",
+      label: (
+        <>
+          Tipo{" "}
+          <HelpTip>
+            Las ventas (azul/índigo) y la operación estándar (gris) se cargan desde acá. Los movimientos de tesorería
+            (verde/rojo/naranja) los genera Tesorería al mover caja: no se editan, solo se eliminan.
+          </HelpTip>
+        </>
+      ),
+      render: (op) => <Tag color={OPERATION_TYPE_COLORS[op.type] ?? "gray"}>{OPERATION_TYPES[op.type] ?? op.type}</Tag>,
+    },
     { key: "client", label: "Cliente", sortable: true, render: (op) => <span className={styles.truncate}>{clientLabel(op)}</span> },
     { key: "provider", label: "Proveedor", sortable: true, render: (op) => <span className={styles.truncate}>{contactName(op.provider) || "—"}</span> },
     { key: "origin", label: "Monto", align: "end", sortable: true, render: (op) => formatAmount(op.originAmount, op.originCurrency.code, op.originCurrency.decimals) },

@@ -12,6 +12,7 @@ export type SessionUser = {
   role: string;
   isActive: boolean;
   theme: string;
+  showHelpTips: boolean;
   profilePicture: string | null;
 };
 
@@ -38,6 +39,7 @@ export async function getSession(): Promise<Session | null> {
             role: true,
             isActive: true,
             theme: true,
+            showHelpTips: true,
             profilePicture: true,
           },
         },

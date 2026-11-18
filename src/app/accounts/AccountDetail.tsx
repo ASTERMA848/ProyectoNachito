@@ -23,6 +23,7 @@ import {
 } from "@/components/ui";
 import { useShellUser } from "@/components/shell/AppShell";
 import { FormPage, Notice } from "@/components/shell/FormPage";
+import { HelpTip } from "@/components/shell/HelpTip";
 import { RecordPager } from "@/components/shell/RecordPager";
 import { RecordHistory } from "@/components/shell/RecordHistory";
 import { fetchList } from "@/components/shell/list-state";
@@ -117,7 +118,18 @@ export default function AccountDetail({ id }: { id: string }) {
         </SheetTitle>
         <FormGroups>
           <FormGroup title="Saldo">
-            <ReadonlyField label="Saldo actual">
+            <ReadonlyField
+              label={
+                <>
+                  Saldo actual{" "}
+                  <HelpTip>
+                    Si el saldo está en rojo con flecha hacia abajo, el contacto le debe a la agencia. Si está en verde con
+                    flecha hacia arriba, es la agencia la que le debe a él. En los movimientos, &quot;Debe&quot; resta del saldo y
+                    &quot;Haber&quot; suma.
+                  </HelpTip>
+                </>
+              }
+            >
               <span className={styles.bigBalance}>
                 <Balance value={account.balance} code={code} decimals={decimals} />
               </span>

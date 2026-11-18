@@ -15,6 +15,7 @@ export async function GET() {
         username: session.user.username,
         role: session.user.role,
         theme: session.user.theme,
+        showHelpTips: session.user.showHelpTips,
         profilePicture: session.user.profilePicture,
       },
     });

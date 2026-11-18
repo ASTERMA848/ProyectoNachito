@@ -7,6 +7,7 @@ import useSWR from "swr";
 import { ArrowLeftRight, Banknote, Inbox, Landmark, List, MoreVertical, Plus, Wallet } from "lucide-react";
 import { Breadcrumbs, Button, ControlPanel, DashboardCard, DataTable, EmptyState, Menu, Spinner, iconSize, type Column } from "@/components/ui";
 import { useShellUser } from "@/components/shell/AppShell";
+import { HelpTip } from "@/components/shell/HelpTip";
 import { fetchList } from "@/components/shell/list-state";
 import { can } from "@/lib/permissions";
 import { formatAmount } from "@/lib/format-currency";
@@ -71,6 +72,10 @@ export default function TreasuryBoard() {
               <Button variant="primary" icon={<ArrowLeftRight size={iconSize.sm} />} onClick={() => setTransfer({})}>Traspaso</Button>
             )}
             <Breadcrumbs items={[{ label: "Tesorería" }]} />
+            <HelpTip>
+              Cada tarjeta es una caja física (efectivo, banco o billetera). El saldo sube cuando entra plata y baja cuando
+              sale: ventas cobradas, pagos a proveedores, ingresos y extracciones manuales, y traspasos entre cajas.
+            </HelpTip>
           </>
         }
       />

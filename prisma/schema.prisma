@@ -18,6 +18,7 @@ model User {
   passwordHash     String
   role             String            @default("OPERATOR") // AUDITOR | ADMIN | OPERATOR
   theme            String            @default("SYSTEM") // SYSTEM | LIGHT | DARK
+  showHelpTips     Boolean           @default(true)
   profilePicture   String?
   isActive         Boolean           @default(true)
   createdAt        DateTime          @default(now())

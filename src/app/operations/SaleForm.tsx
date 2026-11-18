@@ -32,6 +32,7 @@ import {
   type HistoryGroup,
 } from "@/components/ui";
 import { useShellUser } from "@/components/shell/AppShell";
+import { HelpTip } from "@/components/shell/HelpTip";
 import { useLeaveGuard } from "@/components/shell/LeaveGuard";
 import { useUiFeedback } from "@/components/shell/UiFeedback";
 import { can } from "@/lib/permissions";
@@ -307,7 +308,15 @@ export function SaleForm({ detail, initialType, contacts, onCreateContact, curre
     },
     {
       key: "rate",
-      label: "Cotización",
+      label: (
+        <>
+          Cotización{" "}
+          <HelpTip>
+            Tiene que ser más alta que la del proveedor (arriba) para que quede ganancia: ahí está el margen de la venta. Si la
+            dejás vacía, se usa la misma que la de compra y no gana nada.
+          </HelpTip>
+        </>
+      ),
       align: "end",
       width: "14%",
       render: (line) => {
@@ -327,7 +336,15 @@ export function SaleForm({ detail, initialType, contacts, onCreateContact, curre
     { key: "total", label: "Total", align: "end", width: "16%", render: (line) => (Number.isFinite(lineTotal(line)) ? formatAmount(lineTotal(line), arsCode) : "—") },
     {
       key: "paid",
-      label: "Cobrado",
+      label: (
+        <>
+          Cobrado{" "}
+          <HelpTip>
+            Marcalo cuando el cliente paga en el acto: entra plata a la caja y no queda deuda. Si lo dejás sin marcar, igual se
+            le entrega la divisa, pero queda pendiente en su cuenta corriente hasta que pague.
+          </HelpTip>
+        </>
+      ),
       align: "center",
       width: "8%",
       render: (line) => {
@@ -458,7 +475,15 @@ export function SaleForm({ detail, initialType, contacts, onCreateContact, curre
                   </Select>
                 </Field>
                 <Field
-                  label="Cotización"
+                  label={
+                    <>
+                      Cotización{" "}
+                      <HelpTip>
+                        Es lo que le pagás al proveedor por cada {code || "unidad"}. Tiene que ser más baja que la cotización
+                        de venta a tus clientes (en la tabla de abajo): la diferencia es tu ganancia.
+                      </HelpTip>
+                    </>
+                  }
                   layout="inline"
                   required
                   error={errors.exchangeRate}
@@ -491,7 +516,20 @@ export function SaleForm({ detail, initialType, contacts, onCreateContact, curre
           <FormGroup title="Pago al proveedor">
             {editable ? (
               <>
-                <Field label="Estado del pago" layout="inline" required error={errors.providerIsPaid}>
+                <Field
+                  label={
+                    <>
+                      Estado del pago{" "}
+                      <HelpTip>
+                        &quot;Pagado&quot; saca la plata de una caja ahora. &quot;Pendiente&quot; no mueve ninguna caja: queda
+                        como una deuda en la cuenta corriente del proveedor hasta que se pague.
+                      </HelpTip>
+                    </>
+                  }
+                  layout="inline"
+                  required
+                  error={errors.providerIsPaid}
+                >
                   <Select value={values.providerIsPaid} onChange={(event) => set("providerIsPaid", event.target.value as Values["providerIsPaid"])}>
                     <option value="" disabled>Elegí una opción</option>
                     <option value="false">Pendiente</option>

@@ -8,6 +8,7 @@ import { ArrowLeftRight, Inbox, Plus } from "lucide-react";
 import { Button, DataTable, EmptyState, FormGroup, FormGroups, Pager, ReadonlyField, Sheet, SheetTitle, Spinner, iconSize, type Column } from "@/components/ui";
 import { useShellUser } from "@/components/shell/AppShell";
 import { FormPage, Notice } from "@/components/shell/FormPage";
+import { HelpTip } from "@/components/shell/HelpTip";
 import { RecordHistory } from "@/components/shell/RecordHistory";
 import { fetchList } from "@/components/shell/list-state";
 import { can } from "@/lib/permissions";
@@ -100,7 +101,18 @@ export default function TreasuryBox({ id }: { id: string }) {
         <SheetTitle eyebrow={`${BOX_TYPES[account.type] ?? account.type} · ${code}`}>{account.name}</SheetTitle>
         <FormGroups>
           <FormGroup title="Saldo">
-            <ReadonlyField label="Saldo actual">
+            <ReadonlyField
+              label={
+                <>
+                  Saldo actual{" "}
+                  <HelpTip>
+                    Es la plata física que hay en esta caja ahora mismo. Sube con cada &quot;Entrada&quot; (ingresos y cobros) y
+                    baja con cada &quot;Salida&quot; (extracciones y pagos). A diferencia de una cuenta corriente, acá no hay
+                    deuda: es lo que entró menos lo que salió.
+                  </HelpTip>
+                </>
+              }
+            >
               <span className={`${styles.bigBalance} ${account.balance < 0 ? styles.negative : ""}`}>{money(account.balance)}</span>
             </ReadonlyField>
           </FormGroup>

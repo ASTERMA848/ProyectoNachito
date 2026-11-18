@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import Link from "next/link";
 import useSWR from "swr";
 import { ShieldCheck } from "lucide-react";
-import { Avatar, Breadcrumbs, Button, ControlPanel, Field, Select, SettingsSection, TextInput, iconSize } from "@/components/ui";
+import { Avatar, Breadcrumbs, Button, ControlPanel, Field, Select, SettingsSection, Switch, TextInput, iconSize } from "@/components/ui";
 import { useShellUser } from "@/components/shell/AppShell";
 import { useLeaveGuard } from "@/components/shell/LeaveGuard";
 import { useUiFeedback } from "@/components/shell/UiFeedback";
@@ -13,7 +13,7 @@ import { can, ROLE_LABELS } from "@/lib/permissions";
 import { send } from "../SettingsHome";
 import styles from "../settings.module.css";
 
-type Me = { id: string; username: string; role: string; theme: string; profilePicture: string | null };
+type Me = { id: string; username: string; role: string; theme: string; showHelpTips: boolean; profilePicture: string | null };
 
 // Datos de la propia cuenta: usuario, contraseña, tema y foto.
 function AccountSection() {
@@ -22,6 +22,7 @@ function AccountSection() {
   const me = data?.user;
   const [username, setUsername] = useState<string | null>(null);
   const [theme, setTheme] = useState<string | null>(null);
+  const [showHelpTips, setShowHelpTips] = useState<boolean | null>(null);
   const [password, setPassword] = useState("");
   const [repeat, setRepeat] = useState("");
   const [file, setFile] = useState<File | null>(null);
@@ -30,7 +31,8 @@ function AccountSection() {
 
   const currentName = username ?? me?.username ?? "";
   const currentTheme = theme ?? me?.theme ?? "SYSTEM";
-  const dirty = Boolean(me) && (currentName !== me?.username || currentTheme !== me?.theme || password !== "" || file !== null);
+  const currentHelpTips = showHelpTips ?? me?.showHelpTips ?? true;
+  const dirty = Boolean(me) && (currentName !== me?.username || currentTheme !== me?.theme || currentHelpTips !== me?.showHelpTips || password !== "" || file !== null);
   useLeaveGuard(dirty);
 
   const save = async () => {
@@ -50,7 +52,7 @@ function AccountSection() {
       }
       picture = uploaded.url;
     }
-    const result = await send(`/api/users/${me.id}`, "PUT", { username: currentName, password, theme: currentTheme, profilePicture: picture });
+    const result = await send(`/api/users/${me.id}`, "PUT", { username: currentName, password, theme: currentTheme, showHelpTips: currentHelpTips, profilePicture: picture });
     setBusy(false);
     if (!result.ok) return notify("No se pudo guardar tu cuenta", "danger", result.error);
     setPassword("");
@@ -59,8 +61,8 @@ function AccountSection() {
     if (fileRef.current) fileRef.current.value = "";
     await mutate();
     notify("Cuenta actualizada", "success");
-    // El nombre y el tema se leen al cargar la página.
-    if (currentName !== me.username || currentTheme !== me.theme) window.location.reload();
+    // El nombre, el tema y las ayudas se leen al cargar la página.
+    if (currentName !== me.username || currentTheme !== me.theme || currentHelpTips !== me.showHelpTips) window.location.reload();
   };
 
   return (
@@ -95,6 +97,14 @@ function AccountSection() {
           <Field label="Foto" help="JPG, PNG, GIF, WEBP o AVIF de hasta 5 MB.">
             <input ref={fileRef} className={styles.file} type="file" accept="image/jpeg,image/png,image/gif,image/webp,image/avif" onChange={(event) => setFile(event.target.files?.[0] ?? null)} />
           </Field>
+          <Field label="Ayudas en pantalla" help="Íconos de ayuda (?) que explican qué se ve y qué se puede hacer en cada pantalla.">
+            <Switch
+              disabled={!me}
+              checked={currentHelpTips}
+              label={currentHelpTips ? "Activadas" : "Desactivadas"}
+              onChange={(event) => setShowHelpTips(event.target.checked)}
+            />
+          </Field>
         </div>
         {dirty && (
           <div className={styles.sectionActions}>
@@ -103,6 +113,7 @@ function AccountSection() {
               onClick={() => {
                 setUsername(null);
                 setTheme(null);
+                setShowHelpTips(null);
                 setPassword("");
                 setRepeat("");
                 setFile(null);

@@ -20,7 +20,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
     const [user, logs] = await Promise.all([
       prisma.user.findUnique({
         where: { id: (await params).id },
-        select: { id: true, username: true, role: true, isActive: true, theme: true, profilePicture: true, createdAt: true, updatedAt: true },
+        select: { id: true, username: true, role: true, isActive: true, theme: true, showHelpTips: true, profilePicture: true, createdAt: true, updatedAt: true },
       }),
       prisma.auditLog.count({ where: { userId: (await params).id } }),
     ]);
@@ -63,7 +63,7 @@ export async function PUT(
     }
 
     // Extraer solo campos permitidos (mass assignment protection)
-    const { username, role, password, theme, profilePicture } = body;
+    const { username, role, password, theme, showHelpTips, profilePicture } = body;
 
     if (!username || typeof username !== "string") {
       return NextResponse.json({ error: "Faltan campos requeridos" }, { status: 400 });
@@ -105,6 +105,10 @@ export async function PUT(
       return NextResponse.json({ error: "Tema inválido" }, { status: 400 });
     }
 
+    if (showHelpTips !== undefined && typeof showHelpTips !== "boolean") {
+      return NextResponse.json({ error: "Valor de ayudas inválido" }, { status: 400 });
+    }
+
     const targetUser = await prisma.user.findUnique({ where: { id } });
     if (!targetUser) {
       return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 });
@@ -122,6 +126,7 @@ export async function PUT(
       username: trimmedUsername,
       role: finalRole ?? targetUser.role,
       theme: ALLOWED_THEMES.includes(theme) ? theme : targetUser.theme,
+      showHelpTips: typeof showHelpTips === "boolean" ? showHelpTips : targetUser.showHelpTips,
     };
 
     // Solo actualizar profilePicture si se provee explícitamente
@@ -171,6 +176,7 @@ export async function PUT(
         role: updatedUser.role,
         isActive: updatedUser.isActive,
         theme: updatedUser.theme,
+        showHelpTips: updatedUser.showHelpTips,
         profilePicture: updatedUser.profilePicture,
       },
     });

@@ -9,7 +9,7 @@ import styles from "./DataTable.module.css";
 
 export type Column<T> = {
   key: string;
-  label: string;
+  label: ReactNode;
   align?: "start" | "end" | "center";
   width?: string;
   sortable?: boolean;
