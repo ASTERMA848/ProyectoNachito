@@ -20,31 +20,60 @@ async function post(url: string, body: unknown) {
 }
 
 // Ingreso o extracción manual en una caja (con motivo, queda como operación de tesorería).
-export function CashMovementDialog({ box, onClose, onSaved }: { box: BoxOption | null; onClose: () => void; onSaved: () => void }) {
+// Con `initialBoxId` la caja viene fija (se abrió desde su tarjeta en Tesorería); sin eso,
+// muestra el selector de caja (se abrió desde otra pantalla, como Operaciones).
+export function CashMovementDialog({
+  open,
+  boxes,
+  initialBoxId,
+  initialType,
+  onClose,
+  onSaved,
+}: {
+  open: boolean;
+  boxes: BoxOption[];
+  initialBoxId?: string;
+  initialType?: "INCOME" | "EXPENSE";
+  onClose: () => void;
+  onSaved: () => void;
+}) {
   const { notify } = useUiFeedback();
-  const [type, setType] = useState("INCOME");
+  const [boxId, setBoxId] = useState(initialBoxId ?? "");
+  const [type, setType] = useState(initialType ?? "INCOME");
   const [amount, setAmount] = useState("");
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [showErrors, setShowErrors] = useState(false);
+  const [openedFor, setOpenedFor] = useState<string | undefined>(undefined);
+  const reopenKey = `${initialBoxId ?? ""}|${initialType ?? ""}`;
+  if (open && reopenKey !== openedFor) {
+    setOpenedFor(reopenKey);
+    setBoxId(initialBoxId ?? "");
+    setType(initialType ?? "INCOME");
+  }
+
+  const available = boxes.filter((candidate) => candidate.currency.isActive);
+  const box = available.find((candidate) => candidate.id === boxId);
 
   const value = parseLocaleNumber(amount);
   const errors = {
+    box: box ? undefined : "Elegí la caja",
     amount: !validAmount(value) ? "Escribí un importe mayor a cero" : type === "EXPENSE" && box && value > box.balance ? "Supera el saldo de la caja" : undefined,
     reason: reason.trim() ? undefined : "Escribí el motivo",
   };
 
   const close = () => {
+    setBoxId("");
     setType("INCOME");
     setAmount("");
     setReason("");
     setShowErrors(false);
+    setOpenedFor(undefined);
     onClose();
   };
 
   const save = async () => {
-    if (!box) return;
-    if (errors.amount || errors.reason) return setShowErrors(true);
+    if (!box || errors.amount || errors.reason) return setShowErrors(true);
     setBusy(true);
     const result = await post("/api/treasury", { accountId: box.id, type, amount: value, reason });
     setBusy(false);
@@ -56,9 +85,9 @@ export function CashMovementDialog({ box, onClose, onSaved }: { box: BoxOption |
 
   return (
     <Dialog
-      open={box !== null}
+      open={open}
       onClose={close}
-      title={box ? `Movimiento en ${boxLabel(box)}` : "Movimiento"}
+      title={box ? `Movimiento en ${boxLabel(box)}` : "Movimiento de caja"}
       footer={
         <>
           <Button variant="primary" loading={busy} onClick={save}>Registrar</Button>
@@ -67,15 +96,27 @@ export function CashMovementDialog({ box, onClose, onSaved }: { box: BoxOption |
       }
     >
       <div className={styles.dialogForm}>
+        {!initialBoxId && (
+          <Field label="Caja" required error={showErrors ? errors.box : undefined}>
+            <Select value={boxId} onChange={(event) => setBoxId(event.target.value)}>
+              <option value="">Elegí la caja</option>
+              {available.map((candidate) => (
+                <option key={candidate.id} value={candidate.id}>
+                  {boxLabel(candidate)} ({formatAmount(candidate.balance, candidate.currency.code, candidate.currency.decimals)})
+                </option>
+              ))}
+            </Select>
+          </Field>
+        )}
         {box && <p className={styles.muted}>Saldo actual: {formatAmount(box.balance, box.currency.code, box.currency.decimals)}</p>}
         <Field label="Tipo">
-          <Select value={type} onChange={(event) => setType(event.target.value)}>
+          <Select value={type} onChange={(event) => setType(event.target.value as "INCOME" | "EXPENSE")}>
             <option value="INCOME">Ingreso</option>
             <option value="EXPENSE">Extracción</option>
           </Select>
         </Field>
         <Field label="Importe" required error={showErrors ? errors.amount : undefined}>
-          <MoneyInput symbol={symbolOf(box ?? undefined)} value={amount} onChange={(event) => setAmount(event.target.value)} />
+          <MoneyInput symbol={symbolOf(box)} value={amount} onChange={(event) => setAmount(event.target.value)} />
         </Field>
         <Field label="Motivo" required error={showErrors ? errors.reason : undefined}>
           <TextArea rows={2} maxLength={500} value={reason} onChange={(event) => setReason(event.target.value)} />

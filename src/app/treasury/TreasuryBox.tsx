@@ -124,7 +124,13 @@ export default function TreasuryBox({ id }: { id: string }) {
         </div>
       </Sheet>
 
-      <CashMovementDialog box={movementOpen ? boxOption : null} onClose={() => setMovementOpen(false)} onSaved={refresh} />
+      <CashMovementDialog
+        open={movementOpen}
+        boxes={[boxOption]}
+        initialBoxId={account.id}
+        onClose={() => setMovementOpen(false)}
+        onSaved={refresh}
+      />
       <TransferDialog open={transferOpen} from={account.id} boxes={board.data?.accounts ?? [boxOption]} onClose={() => setTransferOpen(false)} onSaved={refresh} />
     </FormPage>
   );

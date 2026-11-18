@@ -52,6 +52,8 @@ import { downloadCsv } from "@/lib/csv";
 import { OPERATION_STATE_TONES, OPERATION_STATES, OPERATION_TYPES } from "@/lib/operation-labels";
 import type { CurrencySum } from "@/lib/list-query";
 import type { GroupRow, OperationListResult } from "@/lib/resources/operations";
+import type { TreasuryDashboard } from "@/lib/resources/treasury";
+import { CashMovementDialog, TransferDialog } from "../treasury/TreasuryDialogs";
 import { GROUP_ROW_LIMIT, useGroupRows } from "./useGroupRows";
 import styles from "./operations.module.css";
 
@@ -183,6 +185,11 @@ export default function OperationsList() {
 
   const canWrite = can(user, "operations.write");
   const canDelete = can(user, "operations.delete");
+  const canTreasuryWrite = can(user, "treasury.write");
+  const { data: treasuryData } = useSWR<TreasuryDashboard>(canTreasuryWrite ? "/api/treasury?days=2" : null, fetchList);
+  const boxes = treasuryData?.accounts ?? [];
+  const [movement, setMovement] = useState<{ type: "INCOME" | "EXPENSE" } | null>(null);
+  const [transferOpen, setTransferOpen] = useState(false);
   const hasSearch = filters.length > 0 || terms.length > 0 || list.fieldTerms.length > 0;
 
   const facets = buildFacets(list, FILTER_GROUPS, GROUP_OPTIONS, {}, SEARCH_FIELDS);
@@ -296,13 +303,27 @@ export default function OperationsList() {
     router.push(`/operations/${op.id}`);
   };
 
-  const newMenu = canWrite ? (
+  const newMenu = canWrite || canTreasuryWrite ? (
     <Menu
       label="Nueva operación"
       variant="primary"
       items={[
-        { id: "single", label: "Venta 1 a 1", onSelect: () => router.push("/operations/new?type=single") },
-        { id: "distributed", label: "Venta distribuida", onSelect: () => router.push("/operations/new?type=distributed") },
+        ...(canWrite
+          ? [
+              { id: "single", label: "Venta 1 a 1", onSelect: () => router.push("/operations/new?type=single") },
+              { id: "distributed", label: "Venta distribuida", onSelect: () => router.push("/operations/new?type=distributed") },
+            ]
+          : []),
+        ...(canTreasuryWrite && boxes.length > 0
+          ? [
+              { type: "divider" as const, id: "treasury-divider" },
+              { id: "income", label: "Ingreso de caja", onSelect: () => setMovement({ type: "INCOME" }) },
+              { id: "expense", label: "Extracción de caja", onSelect: () => setMovement({ type: "EXPENSE" }) },
+              ...(boxes.length > 1
+                ? [{ id: "transfer", label: "Traspaso entre cajas", onSelect: () => setTransferOpen(true) }]
+                : []),
+            ]
+          : []),
       ]}
     >
       Nuevo
@@ -466,6 +487,19 @@ export default function OperationsList() {
             );
           })}
         </KanbanBoard>
+      )}
+
+      {canTreasuryWrite && (
+        <>
+          <CashMovementDialog
+            open={movement !== null}
+            boxes={boxes}
+            initialType={movement?.type}
+            onClose={() => setMovement(null)}
+            onSaved={() => mutate()}
+          />
+          <TransferDialog open={transferOpen} boxes={boxes} onClose={() => setTransferOpen(false)} onSaved={() => mutate()} />
+        </>
       )}
     </div>
   );

@@ -141,7 +141,13 @@ export default function TreasuryBoard() {
         </div>
       )}
 
-      <CashMovementDialog box={movementBox} onClose={() => setMovementBox(null)} onSaved={() => mutate()} />
+      <CashMovementDialog
+        open={movementBox !== null}
+        boxes={boxes}
+        initialBoxId={movementBox?.id}
+        onClose={() => setMovementBox(null)}
+        onSaved={() => mutate()}
+      />
       <TransferDialog open={transfer !== null} from={transfer?.from} boxes={boxes} onClose={() => setTransfer(null)} onSaved={() => mutate()} />
     </div>
   );
