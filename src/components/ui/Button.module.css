@@ -103,8 +103,13 @@
   width: var(--ui-control-h-sm);
 }
 
-.spin {
-  animation: spin 0.8s linear infinite;
+.spinner {
+  display: inline-block;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  animation: spin 0.7s linear infinite;
 }
 
 @keyframes spin {

@@ -1,5 +1,4 @@
 import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from "react";
-import { LoaderCircle } from "lucide-react";
 import { cx } from "./cx";
 import { iconSize } from "./tokens.generated";
 import styles from "./Button.module.css";
@@ -27,7 +26,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       aria-busy={loading || undefined}
       {...rest}
     >
-      {loading ? <LoaderCircle size={iconSize.sm} className={styles.spin} /> : icon}
+      {loading ? <span className={styles.spinner} style={{ width: iconSize.sm, height: iconSize.sm }} aria-hidden /> : icon}
       {children != null && children !== false && <span className={styles.label}>{children}</span>}
     </button>
   );
@@ -51,7 +50,7 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(functio
       aria-busy={loading || undefined}
       {...rest}
     >
-      {loading ? <LoaderCircle size={iconSize.sm} className={styles.spin} /> : icon}
+      {loading ? <span className={styles.spinner} style={{ width: iconSize.sm, height: iconSize.sm }} aria-hidden /> : icon}
     </button>
   );
 });
