@@ -416,9 +416,15 @@ export function SaleForm({ detail, initialType, contacts, onCreateContact, curre
       dirty={dirty}
       pager={pager}
       actions={
-        op && can(user, "operations.delete") ? (
-          <Button variant="ghost" size="sm" icon={<Trash2 size={iconSize.sm} />} loading={deleting} onClick={remove}>Eliminar</Button>
-        ) : null
+        <>
+          <HelpTip>
+            La divisa se entrega a cada cliente aunque no haya pagado. Al completar la venta se registra el movimiento en la
+            cuenta corriente de cada uno; si además está cobrado o pagado, también se mueve la caja correspondiente.
+          </HelpTip>
+          {op && can(user, "operations.delete") && (
+            <Button variant="ghost" size="sm" icon={<Trash2 size={iconSize.sm} />} loading={deleting} onClick={remove}>Eliminar</Button>
+          )}
+        </>
       }
       header={header}
       notice={notice}

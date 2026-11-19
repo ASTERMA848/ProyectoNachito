@@ -36,7 +36,7 @@ export function FormGroups({ children }: { children: ReactNode }) {
   return <div className={styles.groups}>{children}</div>;
 }
 
-export function FormGroup({ title, children }: { title?: string; children: ReactNode }) {
+export function FormGroup({ title, children }: { title?: ReactNode; children: ReactNode }) {
   return (
     <div className={styles.group}>
       {title && <h2 className={styles.groupTitle}>{title}</h2>}

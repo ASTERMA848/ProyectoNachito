@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Button, Dialog, Field, MoneyInput, Select, TextArea, TextInput } from "@/components/ui";
+import { HelpTip } from "@/components/shell/HelpTip";
 import { useUiFeedback } from "@/components/shell/UiFeedback";
 import { formatAmount } from "@/lib/format-currency";
 import { parseLocaleNumber } from "@/lib/parse-number";
@@ -109,7 +110,17 @@ export function CashMovementDialog({
           </Field>
         )}
         {box && <p className={styles.muted}>Saldo actual: {formatAmount(box.balance, box.currency.code, box.currency.decimals)}</p>}
-        <Field label="Tipo">
+        <Field
+          label={
+            <>
+              Tipo{" "}
+              <HelpTip>
+                &quot;Ingreso&quot; suma al saldo de la caja (por ejemplo, plata que entró fuera de una operación). &quot;Extracción&quot;
+                resta (un retiro, un gasto). Ninguno de los dos toca cuentas corrientes de contactos.
+              </HelpTip>
+            </>
+          }
+        >
           <Select value={type} onChange={(event) => setType(event.target.value as "INCOME" | "EXPENSE")}>
             <option value="INCOME">Ingreso</option>
             <option value="EXPENSE">Extracción</option>
@@ -218,6 +229,14 @@ export function TransferDialog({ open, boxes, from, onClose, onSaved }: { open: 
       }
     >
       <div className={styles.dialogForm}>
+        <p className={styles.muted}>
+          Mueve plata de una caja a otra (por ejemplo, de la caja física a la cuenta bancaria). No es una venta ni afecta a
+          ningún contacto.{" "}
+          <HelpTip>
+            Si las dos cajas son de la misma moneda, el importe que sale es el mismo que entra. Si son de monedas distintas,
+            hay que indicar la cotización para calcular cuánto entra en la caja de destino.
+          </HelpTip>
+        </p>
         <Field label="Desde" required error={error("origin")}>
           <Select value={originId} onChange={(event) => setOriginId(event.target.value)}>
             <option value="">Elegí la caja</option>

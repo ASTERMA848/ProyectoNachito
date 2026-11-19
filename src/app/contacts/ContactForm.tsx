@@ -31,6 +31,7 @@ import {
   type HistoryGroup,
 } from "@/components/ui";
 import { useShellUser } from "@/components/shell/AppShell";
+import { HelpTip } from "@/components/shell/HelpTip";
 import { useLeaveGuard } from "@/components/shell/LeaveGuard";
 import { useUiFeedback } from "@/components/shell/UiFeedback";
 import { FormPage, Notice } from "@/components/shell/FormPage";
@@ -286,7 +287,17 @@ export default function ContactForm({ id }: { id?: string }) {
         </FormGroups>
 
         <FormGroups>
-          <FormGroup title="Rol">
+          <FormGroup
+            title={
+              <>
+                Rol{" "}
+                <HelpTip>
+                  Marcá &quot;Es cliente&quot; si le vas a vender divisa, y &quot;Es proveedor&quot; si le vas a comprar. Podés tildar las dos.
+                  Cada rol tiene su propia cuenta corriente: lo que le cobrás o le debés queda ahí hasta que se liquide.
+                </HelpTip>
+              </>
+            }
+          >
             <Checkbox label="Es cliente" checked={values.isClient} disabled={!editable} onChange={(event) => set("isClient", event.target.checked)} />
             <Checkbox label="Es proveedor" checked={values.isProvider} disabled={!editable} onChange={(event) => set("isProvider", event.target.checked)} />
             {showErrors && errors.roles && <span className={styles.error} role="alert">{errors.roles}</span>}

@@ -26,6 +26,7 @@ import {
   iconSize,
 } from "@/components/ui";
 import { useShellUser } from "@/components/shell/AppShell";
+import { HelpTip } from "@/components/shell/HelpTip";
 import { useLeaveGuard } from "@/components/shell/LeaveGuard";
 import { useUiFeedback } from "@/components/shell/UiFeedback";
 import { can } from "@/lib/permissions";
@@ -212,7 +213,19 @@ export function StandardForm({ detail, contacts, onCreateContact, currencies, hi
       breadcrumbs={[{ label: "Operaciones", href: "/operations" }, { label: op.operationNumber }]}
       dirty={dirty}
       pager={pager}
-      actions={can(user, "operations.delete") ? <Button variant="ghost" size="sm" icon={<Trash2 size={iconSize.sm} />} onClick={remove}>Eliminar</Button> : null}
+      actions={
+        <>
+          {!treasury && (
+            <HelpTip>
+              &quot;Pendiente&quot; y &quot;En proceso&quot; no mueven nada. Al completar la operación se registra el movimiento en
+              la cuenta corriente de cliente y proveedor. &quot;Cancelada&quot; no genera ni revierte movimientos.
+            </HelpTip>
+          )}
+          {can(user, "operations.delete") && (
+            <Button variant="ghost" size="sm" icon={<Trash2 size={iconSize.sm} />} onClick={remove}>Eliminar</Button>
+          )}
+        </>
+      }
       header={header}
       notice={
         treasury ? (
