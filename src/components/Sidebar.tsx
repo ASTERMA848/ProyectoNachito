@@ -11,7 +11,6 @@ import {
   SettingsIcon,
   EyeIcon,
   CommandIcon,
-  InfoIcon,
 } from "@liquefy-ui/icons";
 
 export default function Sidebar({ user, open, onClose }: { user?: { username: string; role: string; profilePicture?: string | null } | null; open: boolean; onClose: () => void }) {
@@ -56,7 +55,6 @@ export default function Sidebar({ user, open, onClose }: { user?: { username: st
     { href: "/settings", label: "Configuración", category: "admin", icon: <SettingsIcon size={20} /> },
     { href: "/audit", label: "Auditoría", category: "admin", icon: <EyeIcon size={20} /> },
     { href: "/sql-console", label: "Consola SQL", category: "admin", icon: <CommandIcon size={20} /> },
-    { href: "/manual", label: "Manual de Uso", category: "manual", icon: <InfoIcon size={20} /> },
   ];
 
   const allowedNavItems = navItems.filter((item) => {
@@ -69,7 +67,6 @@ export default function Sidebar({ user, open, onClose }: { user?: { username: st
 
   const gestionItems = allowedNavItems.filter((i) => i.category === "gestion");
   const adminItems = allowedNavItems.filter((i) => i.category === "admin");
-  const manualItems = allowedNavItems.filter((i) => i.category === "manual");
 
   const renderNavGroup = (title: string, items: typeof allowedNavItems) => {
     if (items.length === 0) return null;
@@ -173,7 +170,6 @@ export default function Sidebar({ user, open, onClose }: { user?: { username: st
         <nav aria-label="Secciones del sistema">
           {renderNavGroup("Gestión Principal", gestionItems)}
           {renderNavGroup("Administración", adminItems)}
-          {renderNavGroup("Ayuda", manualItems)}
         </nav>
       </div>
 

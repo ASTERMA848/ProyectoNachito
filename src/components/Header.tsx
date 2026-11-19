@@ -13,7 +13,6 @@ import {
   SettingsIcon,
   EyeIcon,
   CommandIcon,
-  InfoIcon,
 } from "@liquefy-ui/icons";
 
 export default function Header({ user }: { user?: { username: string; role: string; profilePicture?: string | null } | null }) {
@@ -54,7 +53,6 @@ export default function Header({ user }: { user?: { username: string; role: stri
     { href: "/settings", label: "Configuración", category: "admin", icon: <SettingsIcon size={26} /> },
     { href: "/audit", label: "Auditoría", category: "admin", icon: <EyeIcon size={26} /> },
     { href: "/sql-console", label: "Consola SQL", category: "admin", icon: <CommandIcon size={26} /> },
-    { href: "/manual", label: "Manual de Uso", category: "manual", icon: <InfoIcon size={26} /> },
   ];
 
   // Filtrar según los permisos del usuario
@@ -372,20 +370,6 @@ export default function Header({ user }: { user?: { username: string; role: stri
               </div>
             );
           })}
-          
-          {/* Manual de Uso Standalone Link (Mobile, oculto para AUDITOR, excepto admin hardcodeado) */}
-          {(user?.username === "admin" || user?.role !== "AUDITOR") && (
-            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-              <Link
-                href="/manual"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className={`flowbite-nav-dropdown-item ${pathname === "/manual" ? "active" : ""}`}
-                style={{ padding: "10px 14px", fontWeight: 500 }}
-              >
-                <span>Manual de Uso</span>
-              </Link>
-            </div>
-          )}
         </div>
       )}
     </header>

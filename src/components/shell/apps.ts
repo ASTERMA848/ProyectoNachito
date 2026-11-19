@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { ArrowLeftRight, BookMarked, BookOpen, Database, House, Landmark, Settings, ShieldCheck, Users } from "lucide-react";
+import { ArrowLeftRight, BookOpen, Database, House, Landmark, Settings, ShieldCheck, Users } from "lucide-react";
 import type { Role } from "@/lib/permissions";
 
 export type AppSection = { id: string; label: string; href: string };
@@ -35,7 +35,6 @@ export const APPS: AppDef[] = [
   { id: "audit", label: "Auditoría", href: "/audit", icon: ShieldCheck, roles: ["ADMIN", "AUDITOR"] },
   { id: "sql", label: "Consola SQL", href: "/sql-console", icon: Database, roles: ["ADMIN", "AUDITOR"] },
   { id: "settings", label: "Configuración", href: "/settings", icon: Settings },
-  { id: "manual", label: "Manual de uso", href: "/manual", icon: BookMarked },
 ];
 
 // Pantallas que ya usan la interfaz nueva. Las demás siguen con la anterior hasta migrarlas.

@@ -90,7 +90,7 @@ async function main() {
   await command('Network.setCookie', { name: 'sessionToken', value: session.sessionToken, url: 'http://localhost:3000', httpOnly: true });
   const results = [];
   if (!process.argv.includes('--finish')) {
-  for (const route of ['/', '/operations', '/treasury', '/contacts', '/accounts', '/settings', '/audit', '/sql-console', '/manual', '/login']) {
+  for (const route of ['/', '/operations', '/treasury', '/contacts', '/accounts', '/settings', '/audit', '/sql-console', '/login']) {
     await viewport(1440); await navigate(route);
     for (const width of [1440, 768, 360, 320]) { await viewport(width); results.push(await check(`${route.replaceAll('/', '') || 'dashboard'}-${width}`)); }
   }
