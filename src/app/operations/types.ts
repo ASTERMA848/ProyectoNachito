@@ -9,9 +9,13 @@ export type OperationLine = {
   operationNumber: string;
   clientId: string | null;
   client: ContactRef | null;
-  originAmount: number;
-  destAmount: number;
-  exchangeRate: number;
+  originAmount: number; // Monto TT, en la moneda de cabecera
+  destCurrencyId: string; // Moneda de esta línea
+  destCurrency: CurrencyRef;
+  destAmount: number; // Haber = originAmount / exchangeRate, en destCurrencyId
+  exchangeRate: number; // Cotización Cliente
+  providerExchangeRate: number | null; // Cotización Proveedor de esta línea
+  providerDebtAmount: number | null; // Debe = originAmount / providerExchangeRate, en destCurrencyId
   isPaid: boolean;
   observations: string | null;
 };

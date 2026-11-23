@@ -42,24 +42,20 @@ import { parseLocaleNumber } from "@/lib/parse-number";
 import { OPERATION_TYPE_COLORS, OPERATION_TYPES } from "@/lib/operation-labels";
 import { AdminConfirmDialog } from "@/components/shell/AdminConfirmDialog";
 import { FormPage, Notice } from "@/components/shell/FormPage";
-import { FieldChangeNote } from "@/components/shell/RecordHistory";
 import { contactChoices, contactLabel, decimalText, type ContactOption, type CreateContact, type Currency, type OperationDetailResponse } from "./types";
 import styles from "./form.module.css";
 
 type SaleType = "SINGLE_SALE" | "DISTRIBUTED_SALE";
-type Line = { key: string; clientId: string; amount: string; exchangeRate: string; isPaid: boolean; observations: string };
+type Line = { key: string; clientId: string; amount: string; providerExchangeRate: string; destCurrencyId: string; exchangeRate: string; isPaid: boolean; observations: string };
 type Values = {
   type: SaleType;
   providerId: string;
-  currencyId: string;
-  exchangeRate: string;
+  currencyId: string; // Moneda del Monto TT (lo que transfiere el proveedor)
   operationDate: string;
-  providerIsPaid: "" | "true" | "false";
-  providerPaymentCurrencyId: string;
   observations: string;
   lines: Line[];
 };
-type Errors = Partial<Record<"providerId" | "currencyId" | "exchangeRate" | "operationDate" | "providerIsPaid", string>> & { lines?: string[] };
+type Errors = Partial<Record<"providerId" | "currencyId" | "operationDate", string>> & { lines?: string[] };
 
 const SALE_STEPS = [
   { id: "PENDING", label: "Pendiente" },
@@ -73,31 +69,29 @@ const todayText = () => {
   return `${year}-${pad(month)}-${pad(day)}`;
 };
 
-// Por defecto una línea nueva queda cobrada, como en la pantalla anterior.
+// Una línea nueva arranca sin pagar: recién se tilda cuando ya se le pagó al cliente.
 // La clave es local: crypto.randomUUID no existe si la app se abre sin HTTPS desde otra PC de la red.
 let lineSequence = 0;
-const newLine = (): Line => ({ key: `new-${++lineSequence}`, clientId: "", amount: "", exchangeRate: "", isPaid: true, observations: "" });
+const newLine = (destCurrencyId: string): Line => ({ key: `new-${++lineSequence}`, clientId: "", amount: "", providerExchangeRate: "", destCurrencyId, exchangeRate: "", isPaid: false, observations: "" });
 
 function valuesFrom(detail: OperationDetailResponse | undefined, type: SaleType, arsId: string): Values {
   const op = detail?.operation;
   if (!op) {
-    return { type, providerId: "", currencyId: "", exchangeRate: "", operationDate: todayText(), providerIsPaid: "false", providerPaymentCurrencyId: arsId, observations: "", lines: [newLine()] };
+    return { type, providerId: "", currencyId: arsId, operationDate: todayText(), observations: "", lines: [newLine(arsId)] };
   }
   return {
     type: op.type as SaleType,
     providerId: op.providerId ?? "",
     currencyId: op.originCurrencyId,
-    exchangeRate: decimalText(op.exchangeRate),
     operationDate: op.operationDate.slice(0, 10),
-    providerIsPaid: op.providerIsPaid === null ? "" : op.providerIsPaid ? "true" : "false",
-    providerPaymentCurrencyId: op.providerPaymentCurrencyId ?? arsId,
     observations: op.observations ?? "",
     lines: op.childOperations.map((child) => ({
       key: child.id,
       clientId: child.clientId ?? "",
       amount: decimalText(child.originAmount),
-      // Una cotización igual a la del proveedor se muestra vacía: la línea usa la general.
-      exchangeRate: child.exchangeRate === op.exchangeRate ? "" : decimalText(child.exchangeRate),
+      providerExchangeRate: decimalText(child.providerExchangeRate),
+      destCurrencyId: child.destCurrencyId,
+      exchangeRate: decimalText(child.exchangeRate),
       isPaid: child.isPaid,
       observations: child.observations ?? "",
     })),
@@ -107,15 +101,18 @@ function valuesFrom(detail: OperationDetailResponse | undefined, type: SaleType,
 function validate(values: Values): Errors {
   const errors: Errors = {};
   if (!values.providerId) errors.providerId = "Elegí el proveedor.";
-  if (!values.currencyId) errors.currencyId = "Elegí la moneda que se compra.";
-  if (!(parseLocaleNumber(values.exchangeRate) > 0)) errors.exchangeRate = "La cotización tiene que ser mayor a cero.";
+  if (!values.currencyId) errors.currencyId = "Elegí la moneda del monto transferido.";
   if (!values.operationDate) errors.operationDate = "Elegí la fecha.";
-  if (values.providerIsPaid === "") errors.providerIsPaid = "Indicá si el proveedor está pagado o pendiente.";
   const lines = values.lines.flatMap((line, index) => {
     const problems: string[] = [];
     if (!line.clientId) problems.push("falta el cliente");
-    if (!(parseLocaleNumber(line.amount) > 0)) problems.push("el monto tiene que ser mayor a cero");
-    if (line.exchangeRate.trim() && !(parseLocaleNumber(line.exchangeRate) > 0)) problems.push("la cotización no es válida");
+    if (!(parseLocaleNumber(line.amount) > 0)) problems.push("el monto TT tiene que ser mayor a cero");
+    if (!line.destCurrencyId) problems.push("falta la moneda");
+    const providerRate = parseLocaleNumber(line.providerExchangeRate);
+    const clientRate = parseLocaleNumber(line.exchangeRate);
+    if (!(providerRate > 0)) problems.push("la cotización del proveedor no es válida");
+    if (!(clientRate > 0)) problems.push("la cotización del cliente no es válida");
+    if (providerRate > 0 && clientRate > 0 && clientRate >= providerRate) problems.push("la cotización del cliente debe ser menor a la del proveedor");
     return problems.length ? [`Línea ${index + 1}: ${problems.join(", ")}.`] : [];
   });
   if (lines.length) errors.lines = lines;
@@ -134,7 +131,7 @@ type SaleFormProps = {
   onSaved: (id: string) => void;
 };
 
-export function SaleForm({ detail, initialType, contacts, onCreateContact, currencies, history, historyGroups, pager, onSaved }: SaleFormProps) {
+export function SaleForm({ detail, initialType, contacts, onCreateContact, currencies, history, pager, onSaved }: SaleFormProps) {
   const router = useRouter();
   const user = useShellUser();
   const { notify, confirm } = useUiFeedback();
@@ -169,25 +166,37 @@ export function SaleForm({ detail, initialType, contacts, onCreateContact, curre
   const editable = canWrite && (!completed || (canReopen && unlocked));
 
   const clientChoices = (selected: string) => contactChoices(contacts, "isClient", selected);
-  const buyable = currencies.filter((currency) => currency.code !== "ARS" && (currency.isActive || currency.id === values.currencyId));
-  const payable = currencies.filter((currency) => currency.isActive && (currency.id === ars?.id || currency.id === values.currencyId));
-  const currency = currencies.find((item) => item.id === values.currencyId);
-  const code = currency?.code ?? "";
-  const arsCode = ars?.code ?? "ARS";
+  const headerCurrency = currencies.find((item) => item.id === values.currencyId);
+  const headerCurrencyOptions = currencies.filter((item) => item.isActive || item.id === values.currencyId);
+  const lineCurrencyOptions = (selected: string) => currencies.filter((item) => item.isActive || item.id === selected);
+  const currencyOf = (id: string) => currencies.find((item) => item.id === id);
 
-  const headerRate = parseLocaleNumber(values.exchangeRate);
-  const lineRate = (line: Line) => (line.exchangeRate.trim() ? parseLocaleNumber(line.exchangeRate) : headerRate);
   const lineAmount = (line: Line) => parseLocaleNumber(line.amount);
-  const lineTotal = (line: Line) => lineAmount(line) * lineRate(line);
-  const totalAmount = values.lines.reduce((sum, line) => sum + (lineAmount(line) || 0), 0);
-  const totalArs = values.lines.reduce((sum, line) => sum + (lineTotal(line) || 0), 0);
-  const providerPaid = values.providerIsPaid === "true";
+  const lineProviderRate = (line: Line) => parseLocaleNumber(line.providerExchangeRate);
+  const lineClientRate = (line: Line) => parseLocaleNumber(line.exchangeRate);
+  const lineDebe = (line: Line) => lineAmount(line) / lineProviderRate(line);
+  const lineHaber = (line: Line) => lineAmount(line) / lineClientRate(line);
+  const totalMontoTT = values.lines.reduce((sum, line) => sum + (lineAmount(line) || 0), 0);
   const allPaid = values.lines.every((line) => line.isPaid);
   const anyPaid = values.lines.some((line) => line.isPaid);
-  // El estado no se elige: sale de los cobros y del pago al proveedor (igual que en el servidor).
-  const state = allPaid && providerPaid ? "COMPLETED" : anyPaid || providerPaid ? "PARTIAL" : "PENDING";
-  const payCurrency = currencies.find((item) => item.id === values.providerPaymentCurrencyId);
-  const payAmount = totalAmount * (values.providerPaymentCurrencyId === ars?.id ? headerRate : 1);
+  const state = allPaid ? "COMPLETED" : anyPaid ? "PARTIAL" : "PENDING";
+
+  // Ganancia agrupada por moneda: cada cliente puede cobrar en una moneda distinta, no se suman entre sí.
+  const gananciaPorMoneda = useMemo(() => {
+    const groups = new Map<string, { debe: number; haber: number }>();
+    values.lines.forEach((line) => {
+      if (!line.destCurrencyId) return;
+      const debe = lineDebe(line);
+      const haber = lineHaber(line);
+      if (!Number.isFinite(debe) || !Number.isFinite(haber)) return;
+      const group = groups.get(line.destCurrencyId) ?? { debe: 0, haber: 0 };
+      group.debe += debe;
+      group.haber += haber;
+      groups.set(line.destCurrencyId, group);
+    });
+    return Array.from(groups.entries()).map(([currencyId, totals]) => ({ currency: currencyOf(currencyId), ...totals, ganancia: totals.haber - totals.debe }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [values.lines, currencies]);
 
   const set = <K extends keyof Values>(key: K, value: Values[K]) => setValues((current) => ({ ...current, [key]: value }));
   const setLine = (key: string, change: Partial<Line>) =>
@@ -211,15 +220,14 @@ export function SaleForm({ detail, initialType, contacts, onCreateContact, curre
           operationType: values.type,
           providerId: values.providerId,
           currencyId: values.currencyId,
-          exchangeRate: headerRate,
           operationDate: values.operationDate,
           observations: values.observations,
-          providerIsPaid: providerPaid,
-          providerPaymentCurrencyId: providerPaid ? values.providerPaymentCurrencyId : "",
           items: values.lines.map((line) => ({
             clientId: line.clientId,
             amount: lineAmount(line),
-            exchangeRate: line.exchangeRate.trim() ? parseLocaleNumber(line.exchangeRate) : "",
+            destCurrencyId: line.destCurrencyId,
+            providerExchangeRate: lineProviderRate(line),
+            exchangeRate: lineClientRate(line),
             isPaid: line.isPaid,
             observations: line.observations,
           })),
@@ -231,7 +239,7 @@ export function SaleForm({ detail, initialType, contacts, onCreateContact, curre
         return;
       }
       setUnlocked(false);
-      notify(isNew ? "Venta registrada" : "Cambios guardados", "success", "Los saldos de cuentas y cajas quedaron actualizados.");
+      notify(isNew ? "Venta registrada" : "Cambios guardados", "success", "Las cuentas corrientes quedaron actualizadas.");
       onSaved(data.parentOp?.id ?? op!.id);
     } catch {
       notify("No hay conexión con el servidor", "danger");
@@ -270,7 +278,7 @@ export function SaleForm({ detail, initialType, contacts, onCreateContact, curre
     {
       key: "client",
       label: "Cliente",
-      width: "28%",
+      width: "18%",
       render: (line) => {
         const index = values.lines.indexOf(line) + 1;
         if (!editable) return <span className={styles.cellText}>{contactLabel(contacts.find((contact) => contact.id === line.clientId))}</span>;
@@ -289,16 +297,16 @@ export function SaleForm({ detail, initialType, contacts, onCreateContact, curre
     },
     {
       key: "amount",
-      label: `Monto${code ? ` (${code})` : ""}`,
+      label: `Monto TT${headerCurrency?.code ? ` (${headerCurrency.code})` : ""}`,
       align: "end",
-      width: "16%",
+      width: "13%",
       render: (line) => {
         const index = values.lines.indexOf(line) + 1;
-        if (!editable) return formatAmount(lineAmount(line), code, currency?.decimals);
+        if (!editable) return formatAmount(lineAmount(line), headerCurrency?.code ?? "", headerCurrency?.decimals);
         return (
           <MoneyInput
-            symbol={currency?.symbol || code || "$"}
-            aria-label={`Monto de la línea ${index}`}
+            symbol={headerCurrency?.symbol || headerCurrency?.code || "$"}
+            aria-label={`Monto TT de la línea ${index}`}
             value={line.amount}
             invalid={Boolean(errors.lines) && !(lineAmount(line) > 0)}
             onChange={(event) => setLine(line.key, { amount: event.target.value })}
@@ -307,50 +315,114 @@ export function SaleForm({ detail, initialType, contacts, onCreateContact, curre
       },
     },
     {
-      key: "rate",
+      key: "providerRate",
       label: (
         <>
-          Cotización{" "}
+          Cot. Proveedor{" "}
           <HelpTip>
-            Tiene que ser más alta que la del proveedor (arriba) para que quede ganancia: ahí está el margen de la venta. Si la
-            dejás vacía, se usa la misma que la de compra y no gana nada.
+            Es la cotización con la que se calcula cuánto le quedás debiendo al proveedor por esta línea (Monto TT dividido
+            esta cotización). Tiene que ser más alta que la cotización del cliente: ahí está la ganancia.
           </HelpTip>
         </>
       ),
       align: "end",
-      width: "14%",
+      width: "12%",
       render: (line) => {
         const index = values.lines.indexOf(line) + 1;
-        if (!editable) return decimalText(lineRate(line));
+        if (!editable) return decimalText(lineProviderRate(line));
         return (
           <TextInput
             inputMode="decimal"
-            aria-label={`Cotización de la línea ${index}, vacía usa la del proveedor`}
-            placeholder={values.exchangeRate || "General"}
+            aria-label={`Cotización del proveedor, línea ${index}`}
+            invalid={Boolean(errors.lines) && !(lineProviderRate(line) > 0)}
+            value={line.providerExchangeRate}
+            onChange={(event) => setLine(line.key, { providerExchangeRate: event.target.value })}
+          />
+        );
+      },
+    },
+    {
+      key: "currency",
+      label: (
+        <>
+          Moneda{" "}
+          <HelpTip>Cada cliente puede elegir una moneda distinta (USD, USDT, EUR, etc.). Define en qué moneda se calculan el Debe y el Haber de esta línea.</HelpTip>
+        </>
+      ),
+      width: "10%",
+      render: (line) => {
+        const index = values.lines.indexOf(line) + 1;
+        if (!editable) return currencyOf(line.destCurrencyId)?.code ?? "—";
+        return (
+          <Select aria-label={`Moneda de la línea ${index}`} value={line.destCurrencyId} onChange={(event) => setLine(line.key, { destCurrencyId: event.target.value })}>
+            <option value="">Elegí la moneda</option>
+            {lineCurrencyOptions(line.destCurrencyId).map((item) => (
+              <option key={item.id} value={item.id}>{item.code}</option>
+            ))}
+          </Select>
+        );
+      },
+    },
+    {
+      key: "rate",
+      label: (
+        <>
+          Coti{" "}
+          <HelpTip>
+            Cotización acordada con el cliente. Tiene que ser más baja que la Cot. Proveedor de esta misma línea; si no, no
+            queda ganancia.
+          </HelpTip>
+        </>
+      ),
+      align: "end",
+      width: "11%",
+      render: (line) => {
+        const index = values.lines.indexOf(line) + 1;
+        const providerRate = lineProviderRate(line);
+        const clientRate = lineClientRate(line);
+        if (!editable) return decimalText(clientRate);
+        return (
+          <TextInput
+            inputMode="decimal"
+            aria-label={`Cotización del cliente, línea ${index}`}
+            invalid={Boolean(errors.lines) && (!(clientRate > 0) || (providerRate > 0 && clientRate >= providerRate))}
             value={line.exchangeRate}
             onChange={(event) => setLine(line.key, { exchangeRate: event.target.value })}
           />
         );
       },
     },
-    { key: "total", label: "Total", align: "end", width: "16%", render: (line) => (Number.isFinite(lineTotal(line)) ? formatAmount(lineTotal(line), arsCode) : "—") },
+    {
+      key: "debe",
+      label: <>Debe <HelpTip>Lo que la agencia le queda debiendo al proveedor por esta línea: Monto TT ÷ Cot. Proveedor.</HelpTip></>,
+      align: "end",
+      width: "11%",
+      render: (line) => (Number.isFinite(lineDebe(line)) ? formatAmount(lineDebe(line), currencyOf(line.destCurrencyId)?.code ?? "") : "—"),
+    },
+    {
+      key: "haber",
+      label: <>Haber <HelpTip>Lo que la agencia le queda debiendo al cliente por esta línea: Monto TT ÷ Coti.</HelpTip></>,
+      align: "end",
+      width: "11%",
+      render: (line) => (Number.isFinite(lineHaber(line)) ? formatAmount(lineHaber(line), currencyOf(line.destCurrencyId)?.code ?? "") : "—"),
+    },
     {
       key: "paid",
       label: (
         <>
-          Cobrado{" "}
+          Pago{" "}
           <HelpTip>
-            Marcalo cuando el cliente paga en el acto: entra plata a la caja y no queda deuda. Si lo dejás sin marcar, igual se
-            le entrega la divisa, pero queda pendiente en su cuenta corriente hasta que pague.
+            Marcalo cuando ya le pagaste en USDT a este cliente. Por ahora no mueve ninguna caja (eso se suma cuando esté el
+            registro de compras de USDT): solo cierra la deuda en su cuenta corriente.
           </HelpTip>
         </>
       ),
       align: "center",
-      width: "8%",
+      width: "7%",
       render: (line) => {
         const index = values.lines.indexOf(line) + 1;
         return editable ? (
-          <Checkbox aria-label={`Cobrado, línea ${index}`} checked={line.isPaid} onChange={(event) => setLine(line.key, { isPaid: event.target.checked })} />
+          <Checkbox aria-label={`Pago, línea ${index}`} checked={line.isPaid} onChange={(event) => setLine(line.key, { isPaid: event.target.checked })} />
         ) : line.isPaid ? "Sí" : "No";
       },
     },
@@ -386,7 +458,6 @@ export function SaleForm({ detail, initialType, contacts, onCreateContact, curre
   let notice: ReactNode = null;
   if (!canWrite) notice = <Notice>Tu rol puede consultar las operaciones pero no modificarlas.</Notice>;
   else if (completed && !canReopen) notice = <Notice>Esta venta está completada. Solo un administrador puede modificarla.</Notice>;
-  else if (op && op.providerIsPaid === null) notice = <Notice tone="warning">Esta venta no tiene definido si el proveedor está pagado. Elegilo antes de guardar.</Notice>;
 
   const header = (
     <FormHeader
@@ -418,8 +489,9 @@ export function SaleForm({ detail, initialType, contacts, onCreateContact, curre
       actions={
         <>
           <HelpTip>
-            La divisa se entrega a cada cliente aunque no haya pagado. Al completar la venta se registra el movimiento en la
-            cuenta corriente de cada uno; si además está cobrado o pagado, también se mueve la caja correspondiente.
+            El proveedor le transfiere el Monto TT directo al cliente: la agencia no toca esa plata. Por cada línea queda
+            registrado lo que la agencia le debe al proveedor (Debe) y lo que le debe al cliente (Haber); la diferencia es la
+            ganancia. El pago en USDT al cliente se registra más adelante, con el registro de compras de USDT.
           </HelpTip>
           {op && can(user, "operations.delete") && (
             <Button variant="ghost" size="sm" icon={<Trash2 size={iconSize.sm} />} loading={deleting} onClick={remove}>Eliminar</Button>
@@ -446,7 +518,7 @@ export function SaleForm({ detail, initialType, contacts, onCreateContact, curre
         </SheetTitle>
 
         <FormGroups>
-          <FormGroup title="Compra al proveedor">
+          <FormGroup title="Proveedor">
             {isNew && (
               <Field label="Tipo" layout="inline">
                 <Select
@@ -472,35 +544,23 @@ export function SaleForm({ detail, initialType, contacts, onCreateContact, curre
                     onCreate={onCreateContact ? (name) => onCreateContact(name, "provider") : undefined}
                   />
                 </Field>
-                <Field label="Moneda" layout="inline" required error={errors.currencyId}>
-                  <Select value={values.currencyId} onChange={(event) => set("currencyId", event.target.value)}>
-                    <option value="">Elegí la moneda</option>
-                    {buyable.map((item) => (
-                      <option key={item.id} value={item.id}>{item.code} · {item.name}</option>
-                    ))}
-                  </Select>
-                </Field>
                 <Field
                   label={
                     <>
-                      Cotización{" "}
-                      <HelpTip>
-                        Es lo que le pagás al proveedor por cada {code || "unidad"}. Tiene que ser más baja que la cotización
-                        de venta a tus clientes (en la tabla de abajo): la diferencia es tu ganancia.
-                      </HelpTip>
+                      Moneda{" "}
+                      <HelpTip>La moneda en la que el proveedor transfiere el Monto TT a los clientes (normalmente pesos).</HelpTip>
                     </>
                   }
                   layout="inline"
                   required
-                  error={errors.exchangeRate}
-                  help={
-                    <>
-                      Pesos por cada {code || "unidad"}
-                      <FieldChangeNote groups={historyGroups} field="Cotización" />
-                    </>
-                  }
+                  error={errors.currencyId}
                 >
-                  <TextInput inputMode="decimal" value={values.exchangeRate} onChange={(event) => set("exchangeRate", event.target.value)} />
+                  <Select value={values.currencyId} onChange={(event) => set("currencyId", event.target.value)}>
+                    <option value="">Elegí la moneda</option>
+                    {headerCurrencyOptions.map((item) => (
+                      <option key={item.id} value={item.id}>{item.code} · {item.name}</option>
+                    ))}
+                  </Select>
                 </Field>
                 <Field label="Fecha" layout="inline" required error={errors.operationDate}>
                   <DateInput value={values.operationDate} onChange={(event) => set("operationDate", event.target.value)} />
@@ -509,58 +569,34 @@ export function SaleForm({ detail, initialType, contacts, onCreateContact, curre
             ) : (
               <>
                 <ReadonlyField label="Proveedor">{contactLabel(op?.provider) || "—"}</ReadonlyField>
-                <ReadonlyField label="Moneda">{code}</ReadonlyField>
-                <ReadonlyField label="Cotización">
-                  {decimalText(headerRate)}
-                  <FieldChangeNote groups={historyGroups} field="Cotización" />
-                </ReadonlyField>
+                <ReadonlyField label="Moneda">{headerCurrency?.code}</ReadonlyField>
                 <ReadonlyField label="Fecha">{values.operationDate.split("-").reverse().join("/")}</ReadonlyField>
               </>
             )}
+            <ReadonlyField label="Total Monto TT">{Number.isFinite(totalMontoTT) ? formatAmount(totalMontoTT, headerCurrency?.code ?? "", headerCurrency?.decimals) : "—"}</ReadonlyField>
           </FormGroup>
 
-          <FormGroup title="Pago al proveedor">
-            {editable ? (
+          <FormGroup
+            title={
               <>
-                <Field
-                  label={
-                    <>
-                      Estado del pago{" "}
-                      <HelpTip>
-                        &quot;Pagado&quot; saca la plata de una caja ahora. &quot;Pendiente&quot; no mueve ninguna caja: queda
-                        como una deuda en la cuenta corriente del proveedor hasta que se pague.
-                      </HelpTip>
-                    </>
-                  }
-                  layout="inline"
-                  required
-                  error={errors.providerIsPaid}
-                >
-                  <Select value={values.providerIsPaid} onChange={(event) => set("providerIsPaid", event.target.value as Values["providerIsPaid"])}>
-                    <option value="" disabled>Elegí una opción</option>
-                    <option value="false">Pendiente</option>
-                    <option value="true">Pagado</option>
-                  </Select>
-                </Field>
-                {providerPaid && (
-                  <Field label="Moneda del pago" layout="inline">
-                    <Select value={values.providerPaymentCurrencyId} onChange={(event) => set("providerPaymentCurrencyId", event.target.value)}>
-                      {payable.map((item) => (
-                        <option key={item.id} value={item.id}>{item.code}</option>
-                      ))}
-                    </Select>
-                  </Field>
-                )}
+                Ganancia{" "}
+                <HelpTip>
+                  Haber menos Debe de cada línea, agrupado por moneda (no se suman monedas distintas entre sí). Es una
+                  estimación: el ajuste por el costo real del USDT que se le compra al cliente se suma cuando exista ese
+                  registro.
+                </HelpTip>
               </>
+            }
+          >
+            {gananciaPorMoneda.length ? (
+              gananciaPorMoneda.map(({ currency, debe, haber, ganancia }) => (
+                <ReadonlyField key={currency?.id ?? "—"} label={currency?.code ?? "—"}>
+                  Debe {formatAmount(debe, currency?.code ?? "")} · Haber {formatAmount(haber, currency?.code ?? "")} · Ganancia {formatAmount(ganancia, currency?.code ?? "")}
+                </ReadonlyField>
+              ))
             ) : (
-              <ReadonlyField label="Estado del pago">{values.providerIsPaid === "" ? "Sin definir" : providerPaid ? "Pagado" : "Pendiente"}</ReadonlyField>
+              <ReadonlyField label="—">Cargá al menos una línea con montos y cotizaciones válidas.</ReadonlyField>
             )}
-            {providerPaid && (
-              <ReadonlyField label="Importe del pago">
-                {Number.isFinite(payAmount) ? formatAmount(payAmount, payCurrency?.code ?? arsCode) : "—"}
-              </ReadonlyField>
-            )}
-            <ReadonlyField label="Total de la venta">{Number.isFinite(totalArs) ? formatAmount(totalArs, arsCode) : "—"}</ReadonlyField>
           </FormGroup>
         </FormGroups>
 
@@ -583,23 +619,17 @@ export function SaleForm({ detail, initialType, contacts, onCreateContact, curre
             </ul>
           )}
           <div className={styles.lines}>
-            <DataTable
-              caption="Clientes de la venta"
-              columns={lineColumns}
-              rowKey={(line) => line.key}
-              rows={values.lines}
-              totals={{ amount: formatAmount(totalAmount, code, currency?.decimals), total: Number.isFinite(totalArs) ? formatAmount(totalArs, arsCode) : "—" }}
-            />
+            <DataTable caption="Clientes de la venta" columns={lineColumns} rowKey={(line) => line.key} rows={values.lines} />
             <div className={styles.lineActions}>
               {editable && values.type === "DISTRIBUTED_SALE" ? (
-                <Button variant="link" icon={<Plus size={iconSize.sm} />} onClick={() => setValues((current) => ({ ...current, lines: [...current.lines, newLine()] }))}>
+                <Button variant="link" icon={<Plus size={iconSize.sm} />} onClick={() => setValues((current) => ({ ...current, lines: [...current.lines, newLine(values.currencyId)] }))}>
                   Agregar cliente
                 </Button>
               ) : (
                 <span />
               )}
               <span className={styles.statusLabel}>
-                {values.lines.filter((line) => line.isPaid).length} de {values.lines.length} cobradas
+                {values.lines.filter((line) => line.isPaid).length} de {values.lines.length} pagadas
               </span>
             </div>
           </div>

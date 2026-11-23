@@ -32,7 +32,10 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
         parentOperation: { select: { id: true, operationNumber: true } },
         childOperations: {
           where: { deletedAt: null },
-          include: { client: { select: { id: true, name: true, lastname: true } } },
+          include: {
+            client: { select: { id: true, name: true, lastname: true } },
+            destCurrency: { select: currencySelect },
+          },
         },
       },
     });

@@ -4,12 +4,18 @@ import { assertOpenAccountingPeriod, lockAccountingWrites } from "./accounting-p
 import "./monetary";
 
 type Tx = Prisma.TransactionClient;
-export type SaleItem = { clientId: string; amount: Prisma.Decimal.Value; exchangeRate: Prisma.Decimal.Value; observations: string | null; isPaid: boolean };
+export type SaleItem = {
+  clientId: string;
+  amount: Prisma.Decimal.Value; // Monto TT, en la moneda de cabecera (currencyId)
+  destCurrencyId: string; // Moneda de esta línea (lo que recibe el cliente)
+  providerExchangeRate: Prisma.Decimal.Value; // Cotización del proveedor para esta línea
+  exchangeRate: Prisma.Decimal.Value; // Cotización del cliente para esta línea
+  observations: string | null;
+  isPaid: boolean;
+};
 export type SaleInput = {
-  providerId: string; currencyId: string; destCurrencyId: string; currencyCode: string;
-  exchangeRate: Prisma.Decimal.Value; operationDate: Date; observations: string | null; providerIsPaid: boolean; items: SaleItem[];
+  providerId: string; currencyId: string; operationDate: Date; observations: string | null; items: SaleItem[];
   operationType?: "DISTRIBUTED_SALE" | "SINGLE_SALE";
-  providerPaymentCurrencyId?: string | null;
 };
 export class SaleValidationError extends Error {
   constructor(message: string, public status = 400) { super(message); }
@@ -40,87 +46,56 @@ export async function reverseSaleLedger(tx: Tx, ids: string[]) {
   await tx.treasuryMovement.deleteMany({ where: { operationId: { in: ids } } });
 }
 
-export async function applySaleLedger(tx: Tx, parent: Operation, children: Operation[], input: SaleInput) {
-  const contactIds = Array.from(new Set([input.providerId, ...input.items.map(i => i.clientId)])).sort();
+// El proveedor le transfiere el Monto TT directo al cliente: acá no se mueve ninguna caja,
+// solo cuentas corrientes. Por línea: se le debe al proveedor (Monto TT / Cot. Proveedor) y
+// se le debe al cliente (Monto TT / Cotización Cliente), ambos en la moneda de esa línea.
+// El pago en USDT al cliente se registra más adelante, en otra función.
+export async function applySaleLedger(tx: Tx, children: Operation[], input: SaleInput) {
+  const pairKey = (contactId: string, currencyId: string) => `${contactId}:${currencyId}`;
+  const pairs = new Map<string, { contactId: string; currencyId: string }>();
+  children.forEach((child) => {
+    pairs.set(pairKey(input.providerId, child.destCurrencyId), { contactId: input.providerId, currencyId: child.destCurrencyId });
+    pairs.set(pairKey(child.clientId!, child.destCurrencyId), { contactId: child.clientId!, currencyId: child.destCurrencyId });
+  });
+  const pairList = Array.from(pairs.values()).sort((a, b) => pairKey(a.contactId, a.currencyId).localeCompare(pairKey(b.contactId, b.currencyId)));
+
   await tx.account.createMany({
-    data: contactIds.map(contactId => ({ id: randomUUID(), contactId, currencyId: input.currencyId, balance: 0 })),
+    data: pairList.map(({ contactId, currencyId }) => ({ id: randomUUID(), contactId, currencyId, balance: 0 })),
     skipDuplicates: true,
   });
   // Bloquear y leer los saldos juntos evita sobrescribir cobros concurrentes.
-  const accounts = await tx.$queryRaw<{ id: string; contactId: string; balance: Prisma.Decimal }[]>`
-    SELECT id, "contactId", balance FROM "Account"
-    WHERE "currencyId" = ${input.currencyId} AND "contactId" IN (${Prisma.join(contactIds)})
+  const contactIds = Array.from(new Set(pairList.map((p) => p.contactId))).sort();
+  const currencyIds = Array.from(new Set(pairList.map((p) => p.currencyId))).sort();
+  const accounts = await tx.$queryRaw<{ id: string; contactId: string; currencyId: string; balance: Prisma.Decimal }[]>`
+    SELECT id, "contactId", "currencyId", balance FROM "Account"
+    WHERE "currencyId" IN (${Prisma.join(currencyIds)}) AND "contactId" IN (${Prisma.join(contactIds)})
     ORDER BY id FOR UPDATE`;
-  const accountMap = new Map(accounts.map(a => [a.contactId, a]));
+  const accountMap = new Map(accounts.map((a) => [pairKey(a.contactId, a.currencyId), a]));
   const transactions: Prisma.TransactionCreateManyInput[] = [];
-  const record = (contactId: string, op: Operation, debit: Prisma.Decimal | 0, credit: Prisma.Decimal | 0, concept: string, observations: string) => {
-    const account = accountMap.get(contactId)!;
+  const record = (contactId: string, currencyId: string, op: Operation, debit: Prisma.Decimal | 0, credit: Prisma.Decimal | 0, concept: string, observations: string) => {
+    const account = accountMap.get(pairKey(contactId, currencyId))!;
     account.balance = account.balance.plus(credit).minus(debit);
     transactions.push({ id: randomUUID(), accountId: account.id, operationId: op.id, debit, credit,
       balance: account.balance, concept, observations, date: new Date() });
   };
-  record(input.providerId, parent, parent.originAmount, 0, `Compra de divisa (Op Agrupadora: ${parent.operationNumber})`,
-    `Cotización Proveedor: ${input.exchangeRate}. Costo ARS: $${parent.destAmount.toString()}`);
-  if (input.providerIsPaid) record(input.providerId, parent, 0, parent.originAmount,
-    `Pago al contado registrado (Op: ${parent.operationNumber})`, "Cancelación de deuda por compra");
+
   children.forEach((child, index) => {
     const item = input.items[index];
-    record(item.clientId, child, 0, child.originAmount, `Venta divisa a cliente (Op: ${child.operationNumber})`,
-      `Cotización Venta: ${item.exchangeRate}. Total ARS: $${child.destAmount.toString()}. ${item.observations || ""}`);
-    if (item.isPaid) record(item.clientId, child, child.originAmount, 0,
-      `Pago al contado registrado (Op: ${child.operationNumber})`, `Cancelación de deuda por venta cobrada en el acto - ${item.observations || ""}`);
+    record(input.providerId, child.destCurrencyId, child, 0, child.providerDebtAmount!,
+      `Deuda por transferencia a cliente (Op: ${child.operationNumber})`,
+      `Cotización Proveedor: ${child.providerExchangeRate}. Monto TT: $${child.originAmount.toString()}.`);
+    record(child.clientId!, child.destCurrencyId, child, 0, child.destAmount,
+      `Deuda por transferencia recibida del proveedor (Op: ${child.operationNumber})`,
+      `Cotización Cliente: ${child.exchangeRate}. Monto TT: $${child.originAmount.toString()}. ${item.observations || ""}`);
+    if (item.isPaid) record(child.clientId!, child.destCurrencyId, child, child.destAmount, 0,
+      `Pago registrado al cliente (Op: ${child.operationNumber})`, `Cancelación de deuda por pago ya realizado - ${item.observations || ""}`);
   });
+
   await tx.$executeRaw`
     UPDATE "Account" a SET balance = v.balance FROM (VALUES
-      ${Prisma.join(accounts.map(a => Prisma.sql`(${a.id}::text, ${a.balance}::numeric)`))}
+      ${Prisma.join(accounts.map((a) => Prisma.sql`(${a.id}::text, ${a.balance}::numeric)`))}
     ) AS v(id, balance) WHERE a.id = v.id`;
   await tx.transaction.createMany({ data: transactions });
-
-  const paidChildren = children.filter(c => c.isPaid);
-  const payCurrencyId = (input.providerIsPaid && input.providerPaymentCurrencyId)
-    ? input.providerPaymentCurrencyId
-    : input.destCurrencyId;
-  const payRate = parent.providerPaymentRate ?? new Prisma.Decimal(1);
-  const payAmount = parent.originAmount.times(payRate).toDecimalPlaces(8);
-
-  // Una cuenta por moneda seleccionada una sola vez para todo el lote.
-  await tx.$executeRaw`SELECT pg_advisory_xact_lock(72641002)`;
-  const currencyIds = Array.from(new Set([input.currencyId, input.destCurrencyId, ...(input.providerIsPaid ? [payCurrencyId] : [])]));
-  const existing = await tx.treasuryAccount.findMany({ where: { currencyId: { in: currencyIds }, type: "CASH", isActive: true }, orderBy: [{ createdAt: "asc" }, { id: "asc" }] });
-  const missing = currencyIds.filter(id => !existing.some(a => a.currencyId === id));
-  if (missing.length) {
-    const now = new Date();
-    const missingCurrencies = await tx.currency.findMany({ where: { id: { in: missing } }, select: { id: true, code: true } });
-    const codeMap = new Map(missingCurrencies.map(c => [c.id, c.code]));
-    const created = missing.map(cId => ({ id: randomUUID(), currencyId: cId, name: cId === input.destCurrencyId ? "Caja Base" : `Caja ${codeMap.get(cId) || ""}`,
-      type: "CASH", balance: new Prisma.Decimal(0), isActive: true, createdAt: now, updatedAt: now }));
-    await tx.treasuryAccount.createMany({ data: created });
-    existing.push(...created);
-  }
-  const byCurrency = new Map(currencyIds.map(id => [id, existing.find(a => a.currencyId === id)!]));
-  const movements: Prisma.TreasuryMovementCreateManyInput[] = [];
-  const deltas = new Map<string, Prisma.Decimal>();
-  const movement = (currencyId: string, op: Operation, type: "INCOME" | "EXPENSE", amount: Prisma.Decimal, concept: string) => {
-    const id = byCurrency.get(currencyId)!.id;
-    deltas.set(id, (deltas.get(id) ?? new Prisma.Decimal(0)).plus(type === "INCOME" ? amount : amount.negated()));
-    movements.push({ id: randomUUID(), treasuryAccountId: id, operationId: op.id, type, amount, concept });
-  };
-  // La divisa se recibe del proveedor y se entrega a TODOS los clientes, incluso fiados.
-  movement(input.currencyId, parent, "INCOME", parent.originAmount, `Recepción divisa del proveedor Op ${parent.operationNumber}`);
-  children.forEach(child => {
-    movement(input.currencyId, child, "EXPENSE", child.originAmount, `Entrega divisa a cliente Op ${child.operationNumber}`);
-  });
-  if (input.providerIsPaid) {
-    movement(payCurrencyId, parent, "EXPENSE", payAmount, `Egreso por pago a proveedor Op ${parent.operationNumber}`);
-  }
-  paidChildren.forEach(child => {
-    movement(input.destCurrencyId, child, "INCOME", child.destAmount, `Ingreso base por venta Op ${child.operationNumber}`);
-  });
-  await tx.$executeRaw`
-    UPDATE "TreasuryAccount" a SET balance = a.balance + v.amount, "updatedAt" = NOW() FROM (VALUES
-      ${Prisma.join(Array.from(deltas).sort(([a], [b]) => a.localeCompare(b)).map(([id, amount]) => Prisma.sql`(${id}::text, ${amount}::numeric)`))}
-    ) AS v(id, amount) WHERE a.id = v.id`;
-  await tx.treasuryMovement.createMany({ data: movements });
 }
 
 export async function saveDistributedSale(tx: Tx, input: SaleInput, parentId?: string, canEditCompleted = true) {
@@ -128,6 +103,10 @@ export async function saveDistributedSale(tx: Tx, input: SaleInput, parentId?: s
   await assertOpenAccountingPeriod(tx, input.operationDate);
   if (input.operationType === "SINGLE_SALE" && input.items.length !== 1)
     throw new SaleValidationError("La operación 1 a 1 debe tener exactamente un movimiento de cliente.");
+  input.items.forEach((item, index) => {
+    if (new Prisma.Decimal(item.exchangeRate).gte(item.providerExchangeRate))
+      throw new SaleValidationError(`La cotización del cliente tiene que ser menor a la del proveedor en la línea #${index + 1}.`);
+  });
   let existing: (Operation & { childOperations: Operation[] }) | null = null;
   if (parentId) {
     // Leer después del bloqueo: dos ediciones concurrentes no revierten el mismo lote dos veces.
@@ -147,16 +126,19 @@ export async function saveDistributedSale(tx: Tx, input: SaleInput, parentId?: s
   const total = input.items.reduce((sum, item) => sum.plus(item.amount), new Prisma.Decimal(0));
   const paid = input.items.filter(i => i.isPaid).length;
   const operationType = existing?.type || input.operationType || "DISTRIBUTED_SALE";
-  const payCurrencyId = input.providerIsPaid ? (input.providerPaymentCurrencyId || input.destCurrencyId) : null;
-  const payRate = input.providerIsPaid ? (payCurrencyId === input.destCurrencyId ? new Prisma.Decimal(input.exchangeRate) : new Prisma.Decimal(1)) : null;
-  const payAmount = input.providerIsPaid ? total.times(payRate!).toDecimalPlaces(8) : null;
 
-  const data = { providerId: input.providerId, clientId: operationType === "SINGLE_SALE" ? input.items[0].clientId : null, originCurrencyId: input.currencyId, destCurrencyId: input.destCurrencyId,
-    originAmount: total, destAmount: total.times(input.exchangeRate).toDecimalPlaces(8), exchangeRate: input.exchangeRate,
+  // La cabecera no tiene una sola cotización/moneda de destino: cada línea puede diferir.
+  // Se guardan valores representativos de la primera línea solo para no romper los campos
+  // NOT NULL del modelo; no se usan para ningún cálculo (ver detalle por línea).
+  const first = input.items[0];
+  const data = {
+    providerId: input.providerId, clientId: operationType === "SINGLE_SALE" ? input.items[0].clientId : null,
+    originCurrencyId: input.currencyId, destCurrencyId: first.destCurrencyId,
+    originAmount: total, destAmount: total.dividedBy(first.exchangeRate).toDecimalPlaces(8), exchangeRate: new Prisma.Decimal(first.exchangeRate),
     operationDate: input.operationDate, observations: input.observations,
-    state: paid === input.items.length && input.providerIsPaid ? "COMPLETED" : paid || input.providerIsPaid ? "PARTIAL" : "PENDING",
-    isPaid: paid === input.items.length, providerIsPaid: input.providerIsPaid,
-    providerPaymentCurrencyId: payCurrencyId, providerPaymentRate: payRate, providerPaymentAmount: payAmount };
+    state: paid === input.items.length ? "COMPLETED" : paid ? "PARTIAL" : "PENDING",
+    isPaid: paid === input.items.length, providerIsPaid: null,
+    providerPaymentCurrencyId: null, providerPaymentRate: null, providerPaymentAmount: null };
   const parent = existing
     ? await tx.operation.update({ where: { id: existing.id }, data })
     : await tx.operation.create({ data: { ...data, id: randomUUID(), operationNumber: await nextOperationNumber(tx), type: operationType } });
@@ -164,8 +146,13 @@ export async function saveDistributedSale(tx: Tx, input: SaleInput, parentId?: s
   const children: Operation[] = input.items.map((item, index) => ({ ...parent,
     id: existing?.childOperations[index]?.id || randomUUID(),
     operationNumber: existing?.childOperations[index]?.operationNumber || `${parent.operationNumber}-${index + 1}`,
-    type: "DISTRIBUTED_SALE_ITEM", parentOperationId: parent.id, clientId: item.clientId, providerIsPaid: false,
-    originAmount: new Prisma.Decimal(item.amount), destAmount: new Prisma.Decimal(item.amount).times(item.exchangeRate).toDecimalPlaces(8), exchangeRate: new Prisma.Decimal(item.exchangeRate),
+    type: "DISTRIBUTED_SALE_ITEM", parentOperationId: parent.id, clientId: item.clientId, providerIsPaid: null,
+    originCurrencyId: input.currencyId, destCurrencyId: item.destCurrencyId,
+    originAmount: new Prisma.Decimal(item.amount),
+    destAmount: new Prisma.Decimal(item.amount).dividedBy(item.exchangeRate).toDecimalPlaces(8),
+    exchangeRate: new Prisma.Decimal(item.exchangeRate),
+    providerExchangeRate: new Prisma.Decimal(item.providerExchangeRate),
+    providerDebtAmount: new Prisma.Decimal(item.amount).dividedBy(item.providerExchangeRate).toDecimalPlaces(8),
     observations: item.observations, state: item.isPaid ? "COMPLETED" : "PENDING", isPaid: item.isPaid,
     deletedAt: null, createdAt: existing?.childOperations[index]?.createdAt || now, updatedAt: now }));
   if (existing) {
@@ -176,19 +163,22 @@ export async function saveDistributedSale(tx: Tx, input: SaleInput, parentId?: s
     // Una sentencia para todas las hijas existentes y nuevas; conservar IDs y adjuntos.
     await tx.$executeRaw`
       INSERT INTO "Operation" (id, "operationNumber", type, "parentOperationId", "clientId", "providerId",
-        "originCurrencyId", "destCurrencyId", "originAmount", "destAmount", "exchangeRate", "operationDate",
+        "originCurrencyId", "destCurrencyId", "originAmount", "destAmount", "exchangeRate",
+        "providerExchangeRate", "providerDebtAmount", "operationDate",
         "isPaid", observations, state, "createdAt", "updatedAt", "deletedAt")
       SELECT id, "operationNumber", type, "parentOperationId", "clientId", "providerId", "originCurrencyId", "destCurrencyId",
-        "originAmount", "destAmount", "exchangeRate", "operationDate", "isPaid", observations, state, "createdAt", "updatedAt", "deletedAt"
+        "originAmount", "destAmount", "exchangeRate", "providerExchangeRate", "providerDebtAmount",
+        "operationDate", "isPaid", observations, state, "createdAt", "updatedAt", "deletedAt"
       FROM jsonb_populate_recordset(NULL::"Operation", ${JSON.stringify(children)}::jsonb)
       ON CONFLICT (id) DO UPDATE SET "clientId" = EXCLUDED."clientId", "providerId" = EXCLUDED."providerId",
         "originCurrencyId" = EXCLUDED."originCurrencyId", "destCurrencyId" = EXCLUDED."destCurrencyId",
         "originAmount" = EXCLUDED."originAmount", "destAmount" = EXCLUDED."destAmount", "exchangeRate" = EXCLUDED."exchangeRate",
+        "providerExchangeRate" = EXCLUDED."providerExchangeRate", "providerDebtAmount" = EXCLUDED."providerDebtAmount",
         "operationDate" = EXCLUDED."operationDate", "isPaid" = EXCLUDED."isPaid", observations = EXCLUDED.observations,
         state = EXCLUDED.state, "updatedAt" = EXCLUDED."updatedAt"`;
   } else {
     await tx.operation.createMany({ data: children });
   }
-  await applySaleLedger(tx, parent, children, input);
+  await applySaleLedger(tx, children, input);
   return { parentOp: parent, childOperations: children };
 }
