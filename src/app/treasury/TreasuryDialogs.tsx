@@ -290,3 +290,125 @@ export function TransferDialog({ open, boxes, from, onClose, onSaved }: { open: 
     </Dialog>
   );
 }
+
+// Compra de USDT: se carga varias veces por día, a cotizaciones que van cambiando.
+// La caja de destino es siempre la de USDT; el promedio del día lo usa la venta
+// para mostrar la ganancia real de las líneas pagadas en USDT.
+export function UsdtPurchaseDialog({ open, boxes, onClose, onSaved }: { open: boolean; boxes: BoxOption[]; onClose: () => void; onSaved: () => void }) {
+  const { notify } = useUiFeedback();
+  const [originId, setOriginId] = useState("");
+  const [amount, setAmount] = useState("");
+  const [rate, setRate] = useState("");
+  const [usdtAmount, setUsdtAmount] = useState("");
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [showErrors, setShowErrors] = useState(false);
+
+  const usdtBox = boxes.find((box) => box.currency.code === "USDT" && box.currency.isActive);
+  const available = boxes.filter((box) => box.currency.isActive && box.id !== usdtBox?.id);
+  const origin = available.find((box) => box.id === originId);
+
+  const originValue = parseLocaleNumber(amount);
+  const rateValue = parseLocaleNumber(rate);
+  const usdtValue = parseLocaleNumber(usdtAmount);
+
+  const recompute = (nextAmount: string, nextRate: string) => {
+    const rateNumber = parseLocaleNumber(nextRate);
+    if (!(rateNumber > 0)) return;
+    const quotient = parseLocaleNumber(nextAmount) / rateNumber;
+    if (validAmount(quotient)) setUsdtAmount(quotient.toFixed(2).replace(".", ","));
+  };
+
+  const errors = {
+    origin: origin ? undefined : "Elegí con qué caja pagás",
+    amount: !validAmount(originValue) ? "Escribí un importe mayor a cero" : origin && originValue > origin.balance ? "Supera el saldo de la caja" : undefined,
+    rate: !validAmount(rateValue) ? "Escribí la cotización" : undefined,
+    usdtAmount: !validAmount(usdtValue) ? "Escribí la cantidad de USDT recibida" : undefined,
+  };
+
+  const close = () => {
+    setOriginId("");
+    setAmount("");
+    setRate("");
+    setUsdtAmount("");
+    setReason("");
+    setShowErrors(false);
+    onClose();
+  };
+
+  const save = async () => {
+    if (!usdtBox) return notify("No hay una caja de USDT activa", "danger");
+    if (Object.values(errors).some(Boolean)) return setShowErrors(true);
+    setBusy(true);
+    const result = await post("/api/treasury/usdt-purchase", { originAccountId: originId, originAmount: originValue, usdtAmount: usdtValue, reason });
+    setBusy(false);
+    if (!result.ok) return notify("No se pudo registrar la compra", "danger", result.error || "Probá de nuevo en un momento.");
+    notify("Compra de USDT registrada", "success");
+    close();
+    onSaved();
+  };
+
+  const error = (key: keyof typeof errors) => (showErrors ? errors[key] : undefined);
+
+  return (
+    <Dialog
+      open={open}
+      onClose={close}
+      title="Compra de USDT"
+      footer={
+        <>
+          <Button variant="primary" loading={busy} onClick={save}>Registrar</Button>
+          <Button onClick={close}>Cancelar</Button>
+        </>
+      }
+    >
+      <div className={styles.dialogForm}>
+        <p className={styles.muted}>
+          Registrá cada compra del día a su propia cotización.{" "}
+          <HelpTip>
+            El promedio del día (plata pagada ÷ USDT recibidos, por moneda de pago) se usa en las ventas para mostrar la
+            ganancia real de las líneas en USDT ya pagadas.
+          </HelpTip>
+        </p>
+        {usdtBox && <p className={styles.muted}>Entra a: {boxLabel(usdtBox)} ({formatAmount(usdtBox.balance, usdtBox.currency.code, usdtBox.currency.decimals)})</p>}
+        <Field label="Pagás con" required error={error("origin")}>
+          <Select value={originId} onChange={(event) => setOriginId(event.target.value)}>
+            <option value="">Elegí la caja</option>
+            {available.map((box) => (
+              <option key={box.id} value={box.id}>
+                {boxLabel(box)} ({formatAmount(box.balance, box.currency.code, box.currency.decimals)})
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <Field label={origin ? `Importe pagado (${origin.currency.code})` : "Importe pagado"} required error={error("amount")}>
+          <MoneyInput
+            symbol={symbolOf(origin)}
+            value={amount}
+            onChange={(event) => {
+              setAmount(event.target.value);
+              recompute(event.target.value, rate);
+            }}
+          />
+        </Field>
+        <Field label={`Cotización (${origin?.currency.code ?? "moneda"} por cada USDT)`} required error={error("rate")}>
+          <TextInput
+            inputMode="decimal"
+            autoComplete="off"
+            value={rate}
+            onChange={(event) => {
+              setRate(event.target.value);
+              recompute(amount, event.target.value);
+            }}
+          />
+        </Field>
+        <Field label="USDT recibidos" required help="Se calcula con la cotización; podés corregirlo." error={error("usdtAmount")}>
+          <MoneyInput symbol="USDT" value={usdtAmount} onChange={(event) => setUsdtAmount(event.target.value)} />
+        </Field>
+        <Field label="Motivo">
+          <TextArea rows={2} maxLength={500} value={reason} onChange={(event) => setReason(event.target.value)} />
+        </Field>
+      </div>
+    </Dialog>
+  );
+}

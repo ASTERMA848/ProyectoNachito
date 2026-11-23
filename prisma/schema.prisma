@@ -178,6 +178,8 @@ model Operation {
   providerExchangeRate Decimal? @db.Decimal(30, 8)
   providerDebtAmount   Decimal? @db.Decimal(30, 8)
   providerPaymentAmount     Decimal? @db.Decimal(30, 8)
+  // Línea en USDT pagada: promedio pesos-por-USDT del día, congelado al tildar Pago.
+  realProfitRate   Decimal? @db.Decimal(30, 8)
   observations     String?
   state            String       @default("PENDING") // PENDING, PARTIAL, COMPLETED, CANCELED
 

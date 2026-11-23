@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState, type ReactNode } from "react";
+import useSWR from "swr";
 import { useRouter } from "next/navigation";
 import { ArrowLeftRight, BookOpen, Lock, Plus, Trash2 } from "lucide-react";
 import {
@@ -33,6 +34,7 @@ import {
 } from "@/components/ui";
 import { useShellUser } from "@/components/shell/AppShell";
 import { HelpTip } from "@/components/shell/HelpTip";
+import { fetchList } from "@/components/shell/list-state";
 import { useLeaveGuard } from "@/components/shell/LeaveGuard";
 import { useUiFeedback } from "@/components/shell/UiFeedback";
 import { can } from "@/lib/permissions";
@@ -46,7 +48,7 @@ import { contactChoices, contactLabel, decimalText, type ContactOption, type Cre
 import styles from "./form.module.css";
 
 type SaleType = "SINGLE_SALE" | "DISTRIBUTED_SALE";
-type Line = { key: string; clientId: string; amount: string; providerExchangeRate: string; destCurrencyId: string; exchangeRate: string; isPaid: boolean; observations: string };
+type Line = { key: string; clientId: string; amount: string; providerExchangeRate: string; destCurrencyId: string; exchangeRate: string; isPaid: boolean; observations: string; frozenRealProfitRate: number | null };
 type Values = {
   type: SaleType;
   providerId: string;
@@ -72,7 +74,7 @@ const todayText = () => {
 // Una línea nueva arranca sin pagar: recién se tilda cuando ya se le pagó al cliente.
 // La clave es local: crypto.randomUUID no existe si la app se abre sin HTTPS desde otra PC de la red.
 let lineSequence = 0;
-const newLine = (destCurrencyId: string): Line => ({ key: `new-${++lineSequence}`, clientId: "", amount: "", providerExchangeRate: "", destCurrencyId, exchangeRate: "", isPaid: false, observations: "" });
+const newLine = (destCurrencyId: string): Line => ({ key: `new-${++lineSequence}`, clientId: "", amount: "", providerExchangeRate: "", destCurrencyId, exchangeRate: "", isPaid: false, observations: "", frozenRealProfitRate: null });
 
 function valuesFrom(detail: OperationDetailResponse | undefined, type: SaleType, arsId: string): Values {
   const op = detail?.operation;
@@ -94,6 +96,7 @@ function valuesFrom(detail: OperationDetailResponse | undefined, type: SaleType,
       exchangeRate: decimalText(child.exchangeRate),
       isPaid: child.isPaid,
       observations: child.observations ?? "",
+      frozenRealProfitRate: child.realProfitRate,
     })),
   };
 }
@@ -181,22 +184,43 @@ export function SaleForm({ detail, initialType, contacts, onCreateContact, curre
   const anyPaid = values.lines.some((line) => line.isPaid);
   const state = allPaid ? "COMPLETED" : anyPaid ? "PARTIAL" : "PENDING";
 
+  // Promedio del día de compras de USDT (pesos u otra moneda por cada USDT), por moneda de pago.
+  const { data: usdtRateData } = useSWR<{ usdtCurrencyId: string | null; rates: Record<string, number> }>("/api/treasury/usdt-rate", fetchList);
+  const usdtCurrencyId = usdtRateData?.usdtCurrencyId ?? null;
+
+  // Ganancia real de una línea en USDT: Monto TT − (Haber × promedio del día), en la moneda de cabecera.
+  // Mientras no está pagada usa el promedio en vivo; al pagar queda fija con el promedio de ese momento.
+  const lineRealProfit = (line: Line): number | null => {
+    if (!usdtCurrencyId || line.destCurrencyId !== usdtCurrencyId) return null;
+    const amount = lineAmount(line);
+    const haber = lineHaber(line);
+    if (!(amount > 0) || !Number.isFinite(haber)) return null;
+    const rate = line.isPaid && line.frozenRealProfitRate != null ? line.frozenRealProfitRate : usdtRateData?.rates?.[values.currencyId];
+    if (rate === undefined || rate === null) return null;
+    return amount - haber * rate;
+  };
+
   // Ganancia agrupada por moneda: cada cliente puede cobrar en una moneda distinta, no se suman entre sí.
   const gananciaPorMoneda = useMemo(() => {
-    const groups = new Map<string, { debe: number; haber: number }>();
+    const groups = new Map<string, { debe: number; haber: number; real: number; realCount: number }>();
     values.lines.forEach((line) => {
       if (!line.destCurrencyId) return;
       const debe = lineDebe(line);
       const haber = lineHaber(line);
       if (!Number.isFinite(debe) || !Number.isFinite(haber)) return;
-      const group = groups.get(line.destCurrencyId) ?? { debe: 0, haber: 0 };
+      const group = groups.get(line.destCurrencyId) ?? { debe: 0, haber: 0, real: 0, realCount: 0 };
       group.debe += debe;
       group.haber += haber;
+      const real = lineRealProfit(line);
+      if (real !== null) {
+        group.real += real;
+        group.realCount += 1;
+      }
       groups.set(line.destCurrencyId, group);
     });
     return Array.from(groups.entries()).map(([currencyId, totals]) => ({ currency: currencyOf(currencyId), ...totals, ganancia: totals.haber - totals.debe }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [values.lines, currencies]);
+  }, [values.lines, currencies, usdtRateData]);
 
   const set = <K extends keyof Values>(key: K, value: Values[K]) => setValues((current) => ({ ...current, [key]: value }));
   const setLine = (key: string, change: Partial<Line>) =>
@@ -407,13 +431,31 @@ export function SaleForm({ detail, initialType, contacts, onCreateContact, curre
       render: (line) => (Number.isFinite(lineHaber(line)) ? formatAmount(lineHaber(line), currencyOf(line.destCurrencyId)?.code ?? "") : "—"),
     },
     {
+      key: "realProfit",
+      label: (
+        <>
+          Ganancia real{" "}
+          <HelpTip>
+            Solo para líneas en USDT: Monto TT menos el costo real de ese USDT según el promedio de compras del día. Antes
+            de pagar se actualiza en vivo; al tildar &quot;Pago&quot; queda fija con el promedio de ese momento.
+          </HelpTip>
+        </>
+      ),
+      align: "end",
+      width: "12%",
+      render: (line) => {
+        const real = lineRealProfit(line);
+        return real === null ? "—" : formatAmount(real, headerCurrency?.code ?? "");
+      },
+    },
+    {
       key: "paid",
       label: (
         <>
           Pago{" "}
           <HelpTip>
-            Marcalo cuando ya le pagaste en USDT a este cliente. Por ahora no mueve ninguna caja (eso se suma cuando esté el
-            registro de compras de USDT): solo cierra la deuda en su cuenta corriente.
+            Marcalo cuando ya le pagaste en USDT a este cliente: cierra la deuda en su cuenta corriente y, si la línea es en
+            USDT, también descuenta ese importe de la caja de USDT y congela la ganancia real de ese momento.
           </HelpTip>
         </>
       ),
@@ -491,7 +533,8 @@ export function SaleForm({ detail, initialType, contacts, onCreateContact, curre
           <HelpTip>
             El proveedor le transfiere el Monto TT directo al cliente: la agencia no toca esa plata. Por cada línea queda
             registrado lo que la agencia le debe al proveedor (Debe) y lo que le debe al cliente (Haber); la diferencia es la
-            ganancia. El pago en USDT al cliente se registra más adelante, con el registro de compras de USDT.
+            ganancia. Cuando la línea es en USDT y se tilda &quot;Pago&quot;, sale ese importe de la caja de USDT (compralas
+            antes desde Tesorería) y queda fija la ganancia real según el costo promedio de esas compras.
           </HelpTip>
           {op && can(user, "operations.delete") && (
             <Button variant="ghost" size="sm" icon={<Trash2 size={iconSize.sm} />} loading={deleting} onClick={remove}>Eliminar</Button>
@@ -581,17 +624,18 @@ export function SaleForm({ detail, initialType, contacts, onCreateContact, curre
               <>
                 Ganancia{" "}
                 <HelpTip>
-                  Haber menos Debe de cada línea, agrupado por moneda (no se suman monedas distintas entre sí). Es una
-                  estimación: el ajuste por el costo real del USDT que se le compra al cliente se suma cuando exista ese
-                  registro.
+                  Haber menos Debe de cada línea, agrupado por moneda (no se suman monedas distintas entre sí). Para las
+                  líneas en USDT, además se muestra la &quot;Ganancia real&quot;: Monto TT menos el costo real de ese USDT,
+                  según el promedio de compras del día (o el promedio congelado al momento de pagarle al cliente).
                 </HelpTip>
               </>
             }
           >
             {gananciaPorMoneda.length ? (
-              gananciaPorMoneda.map(({ currency, debe, haber, ganancia }) => (
+              gananciaPorMoneda.map(({ currency, debe, haber, ganancia, real, realCount }) => (
                 <ReadonlyField key={currency?.id ?? "—"} label={currency?.code ?? "—"}>
                   Debe {formatAmount(debe, currency?.code ?? "")} · Haber {formatAmount(haber, currency?.code ?? "")} · Ganancia {formatAmount(ganancia, currency?.code ?? "")}
+                  {realCount > 0 && <> · Ganancia real {formatAmount(real, headerCurrency?.code ?? "")}</>}
                 </ReadonlyField>
               ))
             ) : (

@@ -16,6 +16,7 @@ export type OperationLine = {
   exchangeRate: number; // Cotización Cliente
   providerExchangeRate: number | null; // Cotización Proveedor de esta línea
   providerDebtAmount: number | null; // Debe = originAmount / providerExchangeRate, en destCurrencyId
+  realProfitRate: number | null; // Solo líneas en USDT ya pagadas: promedio de compra de USDT congelado al pagar
   isPaid: boolean;
   observations: string | null;
 };

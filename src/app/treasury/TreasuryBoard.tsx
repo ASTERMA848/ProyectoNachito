@@ -13,7 +13,7 @@ import { can } from "@/lib/permissions";
 import { formatAmount } from "@/lib/format-currency";
 import { dayKey, dayLabel, formatTime } from "@/lib/agency-time";
 import type { RecentMovement, TreasuryDashboard } from "@/lib/resources/treasury";
-import { CashMovementDialog, TransferDialog, type BoxOption } from "./TreasuryDialogs";
+import { CashMovementDialog, TransferDialog, UsdtPurchaseDialog, type BoxOption } from "./TreasuryDialogs";
 import styles from "./treasury.module.css";
 
 const DAYS = 30;
@@ -30,9 +30,11 @@ export default function TreasuryBoard() {
   const { data, error, mutate } = useSWR<TreasuryDashboard>(`/api/treasury?days=${DAYS}`, fetchList);
   const [movementBox, setMovementBox] = useState<BoxOption | null>(null);
   const [transfer, setTransfer] = useState<{ from?: string } | null>(null);
+  const [usdtPurchaseOpen, setUsdtPurchaseOpen] = useState(false);
 
   const canWrite = can(user, "treasury.write");
   const boxes = data?.accounts ?? [];
+  const hasUsdtBox = boxes.some((box) => box.currency.code === "USDT" && box.currency.isActive);
 
   const recentColumns: Column<RecentMovement>[] = [
     { key: "date", label: "Fecha", width: "10rem", render: (row) => `${dayLabel(dayKey(row.date))} ${formatTime(row.date)}` },
@@ -70,6 +72,9 @@ export default function TreasuryBoard() {
           <>
             {canWrite && boxes.length > 1 && (
               <Button variant="primary" icon={<ArrowLeftRight size={iconSize.sm} />} onClick={() => setTransfer({})}>Traspaso</Button>
+            )}
+            {canWrite && hasUsdtBox && (
+              <Button icon={<Plus size={iconSize.sm} />} onClick={() => setUsdtPurchaseOpen(true)}>Compra de USDT</Button>
             )}
             <Breadcrumbs items={[{ label: "Tesorería" }]} />
             <HelpTip>
@@ -154,6 +159,7 @@ export default function TreasuryBoard() {
         onSaved={() => mutate()}
       />
       <TransferDialog open={transfer !== null} from={transfer?.from} boxes={boxes} onClose={() => setTransfer(null)} onSaved={() => mutate()} />
+      <UsdtPurchaseDialog open={usdtPurchaseOpen} boxes={boxes} onClose={() => setUsdtPurchaseOpen(false)} onSaved={() => mutate()} />
     </div>
   );
 }

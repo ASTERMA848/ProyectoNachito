@@ -54,7 +54,7 @@ import { OPERATION_STATE_TONES, OPERATION_STATES, OPERATION_TYPE_COLORS, OPERATI
 import type { CurrencySum } from "@/lib/list-query";
 import type { GroupRow, OperationListResult } from "@/lib/resources/operations";
 import type { TreasuryDashboard } from "@/lib/resources/treasury";
-import { CashMovementDialog, TransferDialog } from "../treasury/TreasuryDialogs";
+import { CashMovementDialog, TransferDialog, UsdtPurchaseDialog } from "../treasury/TreasuryDialogs";
 import { GROUP_ROW_LIMIT, useGroupRows } from "./useGroupRows";
 import styles from "./operations.module.css";
 
@@ -191,6 +191,8 @@ export default function OperationsList() {
   const boxes = treasuryData?.accounts ?? [];
   const [movement, setMovement] = useState<{ type: "INCOME" | "EXPENSE" } | null>(null);
   const [transferOpen, setTransferOpen] = useState(false);
+  const [usdtPurchaseOpen, setUsdtPurchaseOpen] = useState(false);
+  const hasUsdtBox = boxes.some((box) => box.currency.code === "USDT" && box.currency.isActive);
   const hasSearch = filters.length > 0 || terms.length > 0 || list.fieldTerms.length > 0;
 
   const facets = buildFacets(list, FILTER_GROUPS, GROUP_OPTIONS, {}, SEARCH_FIELDS);
@@ -334,6 +336,9 @@ export default function OperationsList() {
               { id: "expense", label: "Extracción de caja", onSelect: () => setMovement({ type: "EXPENSE" }) },
               ...(boxes.length > 1
                 ? [{ id: "transfer", label: "Traspaso entre cajas", onSelect: () => setTransferOpen(true) }]
+                : []),
+              ...(hasUsdtBox
+                ? [{ id: "usdt-purchase", label: "Compra de USDT", onSelect: () => setUsdtPurchaseOpen(true) }]
                 : []),
             ]
           : []),
@@ -510,6 +515,7 @@ export default function OperationsList() {
             onSaved={() => mutate()}
           />
           <TransferDialog open={transferOpen} boxes={boxes} onClose={() => setTransferOpen(false)} onSaved={() => mutate()} />
+          <UsdtPurchaseDialog open={usdtPurchaseOpen} boxes={boxes} onClose={() => setUsdtPurchaseOpen(false)} onSaved={() => mutate()} />
         </>
       )}
     </div>
