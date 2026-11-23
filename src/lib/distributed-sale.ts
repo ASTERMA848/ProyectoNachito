@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { Prisma, Operation } from "@prisma/client";
 import { assertOpenAccountingPeriod, lockAccountingWrites } from "./accounting-period";
-import { dateOnlyRange } from "./agency-time";
+import { instantRange } from "./agency-time";
 import "./monetary";
 
 type Tx = Prisma.TransactionClient;
@@ -50,7 +50,7 @@ export async function reverseSaleLedger(tx: Tx, ids: string[]) {
 // Promedio ponderado de hoy (plata pagada / USDT recibidos) para una moneda de pago,
 // sobre las compras de USDT registradas en el día (huso de la agencia). Null si no hubo ninguna.
 export async function todayUsdtRate(tx: Tx, paidCurrencyId: string, usdtCurrencyId: string) {
-  const range = dateOnlyRange("today");
+  const range = instantRange("today");
   const [row] = await tx.$queryRaw<{ paid: Prisma.Decimal; usdt: Prisma.Decimal }[]>`
     SELECT COALESCE(SUM("originAmount"), 0) AS paid, COALESCE(SUM("destAmount"), 0) AS usdt
     FROM "Operation" WHERE type = 'USDT_PURCHASE' AND "deletedAt" IS NULL

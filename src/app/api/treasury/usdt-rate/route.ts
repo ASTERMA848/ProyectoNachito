@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireAuth } from "@/lib/session";
 import { Prisma } from "@prisma/client";
-import { dateOnlyRange } from "@/lib/agency-time";
+import { instantRange } from "@/lib/agency-time";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +16,7 @@ export async function GET() {
     const usdtCurrency = await prisma.currency.findUnique({ where: { code: "USDT" }, select: { id: true } });
     if (!usdtCurrency) return NextResponse.json({ usdtCurrencyId: null, rates: {} });
 
-    const range = dateOnlyRange("today");
+    const range = instantRange("today");
     const purchases = await prisma.operation.findMany({
       where: { type: "USDT_PURCHASE", deletedAt: null, destCurrencyId: usdtCurrency.id, operationDate: { gte: range.gte, lt: range.lt } },
       select: { originCurrencyId: true, originAmount: true, destAmount: true },
