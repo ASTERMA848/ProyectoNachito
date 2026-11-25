@@ -626,9 +626,8 @@ export function SaleForm({ detail, initialType, contacts, onCreateContact, curre
               <>
                 Ganancia{" "}
                 <HelpTip>
-                  Haber menos Debe de cada línea, agrupado por moneda (no se suman monedas distintas entre sí). Para las
-                  líneas en USDT, además se muestra la &quot;Ganancia real&quot;: Monto TT menos el costo real de ese USDT,
-                  según el promedio de compras del día (o el promedio congelado al momento de pagarle al cliente).
+                  Agrupa las líneas por moneda: no se suman monedas distintas entre sí. Cada dato de abajo explica cómo se
+                  calcula con su propio signo de pregunta.
                 </HelpTip>
               </>
             }
@@ -637,10 +636,58 @@ export function SaleForm({ detail, initialType, contacts, onCreateContact, curre
               gananciaPorMoneda.map(({ currency, debe, haber, ganancia, real, realCount }) => (
                 <Fragment key={currency?.id ?? "—"}>
                   {gananciaPorMoneda.length > 1 && <p className={styles.gananciaCurrency}>{currency?.code ?? "—"}</p>}
-                  <ReadonlyField label="Debe">{formatAmount(debe, currency?.code ?? "")}</ReadonlyField>
-                  <ReadonlyField label="Haber">{formatAmount(haber, currency?.code ?? "")}</ReadonlyField>
-                  <ReadonlyField label="Ganancia">{formatAmount(ganancia, currency?.code ?? "")}</ReadonlyField>
-                  {realCount > 0 && <ReadonlyField label="Ganancia real">{formatAmount(real, headerCurrency?.code ?? "")}</ReadonlyField>}
+                  <ReadonlyField
+                    label={
+                      <>
+                        Debe{" "}
+                        <HelpTip>
+                          Suma de lo que la agencia le queda debiendo al proveedor en todas las líneas de esta moneda: por
+                          cada línea, Monto TT ÷ Cot. Proveedor.
+                        </HelpTip>
+                      </>
+                    }
+                  >
+                    {formatAmount(debe, currency?.code ?? "")}
+                  </ReadonlyField>
+                  <ReadonlyField
+                    label={
+                      <>
+                        Haber{" "}
+                        <HelpTip>
+                          Suma de lo que la agencia le queda debiendo a los clientes en todas las líneas de esta moneda: por
+                          cada línea, Monto TT ÷ Coti.
+                        </HelpTip>
+                      </>
+                    }
+                  >
+                    {formatAmount(haber, currency?.code ?? "")}
+                  </ReadonlyField>
+                  <ReadonlyField
+                    label={
+                      <>
+                        Ganancia{" "}
+                        <HelpTip>Haber menos Debe: la diferencia entre lo que se le debe al cliente y lo que se le debe al proveedor.</HelpTip>
+                      </>
+                    }
+                  >
+                    {formatAmount(ganancia, currency?.code ?? "")}
+                  </ReadonlyField>
+                  {realCount > 0 && (
+                    <ReadonlyField
+                      label={
+                        <>
+                          Ganancia real{" "}
+                          <HelpTip>
+                            Monto TT menos (Haber × promedio de compra de USDT del día). Para una línea ya pagada, usa el
+                            promedio congelado en el momento de pagarle al cliente; para una sin pagar, el promedio de lo
+                            comprado hasta ahora.
+                          </HelpTip>
+                        </>
+                      }
+                    >
+                      {formatAmount(real, headerCurrency?.code ?? "")}
+                    </ReadonlyField>
+                  )}
                 </Fragment>
               ))
             ) : (
