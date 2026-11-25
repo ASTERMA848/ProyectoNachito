@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState, type ReactNode } from "react";
+import { Fragment, useMemo, useRef, useState, type ReactNode } from "react";
 import useSWR from "swr";
 import { useRouter } from "next/navigation";
 import { ArrowLeftRight, BookOpen, Lock, Plus, Trash2 } from "lucide-react";
@@ -635,10 +635,13 @@ export function SaleForm({ detail, initialType, contacts, onCreateContact, curre
           >
             {gananciaPorMoneda.length ? (
               gananciaPorMoneda.map(({ currency, debe, haber, ganancia, real, realCount }) => (
-                <ReadonlyField key={currency?.id ?? "—"} label={currency?.code ?? "—"}>
-                  Debe {formatAmount(debe, currency?.code ?? "")} · Haber {formatAmount(haber, currency?.code ?? "")} · Ganancia {formatAmount(ganancia, currency?.code ?? "")}
-                  {realCount > 0 && <> · Ganancia real {formatAmount(real, headerCurrency?.code ?? "")}</>}
-                </ReadonlyField>
+                <Fragment key={currency?.id ?? "—"}>
+                  {gananciaPorMoneda.length > 1 && <p className={styles.gananciaCurrency}>{currency?.code ?? "—"}</p>}
+                  <ReadonlyField label="Debe">{formatAmount(debe, currency?.code ?? "")}</ReadonlyField>
+                  <ReadonlyField label="Haber">{formatAmount(haber, currency?.code ?? "")}</ReadonlyField>
+                  <ReadonlyField label="Ganancia">{formatAmount(ganancia, currency?.code ?? "")}</ReadonlyField>
+                  {realCount > 0 && <ReadonlyField label="Ganancia real">{formatAmount(real, headerCurrency?.code ?? "")}</ReadonlyField>}
+                </Fragment>
               ))
             ) : (
               <ReadonlyField label="—">Cargá al menos una línea con montos y cotizaciones válidas.</ReadonlyField>

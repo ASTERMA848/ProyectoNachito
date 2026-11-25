@@ -36,3 +36,17 @@
   font-size: var(--ui-fs-sm);
   color: var(--ui-text-muted);
 }
+
+/* Separa un grupo de moneda del siguiente cuando la ganancia mezcla varias. */
+.gananciaCurrency {
+  margin: var(--ui-space-12) 0 0;
+  font-size: var(--ui-fs-xs);
+  font-weight: var(--ui-fw-bold);
+  color: var(--ui-text-muted);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.gananciaCurrency:first-child {
+  margin-top: 0;
+}
