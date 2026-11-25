@@ -35,6 +35,11 @@
   box-shadow: var(--ui-shadow-card);
 }
 
+/* Formularios con tablas anchas (muchas columnas): más aire que el ancho estándar de hoja. */
+.sheetWide {
+  max-width: var(--ui-sheet-max-wide);
+}
+
 .titleRow {
   display: flex;
   flex-wrap: wrap-reverse;

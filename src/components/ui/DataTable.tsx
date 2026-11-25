@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, type CSSProperties, type ReactNode } from "react";
+import { Fragment, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent, type ReactNode } from "react";
 import { ArrowDown, ArrowUp, ChevronDown, ChevronRight } from "lucide-react";
 import { Checkbox } from "./Checkbox";
 import { cx } from "./cx";
@@ -50,9 +50,12 @@ type DataTableProps<T> = {
   onToggleGroup?: (key: string) => void;
   loading?: boolean;
   empty?: ReactNode;
+  // El usuario puede agrandar o achicar cada columna arrastrando el borde de su encabezado.
+  resizableColumns?: boolean;
 };
 
 const SKELETON_ROWS = 3;
+const MIN_COLUMN_WIDTH = 48;
 
 export function DataTable<T>({
   caption,
@@ -72,7 +75,28 @@ export function DataTable<T>({
   onToggleGroup,
   loading = false,
   empty,
+  resizableColumns = false,
 }: DataTableProps<T>) {
+  const [colWidths, setColWidths] = useState<Record<string, string>>({});
+  const thRefs = useRef<Record<string, HTMLTableCellElement | null>>({});
+  const widthOf = (column: Column<T>) => colWidths[column.key] ?? column.width;
+
+  const startResize = (key: string) => (event: ReactMouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const startX = event.clientX;
+    const startWidth = thRefs.current[key]?.getBoundingClientRect().width ?? 120;
+    const onMove = (moveEvent: MouseEvent) => {
+      const next = Math.max(MIN_COLUMN_WIDTH, startWidth + (moveEvent.clientX - startX));
+      setColWidths((current) => ({ ...current, [key]: `${next}px` }));
+    };
+    const onUp = () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  };
   const visibleRows = groups ? groups.flatMap(openRows) : rows ?? [];
   const visibleKeys = visibleRows.map(rowKey);
   const selectedCount = visibleKeys.filter((key) => selected.has(key)).length;
@@ -149,8 +173,16 @@ export function DataTable<T>({
 
   return (
     <div className={styles.wrap}>
-      <table className={styles.table} aria-busy={loading || undefined}>
+      <table className={resizableColumns ? `${styles.table} ${styles.resizable}` : styles.table} aria-busy={loading || undefined}>
         <caption className="ui-sr-only">{caption}</caption>
+        {resizableColumns && (
+          <colgroup>
+            {selectable && <col className={styles.checkCell} />}
+            {columns.map((column) => (
+              <col key={column.key} style={widthOf(column) ? { width: widthOf(column) } : undefined} />
+            ))}
+          </colgroup>
+        )}
         <thead className={styles.head}>
           <tr>
             {selectable && (
@@ -169,9 +201,10 @@ export function DataTable<T>({
               return (
                 <th
                   key={column.key}
+                  ref={(node) => { thRefs.current[column.key] = node; }}
                   scope="col"
-                  className={alignClass(column)}
-                  style={column.width ? { width: column.width } : undefined}
+                  className={resizableColumns ? `${alignClass(column)} ${styles.resizableHead}` : alignClass(column)}
+                  style={!resizableColumns && column.width ? { width: column.width } : undefined}
                   aria-sort={sorted === "asc" ? "ascending" : sorted === "desc" ? "descending" : undefined}
                 >
                   {column.sortable && onSortChange ? (
@@ -186,6 +219,15 @@ export function DataTable<T>({
                     </button>
                   ) : (
                     column.label
+                  )}
+                  {resizableColumns && (
+                    <span
+                      className={styles.resizeHandle}
+                      onMouseDown={startResize(column.key)}
+                      role="separator"
+                      aria-orientation="vertical"
+                      aria-label={`Ajustar el ancho de la columna ${typeof column.label === "string" ? column.label : column.key}`}
+                    />
                   )}
                 </th>
               );

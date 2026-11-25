@@ -11,10 +11,10 @@ export function FormHeader({ actions, status }: { actions?: ReactNode; status?: 
   );
 }
 
-export function Sheet({ children }: { children: ReactNode }) {
+export function Sheet({ children, wide }: { children: ReactNode; wide?: boolean }) {
   return (
     <div className={styles.sheetWrap}>
-      <div className={styles.sheet}>{children}</div>
+      <div className={wide ? `${styles.sheet} ${styles.sheetWide}` : styles.sheet}>{children}</div>
     </div>
   );
 }

@@ -302,7 +302,7 @@ export function SaleForm({ detail, initialType, contacts, onCreateContact, curre
     {
       key: "client",
       label: "Cliente",
-      width: "18%",
+      width: "15%",
       render: (line) => {
         const index = values.lines.indexOf(line) + 1;
         if (!editable) return <span className={styles.cellText}>{contactLabel(contacts.find((contact) => contact.id === line.clientId))}</span>;
@@ -323,7 +323,7 @@ export function SaleForm({ detail, initialType, contacts, onCreateContact, curre
       key: "amount",
       label: `Monto TT${headerCurrency?.code ? ` (${headerCurrency.code})` : ""}`,
       align: "end",
-      width: "13%",
+      width: "10%",
       render: (line) => {
         const index = values.lines.indexOf(line) + 1;
         if (!editable) return formatAmount(lineAmount(line), headerCurrency?.code ?? "", headerCurrency?.decimals);
@@ -350,7 +350,7 @@ export function SaleForm({ detail, initialType, contacts, onCreateContact, curre
         </>
       ),
       align: "end",
-      width: "12%",
+      width: "9%",
       render: (line) => {
         const index = values.lines.indexOf(line) + 1;
         if (!editable) return decimalText(lineProviderRate(line));
@@ -373,7 +373,7 @@ export function SaleForm({ detail, initialType, contacts, onCreateContact, curre
           <HelpTip>Cada cliente puede elegir una moneda distinta (USD, USDT, EUR, etc.). Define en qué moneda se calculan el Debe y el Haber de esta línea.</HelpTip>
         </>
       ),
-      width: "10%",
+      width: "8%",
       render: (line) => {
         const index = values.lines.indexOf(line) + 1;
         if (!editable) return currencyOf(line.destCurrencyId)?.code ?? "—";
@@ -399,7 +399,7 @@ export function SaleForm({ detail, initialType, contacts, onCreateContact, curre
         </>
       ),
       align: "end",
-      width: "11%",
+      width: "8%",
       render: (line) => {
         const index = values.lines.indexOf(line) + 1;
         const providerRate = lineProviderRate(line);
@@ -420,14 +420,14 @@ export function SaleForm({ detail, initialType, contacts, onCreateContact, curre
       key: "debe",
       label: <>Debe <HelpTip>Lo que la agencia le queda debiendo al proveedor por esta línea: Monto TT ÷ Cot. Proveedor.</HelpTip></>,
       align: "end",
-      width: "11%",
+      width: "9%",
       render: (line) => (Number.isFinite(lineDebe(line)) ? formatAmount(lineDebe(line), currencyOf(line.destCurrencyId)?.code ?? "") : "—"),
     },
     {
       key: "haber",
       label: <>Haber <HelpTip>Lo que la agencia le queda debiendo al cliente por esta línea: Monto TT ÷ Coti.</HelpTip></>,
       align: "end",
-      width: "11%",
+      width: "9%",
       render: (line) => (Number.isFinite(lineHaber(line)) ? formatAmount(lineHaber(line), currencyOf(line.destCurrencyId)?.code ?? "") : "—"),
     },
     {
@@ -442,7 +442,7 @@ export function SaleForm({ detail, initialType, contacts, onCreateContact, curre
         </>
       ),
       align: "end",
-      width: "12%",
+      width: "10%",
       render: (line) => {
         const real = lineRealProfit(line);
         return real === null ? "—" : formatAmount(real, headerCurrency?.code ?? "");
@@ -460,7 +460,7 @@ export function SaleForm({ detail, initialType, contacts, onCreateContact, curre
         </>
       ),
       align: "center",
-      width: "7%",
+      width: "6%",
       render: (line) => {
         const index = values.lines.indexOf(line) + 1;
         return editable ? (
@@ -471,6 +471,7 @@ export function SaleForm({ detail, initialType, contacts, onCreateContact, curre
     {
       key: "notes",
       label: "Observaciones",
+      width: "11%",
       render: (line) => {
         const index = values.lines.indexOf(line) + 1;
         if (!editable) return <span className={styles.cellText}>{line.observations || "—"}</span>;
@@ -482,6 +483,7 @@ export function SaleForm({ detail, initialType, contacts, onCreateContact, curre
     lineColumns.push({
       key: "remove",
       label: "",
+      width: "3%",
       render: (line) => (
         <IconButton
           icon={<Trash2 size={iconSize.sm} />}
@@ -545,7 +547,7 @@ export function SaleForm({ detail, initialType, contacts, onCreateContact, curre
       notice={notice}
       aside={history}
     >
-      <Sheet>
+      <Sheet wide>
         <SheetTitle
           eyebrow={<Tag color={OPERATION_TYPE_COLORS[values.type] ?? "gray"}>{typeLabel}</Tag>}
           aside={
@@ -663,7 +665,7 @@ export function SaleForm({ detail, initialType, contacts, onCreateContact, curre
             </ul>
           )}
           <div className={styles.lines}>
-            <DataTable caption="Clientes de la venta" columns={lineColumns} rowKey={(line) => line.key} rows={values.lines} />
+            <DataTable caption="Clientes de la venta" columns={lineColumns} rowKey={(line) => line.key} rows={values.lines} resizableColumns />
             <div className={styles.lineActions}>
               {editable && values.type === "DISTRIBUTED_SALE" ? (
                 <Button variant="link" icon={<Plus size={iconSize.sm} />} onClick={() => setValues((current) => ({ ...current, lines: [...current.lines, newLine(values.currencyId)] }))}>

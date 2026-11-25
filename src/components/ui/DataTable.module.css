@@ -9,6 +9,37 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Con columnas redimensionables, el ancho del colgroup manda: el contenido no lo empuja. */
+.resizable {
+  table-layout: fixed;
+}
+
+.resizableHead {
+  position: relative;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.resizable td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.resizeHandle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 8px;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.resizeHandle:hover,
+.resizeHandle:active {
+  background: var(--ui-accent-subtle);
+}
+
 .table th,
 .table td {
   height: var(--ui-row-h);
