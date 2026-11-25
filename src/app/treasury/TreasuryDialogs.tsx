@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Button, Dialog, Field, MoneyInput, Select, TextArea, TextInput } from "@/components/ui";
+import useSWR from "swr";
+import { Button, Combobox, Dialog, Field, MoneyInput, Select, TextArea, TextInput } from "@/components/ui";
 import { HelpTip } from "@/components/shell/HelpTip";
 import { useUiFeedback } from "@/components/shell/UiFeedback";
+import { fetchList } from "@/components/shell/list-state";
 import { formatAmount } from "@/lib/format-currency";
 import { parseLocaleNumber } from "@/lib/parse-number";
 import styles from "./treasury.module.css";
@@ -405,6 +407,187 @@ export function UsdtPurchaseDialog({ open, boxes, onClose, onSaved }: { open: bo
         <Field label="USDT recibidos" required help="Se calcula con la cotización; podés corregirlo." error={error("usdtAmount")}>
           <MoneyInput symbol="USDT" value={usdtAmount} onChange={(event) => setUsdtAmount(event.target.value)} />
         </Field>
+        <Field label="Motivo">
+          <TextArea rows={2} maxLength={500} value={reason} onChange={(event) => setReason(event.target.value)} />
+        </Field>
+      </div>
+    </Dialog>
+  );
+}
+
+type ProviderOption = { id: string; name: string; lastname: string | null; document: string | null; isProvider: boolean; isActive: boolean };
+type ProviderDebtAccount = { id: string; balance: number; currency: { id: string; code: string; symbol?: string; decimals: number } };
+
+// Pago a un proveedor con USDT comprado en la grilla diaria: cancela su Debe (positivo = la agencia
+// le debe) en la moneda que corresponda y saca el USDT de su caja. Si el Debe ya está en USDT, es
+// 1 a 1; si está en otra moneda, pide una cotización para calcular cuánto USDT entregar.
+export function PagarProveedorDialog({
+  open,
+  onClose,
+  onSaved,
+  fixed,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onSaved: () => void;
+  // Desde la cuenta corriente de un proveedor, el proveedor y la moneda del Debe ya están decididos.
+  fixed?: { providerId: string; currencyId: string; label: string };
+}) {
+  const { notify } = useUiFeedback();
+  const [providerId, setProviderId] = useState(fixed?.providerId ?? "");
+  const [debtCurrencyId, setDebtCurrencyId] = useState(fixed?.currencyId ?? "");
+  const [debtAmount, setDebtAmount] = useState("");
+  const [rate, setRate] = useState("");
+  const [usdtAmount, setUsdtAmount] = useState("");
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [showErrors, setShowErrors] = useState(false);
+  const [openedFor, setOpenedFor] = useState<string | undefined>(undefined);
+  const reopenKey = `${fixed?.providerId ?? ""}|${fixed?.currencyId ?? ""}`;
+  if (open && reopenKey !== openedFor) {
+    setOpenedFor(reopenKey);
+    setProviderId(fixed?.providerId ?? "");
+    setDebtCurrencyId(fixed?.currencyId ?? "");
+  }
+
+  const providers = useSWR<{ contacts: ProviderOption[] }>(open && !fixed ? "/api/contacts?options=1" : null, fetchList);
+  const debts = useSWR<{ accounts: ProviderDebtAccount[] }>(
+    providerId ? `/api/accounts?filter=contact:${providerId}&filter=sign:positive` : null,
+    fetchList
+  );
+  const debtOptions = debts.data?.accounts ?? [];
+  const debtAccount = debtOptions.find((account) => account.currency.id === debtCurrencyId);
+  const sameAsUsdt = debtAccount?.currency.code === "USDT";
+
+  const debtValue = parseLocaleNumber(debtAmount);
+  const rateValue = parseLocaleNumber(rate);
+  const usdtValue = sameAsUsdt ? debtValue : parseLocaleNumber(usdtAmount);
+
+  const recompute = (nextDebtAmount: string, nextRate: string) => {
+    const rateNumber = parseLocaleNumber(nextRate);
+    if (!(rateNumber > 0)) return;
+    const quotient = parseLocaleNumber(nextDebtAmount) / rateNumber;
+    if (validAmount(quotient)) setUsdtAmount(quotient.toFixed(2).replace(".", ","));
+  };
+
+  const errors = {
+    provider: providerId ? undefined : "Elegí el proveedor",
+    debtCurrency: providerId && !debtAccount ? "Elegí en qué moneda se cancela el Debe" : undefined,
+    amount: !validAmount(debtValue) ? "Escribí un importe mayor a cero" : debtAccount && debtValue > debtAccount.balance ? "Supera el Debe de esta moneda" : undefined,
+    rate: !sameAsUsdt && !validAmount(rateValue) ? "Escribí la cotización" : undefined,
+    usdtAmount: !validAmount(usdtValue) ? "Escribí la cantidad de USDT a entregar" : undefined,
+  };
+
+  const close = () => {
+    setProviderId(fixed?.providerId ?? "");
+    setDebtCurrencyId(fixed?.currencyId ?? "");
+    setDebtAmount("");
+    setRate("");
+    setUsdtAmount("");
+    setReason("");
+    setShowErrors(false);
+    setOpenedFor(undefined);
+    onClose();
+  };
+
+  const save = async () => {
+    if (Object.values(errors).some(Boolean)) return setShowErrors(true);
+    setBusy(true);
+    const result = await post("/api/treasury/provider-usdt-payment", { providerId, debtCurrencyId, debtAmount: debtValue, usdtAmount: usdtValue, reason });
+    setBusy(false);
+    if (!result.ok) return notify("No se pudo registrar el pago", "danger", result.error || "Probá de nuevo en un momento.");
+    notify("Pago a proveedor registrado", "success");
+    close();
+    onSaved();
+  };
+
+  const error = (key: keyof typeof errors) => (showErrors ? errors[key] : undefined);
+  const providerChoices = (providers.data?.contacts ?? [])
+    .filter((contact) => contact.isProvider && contact.isActive)
+    .map((contact) => ({ id: contact.id, label: [contact.name, contact.lastname].filter(Boolean).join(" "), detail: contact.document ?? undefined }));
+
+  return (
+    <Dialog
+      open={open}
+      onClose={close}
+      title={fixed ? `Pagar a ${fixed.label} con USDT` : "Pagar a proveedor con USDT"}
+      footer={
+        <>
+          <Button variant="primary" loading={busy} onClick={save}>Registrar</Button>
+          <Button onClick={close}>Cancelar</Button>
+        </>
+      }
+    >
+      <div className={styles.dialogForm}>
+        <p className={styles.muted}>
+          Cancela (parte de) el Debe acumulado del proveedor usando el USDT comprado en Tesorería.{" "}
+          <HelpTip>
+            Si el Debe de ese proveedor está en USDT, se entrega el mismo importe. Si está en otra moneda, hay que indicar
+            una cotización para saber cuánto USDT entregar.
+          </HelpTip>
+        </p>
+        {!fixed && (
+          <Field label="Proveedor" required error={error("provider")}>
+            <Combobox
+              placeholder={providers.data ? "Buscar proveedor..." : "Cargando..."}
+              value={providerId}
+              options={providerChoices}
+              onChange={(id) => {
+                setProviderId(id);
+                setDebtCurrencyId("");
+                setDebtAmount("");
+                setRate("");
+                setUsdtAmount("");
+              }}
+            />
+          </Field>
+        )}
+        {providerId && !fixed && (
+          <Field label="Moneda del Debe" required error={error("debtCurrency")}>
+            <Select value={debtCurrencyId} onChange={(event) => { setDebtCurrencyId(event.target.value); setDebtAmount(""); setRate(""); setUsdtAmount(""); }}>
+              <option value="">{debts.data ? "Elegí la moneda" : "Cargando..."}</option>
+              {debtOptions.map((account) => (
+                <option key={account.currency.id} value={account.currency.id}>
+                  {account.currency.code} ({formatAmount(account.balance, account.currency.code, account.currency.decimals)})
+                </option>
+              ))}
+            </Select>
+          </Field>
+        )}
+        {debtAccount && (
+          <>
+            <Field label={`Importe a saldar (${debtAccount.currency.code})`} required error={error("amount")}>
+              <MoneyInput
+                symbol={debtAccount.currency.symbol || debtAccount.currency.code}
+                value={debtAmount}
+                onChange={(event) => {
+                  setDebtAmount(event.target.value);
+                  if (!sameAsUsdt) recompute(event.target.value, rate);
+                }}
+              />
+            </Field>
+            {sameAsUsdt ? (
+              <p className={styles.muted}>USDT a entregar: {formatAmount(debtValue || 0, "USDT", 2)}</p>
+            ) : (
+              <>
+                <Field label={`Cotización (USDT por cada ${debtAccount.currency.code})`} required error={error("rate")}>
+                  <TextInput
+                    inputMode="decimal"
+                    autoComplete="off"
+                    value={rate}
+                    onChange={(event) => {
+                      setRate(event.target.value);
+                      recompute(debtAmount, event.target.value);
+                    }}
+                  />
+                </Field>
+                <Field label="USDT a entregar" required help="Se calcula con la cotización; podés corregirlo." error={error("usdtAmount")}>
+                  <MoneyInput symbol="USDT" value={usdtAmount} onChange={(event) => setUsdtAmount(event.target.value)} />
+                </Field>
+              </>
+            )}
+          </>
+        )}
         <Field label="Motivo">
           <TextArea rows={2} maxLength={500} value={reason} onChange={(event) => setReason(event.target.value)} />
         </Field>

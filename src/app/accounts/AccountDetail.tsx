@@ -31,6 +31,7 @@ import { can } from "@/lib/permissions";
 import { formatAmount } from "@/lib/format-currency";
 import { formatTime, dayKey, formatDateOnly } from "@/lib/agency-time";
 import type { AccountListItem, MovementItem, MovementsResult } from "@/lib/resources/accounts";
+import { PagarProveedorDialog } from "@/app/treasury/TreasuryDialogs";
 import { Balance, contactName } from "./balance";
 import { MovementDialog } from "./MovementDialog";
 import styles from "./accounts.module.css";
@@ -46,6 +47,7 @@ export default function AccountDetail({ id }: { id: string }) {
   const user = useShellUser();
   const [offset, setOffset] = useState(0);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [payProviderOpen, setPayProviderOpen] = useState(false);
 
   const detail = useSWR<{ account: AccountListItem }>(`/api/accounts/${id}`, fetchList);
   const movements = useSWR<MovementsResult>(`/api/accounts/${id}/transactions?offset=${offset}&limit=${PAGE_SIZE}`, fetchList, { keepPreviousData: true });
@@ -101,7 +103,16 @@ export default function AccountDetail({ id }: { id: string }) {
       pager={<RecordPager resource="accounts" id={id} hrefOf={(next) => `/accounts/${next}`} label="Cuentas de la lista" />}
       header={null}
       aside={<RecordHistory entity="Account" id={id} refreshKey={account.balance} emptyText="Todavía no hay movimientos manuales." />}
-      actions={canWrite ? <Button variant="primary" size="sm" icon={<Plus size={iconSize.sm} />} onClick={() => setDialogOpen(true)}>Movimiento</Button> : null}
+      actions={
+        canWrite ? (
+          <>
+            {account.contact.isProvider && account.balance > 0 && (
+              <Button size="sm" onClick={() => setPayProviderOpen(true)}>Pagar con USDT</Button>
+            )}
+            <Button variant="primary" size="sm" icon={<Plus size={iconSize.sm} />} onClick={() => setDialogOpen(true)}>Movimiento</Button>
+          </>
+        ) : null
+      }
       notice={!account.contact.isActive ? <Notice tone="warning">El contacto está archivado. Su cuenta se puede consultar y ajustar igual.</Notice> : null}
     >
       <Sheet>
@@ -174,6 +185,18 @@ export default function AccountDetail({ id }: { id: string }) {
           await Promise.all([detail.mutate(), movements.mutate()]);
         }}
       />
+      {account.contact.isProvider && (
+        <PagarProveedorDialog
+          open={payProviderOpen}
+          fixed={{ providerId: account.contact.id, currencyId: account.currency.id, label: name }}
+          onClose={() => setPayProviderOpen(false)}
+          onSaved={async () => {
+            setPayProviderOpen(false);
+            setOffset(0);
+            await Promise.all([detail.mutate(), movements.mutate()]);
+          }}
+        />
+      )}
     </FormPage>
   );
 }

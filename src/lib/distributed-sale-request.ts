@@ -35,13 +35,15 @@ export async function handleDistributedSale(req: NextRequest, parentId?: string)
       const providerRate = positiveDecimal(item?.providerExchangeRate);
       const clientRate = positiveDecimal(item?.exchangeRate);
       if (typeof item?.clientId !== "string" || !item.clientId || typeof item?.destCurrencyId !== "string" || !item.destCurrencyId ||
+        typeof item?.clientCurrencyId !== "string" || !item.clientCurrencyId ||
         !amount || !providerRate || !clientRate || amount.times(providerRate).gte(1e22) || typeof item.isPaid !== "boolean") {
         return NextResponse.json({ error: `Cliente, monto, moneda o cotizaciones inválidos en la línea #${index + 1}` }, { status: 400 });
       }
       if (clientRate.gte(providerRate)) {
         return NextResponse.json({ error: `La cotización del cliente tiene que ser menor a la del proveedor en la línea #${index + 1}` }, { status: 400 });
       }
-      normalized.push({ clientId: item.clientId, amount, destCurrencyId: item.destCurrencyId, providerExchangeRate: providerRate, exchangeRate: clientRate,
+      normalized.push({ clientId: item.clientId, amount, destCurrencyId: item.destCurrencyId, clientCurrencyId: item.clientCurrencyId,
+        providerExchangeRate: providerRate, exchangeRate: clientRate,
         observations: item.observations ? String(item.observations).slice(0, 2000) : null, isPaid: !!item.isPaid });
     }
     const total = normalized.reduce((sum, item) => sum.plus(item.amount), new Prisma.Decimal(0));
@@ -50,7 +52,7 @@ export async function handleDistributedSale(req: NextRequest, parentId?: string)
     }
 
     const ids = Array.from(new Set([providerId, ...normalized.map(i => i.clientId)]));
-    const currencyIdsToFetch = Array.from(new Set([currencyId, ...normalized.map(i => i.destCurrencyId)]));
+    const currencyIdsToFetch = Array.from(new Set([currencyId, ...normalized.map(i => i.destCurrencyId), ...normalized.map(i => i.clientCurrencyId)]));
     const [contacts, currencies] = await Promise.all([
       prisma.contact.findMany({ where: { id: { in: ids }, deletedAt: null }, select: { id: true } }),
       prisma.currency.findMany({ where: { id: { in: currencyIdsToFetch }, isActive: true }, select: { id: true } }),
@@ -61,8 +63,8 @@ export async function handleDistributedSale(req: NextRequest, parentId?: string)
     if (!currencies.some(c => c.id === currencyId)) {
       return NextResponse.json({ error: "La moneda del monto transferido no existe o está inactiva" }, { status: 400 });
     }
-    if (normalized.some(item => !currencies.some(c => c.id === item.destCurrencyId))) {
-      return NextResponse.json({ error: "Alguna de las monedas de cliente no existe o está inactiva" }, { status: 400 });
+    if (normalized.some(item => !currencies.some(c => c.id === item.destCurrencyId) || !currencies.some(c => c.id === item.clientCurrencyId))) {
+      return NextResponse.json({ error: "Alguna de las monedas de proveedor o cliente no existe o está inactiva" }, { status: 400 });
     }
     const input: SaleInput = { providerId, currencyId, operationDate: date,
       observations: observations ? String(observations).slice(0, 2000) : null, items: normalized, operationType };

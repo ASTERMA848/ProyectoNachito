@@ -48,7 +48,7 @@ import { contactChoices, contactLabel, decimalText, type ContactOption, type Cre
 import styles from "./form.module.css";
 
 type SaleType = "SINGLE_SALE" | "DISTRIBUTED_SALE";
-type Line = { key: string; clientId: string; amount: string; providerExchangeRate: string; destCurrencyId: string; exchangeRate: string; isPaid: boolean; observations: string; frozenRealProfitRate: number | null };
+type Line = { key: string; clientId: string; amount: string; providerExchangeRate: string; destCurrencyId: string; clientCurrencyId: string; exchangeRate: string; isPaid: boolean; observations: string; frozenRealProfitRate: number | null };
 type Values = {
   type: SaleType;
   providerId: string;
@@ -74,7 +74,7 @@ const todayText = () => {
 // Una línea nueva arranca sin pagar: recién se tilda cuando ya se le pagó al cliente.
 // La clave es local: crypto.randomUUID no existe si la app se abre sin HTTPS desde otra PC de la red.
 let lineSequence = 0;
-const newLine = (destCurrencyId: string): Line => ({ key: `new-${++lineSequence}`, clientId: "", amount: "", providerExchangeRate: "", destCurrencyId, exchangeRate: "", isPaid: false, observations: "", frozenRealProfitRate: null });
+const newLine = (destCurrencyId: string): Line => ({ key: `new-${++lineSequence}`, clientId: "", amount: "", providerExchangeRate: "", destCurrencyId, clientCurrencyId: destCurrencyId, exchangeRate: "", isPaid: false, observations: "", frozenRealProfitRate: null });
 
 function valuesFrom(detail: OperationDetailResponse | undefined, type: SaleType, arsId: string): Values {
   const op = detail?.operation;
@@ -93,6 +93,7 @@ function valuesFrom(detail: OperationDetailResponse | undefined, type: SaleType,
       amount: decimalText(child.originAmount),
       providerExchangeRate: decimalText(child.providerExchangeRate),
       destCurrencyId: child.destCurrencyId,
+      clientCurrencyId: child.clientCurrencyId || child.destCurrencyId,
       exchangeRate: decimalText(child.exchangeRate),
       isPaid: child.isPaid,
       observations: child.observations ?? "",
@@ -110,7 +111,8 @@ function validate(values: Values): Errors {
     const problems: string[] = [];
     if (!line.clientId) problems.push("falta el cliente");
     if (!(parseLocaleNumber(line.amount) > 0)) problems.push("el monto TT tiene que ser mayor a cero");
-    if (!line.destCurrencyId) problems.push("falta la moneda");
+    if (!line.destCurrencyId) problems.push("falta la moneda del proveedor");
+    if (!line.clientCurrencyId) problems.push("falta la moneda del cliente");
     const providerRate = parseLocaleNumber(line.providerExchangeRate);
     const clientRate = parseLocaleNumber(line.exchangeRate);
     if (!(providerRate > 0)) problems.push("la cotización del proveedor no es válida");
@@ -188,19 +190,24 @@ export function SaleForm({ detail, initialType, contacts, onCreateContact, curre
   const { data: usdtRateData } = useSWR<{ usdtCurrencyId: string | null; rates: Record<string, number> }>("/api/treasury/usdt-rate", fetchList);
   const usdtCurrencyId = usdtRateData?.usdtCurrencyId ?? null;
 
-  // Ganancia real de una línea en USDT: Monto TT − (Haber × promedio del día), en la moneda de cabecera.
+  // Ganancia real de una línea cuyo proveedor cobra en USDT: Ganancia estimada (Haber − Debe) menos el
+  // ajuste por lo que en verdad cuesta comprar ese USDT contra la Cot. Proveedor asumida en la línea.
   // Mientras no está pagada usa el promedio en vivo; al pagar queda fija con el promedio de ese momento.
   const lineRealProfit = (line: Line): number | null => {
     if (!usdtCurrencyId || line.destCurrencyId !== usdtCurrencyId) return null;
-    const amount = lineAmount(line);
+    const debe = lineDebe(line);
     const haber = lineHaber(line);
-    if (!(amount > 0) || !Number.isFinite(haber)) return null;
+    const providerRate = lineProviderRate(line);
+    if (!Number.isFinite(debe) || !Number.isFinite(haber) || !(providerRate > 0)) return null;
     const rate = line.isPaid && line.frozenRealProfitRate != null ? line.frozenRealProfitRate : usdtRateData?.rates?.[values.currencyId];
-    if (rate === undefined || rate === null) return null;
-    return amount - haber * rate;
+    if (rate === undefined || rate === null || !(rate > 0)) return null;
+    const ajuste = debe * (rate - providerRate) / rate;
+    return (haber - debe) - ajuste;
   };
 
-  // Ganancia agrupada por moneda: cada cliente puede cobrar en una moneda distinta, no se suman entre sí.
+  // Ganancia agrupada por la moneda del proveedor (Debe): es la que importa para pagarle y para la
+  // ganancia real. El Haber de cada línea se suma igual aunque su Moneda Cliente sea otra (USD/USDT
+  // se tratan 1 a 1), y queda a la vista en la columna "Moneda Cliente" de cada línea.
   const gananciaPorMoneda = useMemo(() => {
     const groups = new Map<string, { debe: number; haber: number; real: number; realCount: number }>();
     values.lines.forEach((line) => {
@@ -250,6 +257,7 @@ export function SaleForm({ detail, initialType, contacts, onCreateContact, curre
             clientId: line.clientId,
             amount: lineAmount(line),
             destCurrencyId: line.destCurrencyId,
+            clientCurrencyId: line.clientCurrencyId,
             providerExchangeRate: lineProviderRate(line),
             exchangeRate: lineClientRate(line),
             isPaid: line.isPaid,
@@ -366,11 +374,11 @@ export function SaleForm({ detail, initialType, contacts, onCreateContact, curre
       },
     },
     {
-      key: "currency",
+      key: "providerCurrency",
       label: (
         <>
-          Moneda{" "}
-          <HelpTip>Cada cliente puede elegir una moneda distinta (USD, USDT, EUR, etc.). Define en qué moneda se calculan el Debe y el Haber de esta línea.</HelpTip>
+          Moneda Proveedor{" "}
+          <HelpTip>En qué moneda le queda debiendo la agencia al proveedor por esta línea (define el Debe).</HelpTip>
         </>
       ),
       width: "8%",
@@ -378,7 +386,7 @@ export function SaleForm({ detail, initialType, contacts, onCreateContact, curre
         const index = values.lines.indexOf(line) + 1;
         if (!editable) return currencyOf(line.destCurrencyId)?.code ?? "—";
         return (
-          <Select aria-label={`Moneda de la línea ${index}`} value={line.destCurrencyId} onChange={(event) => setLine(line.key, { destCurrencyId: event.target.value })}>
+          <Select aria-label={`Moneda proveedor de la línea ${index}`} value={line.destCurrencyId} onChange={(event) => setLine(line.key, { destCurrencyId: event.target.value })}>
             <option value="">Elegí la moneda</option>
             {lineCurrencyOptions(line.destCurrencyId).map((item) => (
               <option key={item.id} value={item.id}>{item.code}</option>
@@ -417,6 +425,31 @@ export function SaleForm({ detail, initialType, contacts, onCreateContact, curre
       },
     },
     {
+      key: "clientCurrency",
+      label: (
+        <>
+          Moneda Cliente{" "}
+          <HelpTip>
+            En qué moneda le queda debiendo el cliente a la agencia por esta línea (define el Haber). Normalmente es la misma
+            que la Moneda Proveedor; se cambia solo cuando el proveedor le entrega al cliente en otra moneda.
+          </HelpTip>
+        </>
+      ),
+      width: "8%",
+      render: (line) => {
+        const index = values.lines.indexOf(line) + 1;
+        if (!editable) return currencyOf(line.clientCurrencyId)?.code ?? "—";
+        return (
+          <Select aria-label={`Moneda cliente de la línea ${index}`} value={line.clientCurrencyId} onChange={(event) => setLine(line.key, { clientCurrencyId: event.target.value })}>
+            <option value="">Elegí la moneda</option>
+            {lineCurrencyOptions(line.clientCurrencyId).map((item) => (
+              <option key={item.id} value={item.id}>{item.code}</option>
+            ))}
+          </Select>
+        );
+      },
+    },
+    {
       key: "debe",
       label: <>Debe <HelpTip>Lo que la agencia le queda debiendo al proveedor por esta línea: Monto TT ÷ Cot. Proveedor.</HelpTip></>,
       align: "end",
@@ -425,10 +458,10 @@ export function SaleForm({ detail, initialType, contacts, onCreateContact, curre
     },
     {
       key: "haber",
-      label: <>Haber <HelpTip>Lo que la agencia le queda debiendo al cliente por esta línea: Monto TT ÷ Coti.</HelpTip></>,
+      label: <>Haber <HelpTip>Lo que el cliente le queda debiendo a la agencia por esta línea: Monto TT ÷ Coti.</HelpTip></>,
       align: "end",
       width: "9%",
-      render: (line) => (Number.isFinite(lineHaber(line)) ? formatAmount(lineHaber(line), currencyOf(line.destCurrencyId)?.code ?? "") : "—"),
+      render: (line) => (Number.isFinite(lineHaber(line)) ? formatAmount(lineHaber(line), currencyOf(line.clientCurrencyId)?.code ?? "") : "—"),
     },
     {
       key: "realProfit",
@@ -454,8 +487,9 @@ export function SaleForm({ detail, initialType, contacts, onCreateContact, curre
         <>
           Pago{" "}
           <HelpTip>
-            Marcalo cuando ya le pagaste en USDT a este cliente: cierra la deuda en su cuenta corriente y, si la línea es en
-            USDT, también descuenta ese importe de la caja de USDT y congela la ganancia real de ese momento.
+            Marcalo cuando el cliente y el proveedor ya se arreglaron la plata directamente entre ellos: cierra el Debe y el
+            Haber en sus cuentas corrientes. No mueve ninguna caja de la agencia. Si la Moneda Proveedor de la línea es USDT,
+            además congela la ganancia real con el promedio de compra de USDT de ese momento.
           </HelpTip>
         </>
       ),
@@ -533,10 +567,11 @@ export function SaleForm({ detail, initialType, contacts, onCreateContact, curre
       actions={
         <>
           <HelpTip>
-            El proveedor le transfiere el Monto TT directo al cliente: la agencia no toca esa plata. Por cada línea queda
-            registrado lo que la agencia le debe al proveedor (Debe) y lo que le debe al cliente (Haber); la diferencia es la
-            ganancia. Cuando la línea es en USDT y se tilda &quot;Pago&quot;, sale ese importe de la caja de USDT (compralas
-            antes desde Tesorería) y queda fija la ganancia real según el costo promedio de esas compras.
+            El cliente le manda el Monto TT directo al proveedor, y el proveedor le entrega el cambio directo al cliente: la
+            agencia no toca esa plata. Por cada línea queda registrado lo que la agencia le debe al proveedor (Debe) y lo que
+            el cliente le queda debiendo a la agencia (Haber); la diferencia es la ganancia. Tildar &quot;Pago&quot; solo
+            cierra esas cuentas corrientes, no mueve ninguna caja. Para pagarle al proveedor con el USDT comprado en
+            Tesorería, usá &quot;Pagar a proveedor&quot;.
           </HelpTip>
           {op && can(user, "operations.delete") && (
             <Button variant="ghost" size="sm" icon={<Trash2 size={iconSize.sm} />} loading={deleting} onClick={remove}>Eliminar</Button>
@@ -654,8 +689,9 @@ export function SaleForm({ detail, initialType, contacts, onCreateContact, curre
                       <>
                         Haber{" "}
                         <HelpTip>
-                          Suma de lo que la agencia le queda debiendo a los clientes en todas las líneas de esta moneda: por
-                          cada línea, Monto TT ÷ Coti.
+                          Suma de lo que los clientes le quedan debiendo a la agencia en todas las líneas de esta moneda de
+                          proveedor: por cada línea, Monto TT ÷ Coti, en la Moneda Cliente de esa línea (USD y USDT se tratan
+                          1 a 1 si difieren de esta moneda).
                         </HelpTip>
                       </>
                     }
@@ -666,7 +702,7 @@ export function SaleForm({ detail, initialType, contacts, onCreateContact, curre
                     label={
                       <>
                         Ganancia{" "}
-                        <HelpTip>Haber menos Debe: la diferencia entre lo que se le debe al cliente y lo que se le debe al proveedor.</HelpTip>
+                        <HelpTip>Haber menos Debe: la diferencia entre lo que el cliente le debe a la agencia y lo que la agencia le debe al proveedor.</HelpTip>
                       </>
                     }
                   >
@@ -678,14 +714,15 @@ export function SaleForm({ detail, initialType, contacts, onCreateContact, curre
                         <>
                           Ganancia real{" "}
                           <HelpTip>
-                            Monto TT menos (Haber × promedio de compra de USDT del día). Para una línea ya pagada, usa el
-                            promedio congelado en el momento de pagarle al cliente; para una sin pagar, el promedio de lo
+                            Ganancia estimada (Haber − Debe) menos el ajuste por lo que en verdad cuesta comprar el USDT con
+                            el que se le paga al proveedor, contra la Cot. Proveedor asumida en cada línea. Para una línea ya
+                            pagada, usa el promedio de compra congelado en ese momento; para una sin pagar, el promedio de lo
                             comprado hasta ahora.
                           </HelpTip>
                         </>
                       }
                     >
-                      {formatAmount(real, headerCurrency?.code ?? "")}
+                      {formatAmount(real, currency?.code ?? "")}
                     </ReadonlyField>
                   )}
                 </Fragment>

@@ -23,6 +23,7 @@ export const OPERATION_TYPES: Record<string, string> = {
   TREASURY_EXPENSE: "Extracción de caja",
   TREASURY_TRANSFER: "Traspaso entre cajas",
   USDT_PURCHASE: "Compra de USDT",
+  PROVIDER_USDT_PAYMENT: "Pago a proveedor en USDT",
 };
 
 // Un color de etiqueta por tipo, para distinguirlos de un vistazo en la lista y en el detalle.
@@ -34,11 +35,12 @@ export const OPERATION_TYPE_COLORS: Record<string, import("@/components/ui/Tag")
   TREASURY_EXPENSE: "red",
   TREASURY_TRANSFER: "orange",
   USDT_PURCHASE: "purple",
+  PROVIDER_USDT_PAYMENT: "teal",
 };
 
 // Las genera Tesorería al mover dinero de una caja: no se reabren ni se editan, solo se eliminan
 // (eliminar revierte sus movimientos de caja).
-export const TREASURY_TYPES = ["TREASURY_INCOME", "TREASURY_EXPENSE", "TREASURY_TRANSFER", "USDT_PURCHASE"];
+export const TREASURY_TYPES = ["TREASURY_INCOME", "TREASURY_EXPENSE", "TREASURY_TRANSFER", "USDT_PURCHASE", "PROVIDER_USDT_PAYMENT"];
 export const isTreasury = (type: string) => TREASURY_TYPES.includes(type);
 export const TREASURY_LOCKED_MESSAGE = "Las operaciones de tesorería no se reabren ni se editan. Si hay que corregirla, eliminala y cargá el movimiento de nuevo.";
 

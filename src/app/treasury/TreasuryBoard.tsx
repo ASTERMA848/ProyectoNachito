@@ -13,7 +13,7 @@ import { can } from "@/lib/permissions";
 import { formatAmount } from "@/lib/format-currency";
 import { dayKey, dayLabel, formatTime } from "@/lib/agency-time";
 import type { RecentMovement, TreasuryDashboard } from "@/lib/resources/treasury";
-import { CashMovementDialog, TransferDialog, UsdtPurchaseDialog, type BoxOption } from "./TreasuryDialogs";
+import { CashMovementDialog, PagarProveedorDialog, TransferDialog, UsdtPurchaseDialog, type BoxOption } from "./TreasuryDialogs";
 import styles from "./treasury.module.css";
 
 const DAYS = 30;
@@ -31,6 +31,7 @@ export default function TreasuryBoard() {
   const [movementBox, setMovementBox] = useState<BoxOption | null>(null);
   const [transfer, setTransfer] = useState<{ from?: string } | null>(null);
   const [usdtPurchaseOpen, setUsdtPurchaseOpen] = useState(false);
+  const [payProviderOpen, setPayProviderOpen] = useState(false);
 
   const canWrite = can(user, "treasury.write");
   const boxes = data?.accounts ?? [];
@@ -75,6 +76,9 @@ export default function TreasuryBoard() {
             )}
             {canWrite && hasUsdtBox && (
               <Button icon={<Plus size={iconSize.sm} />} onClick={() => setUsdtPurchaseOpen(true)}>Compra de USDT</Button>
+            )}
+            {canWrite && hasUsdtBox && (
+              <Button icon={<Wallet size={iconSize.sm} />} onClick={() => setPayProviderOpen(true)}>Pagar a proveedor</Button>
             )}
             <Breadcrumbs items={[{ label: "Tesorería" }]} />
             <HelpTip>
@@ -160,6 +164,7 @@ export default function TreasuryBoard() {
       />
       <TransferDialog open={transfer !== null} from={transfer?.from} boxes={boxes} onClose={() => setTransfer(null)} onSaved={() => mutate()} />
       <UsdtPurchaseDialog open={usdtPurchaseOpen} boxes={boxes} onClose={() => setUsdtPurchaseOpen(false)} onSaved={() => mutate()} />
+      <PagarProveedorDialog open={payProviderOpen} onClose={() => setPayProviderOpen(false)} onSaved={() => mutate()} />
     </div>
   );
 }

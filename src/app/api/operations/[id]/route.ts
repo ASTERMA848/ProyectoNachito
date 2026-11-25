@@ -35,6 +35,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
           include: {
             client: { select: { id: true, name: true, lastname: true } },
             destCurrency: { select: currencySelect },
+            clientCurrency: { select: currencySelect },
           },
         },
       },

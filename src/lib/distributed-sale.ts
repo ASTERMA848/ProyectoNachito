@@ -8,7 +8,8 @@ type Tx = Prisma.TransactionClient;
 export type SaleItem = {
   clientId: string;
   amount: Prisma.Decimal.Value; // Monto TT, en la moneda de cabecera (currencyId)
-  destCurrencyId: string; // Moneda de esta línea (lo que recibe el cliente)
+  destCurrencyId: string; // Moneda del proveedor en esta línea (define el Debe)
+  clientCurrencyId: string; // Moneda del cliente en esta línea (define el Haber); normalmente igual a destCurrencyId
   providerExchangeRate: Prisma.Decimal.Value; // Cotización del proveedor para esta línea
   exchangeRate: Prisma.Decimal.Value; // Cotización del cliente para esta línea
   observations: string | null;
@@ -59,17 +60,20 @@ export async function todayUsdtRate(tx: Tx, paidCurrencyId: string, usdtCurrency
   return row.usdt.isPositive() ? row.paid.dividedBy(row.usdt) : null;
 }
 
-// El proveedor le transfiere el Monto TT directo al cliente: acá no se mueve ninguna caja,
-// solo cuentas corrientes. Por línea: se le debe al proveedor (Monto TT / Cot. Proveedor) y
-// se le debe al cliente (Monto TT / Cotización Cliente), ambos en la moneda de esa línea.
-// Si la línea es en USDT y queda pagada, además sale ese importe de la caja de USDT (ya se le
-// entregó al cliente); `realProfitRate` guarda el promedio de compra de USDT congelado en ese momento.
-export async function applySaleLedger(tx: Tx, children: Operation[], input: SaleInput, usdtCurrencyId: string | null) {
+// El cliente le manda el Monto TT directo al proveedor, y el proveedor le entrega el cambio
+// directo al cliente: la plata nunca pasa por ninguna caja de la agencia, acá solo se llevan
+// cuentas corrientes. Por línea: se le debe al proveedor (Monto TT / Cot. Proveedor, Debe, en
+// destCurrencyId) y el cliente le queda debiendo a la agencia (Monto TT / Cotización Cliente,
+// Haber, en clientCurrencyId — normalmente la misma moneda, pero puede diferir) hasta que se
+// tilda "Pago", que cierra esa cuenta sin mover ninguna caja. `realProfitRate` guarda el
+// promedio de compra de USDT del día, congelado al tildar "Pago" en una línea cuyo proveedor
+// cobra en USDT, para ajustar la ganancia real contra lo que en verdad cuesta pagarle.
+export async function applySaleLedger(tx: Tx, children: Operation[], input: SaleInput) {
   const pairKey = (contactId: string, currencyId: string) => `${contactId}:${currencyId}`;
   const pairs = new Map<string, { contactId: string; currencyId: string }>();
   children.forEach((child) => {
     pairs.set(pairKey(input.providerId, child.destCurrencyId), { contactId: input.providerId, currencyId: child.destCurrencyId });
-    pairs.set(pairKey(child.clientId!, child.destCurrencyId), { contactId: child.clientId!, currencyId: child.destCurrencyId });
+    pairs.set(pairKey(child.clientId!, child.clientCurrencyId!), { contactId: child.clientId!, currencyId: child.clientCurrencyId! });
   });
   const pairList = Array.from(pairs.values()).sort((a, b) => pairKey(a.contactId, a.currencyId).localeCompare(pairKey(b.contactId, b.currencyId)));
 
@@ -98,10 +102,10 @@ export async function applySaleLedger(tx: Tx, children: Operation[], input: Sale
     record(input.providerId, child.destCurrencyId, child, 0, child.providerDebtAmount!,
       `Deuda por transferencia a cliente (Op: ${child.operationNumber})`,
       `Cotización Proveedor: ${child.providerExchangeRate}. Monto TT: $${child.originAmount.toString()}.`);
-    record(child.clientId!, child.destCurrencyId, child, 0, child.destAmount,
+    record(child.clientId!, child.clientCurrencyId!, child, child.destAmount, 0,
       `Deuda por transferencia recibida del proveedor (Op: ${child.operationNumber})`,
       `Cotización Cliente: ${child.exchangeRate}. Monto TT: $${child.originAmount.toString()}. ${item.observations || ""}`);
-    if (item.isPaid) record(child.clientId!, child.destCurrencyId, child, child.destAmount, 0,
+    if (item.isPaid) record(child.clientId!, child.clientCurrencyId!, child, 0, child.destAmount,
       `Pago registrado al cliente (Op: ${child.operationNumber})`, `Cancelación de deuda por pago ya realizado - ${item.observations || ""}`);
   });
 
@@ -110,22 +114,6 @@ export async function applySaleLedger(tx: Tx, children: Operation[], input: Sale
       ${Prisma.join(accounts.map((a) => Prisma.sql`(${a.id}::text, ${a.balance}::numeric)`))}
     ) AS v(id, balance) WHERE a.id = v.id`;
   await tx.transaction.createMany({ data: transactions });
-
-  // Líneas en USDT ya pagadas: ese USDT sale de verdad de la caja, ya se le entregó al cliente.
-  const usdtPaid = usdtCurrencyId
-    ? children.filter((child, index) => input.items[index].isPaid && child.destCurrencyId === usdtCurrencyId)
-    : [];
-  if (usdtPaid.length) {
-    const totalOut = usdtPaid.reduce((sum, child) => sum.plus(child.destAmount), new Prisma.Decimal(0));
-    const usdtAccount = await tx.treasuryAccount.findFirst({ where: { currencyId: usdtCurrencyId!, isActive: true }, orderBy: [{ createdAt: "asc" }, { id: "asc" }] });
-    if (!usdtAccount) throw new SaleValidationError("No hay una caja de USDT activa. Abrí Tesorería para crearla antes de marcar el pago.");
-    const updated = await tx.treasuryAccount.updateMany({ where: { id: usdtAccount.id, balance: { gte: totalOut } }, data: { balance: { decrement: totalOut } } });
-    if (updated.count !== 1) throw new SaleValidationError("La caja de USDT no tiene saldo suficiente para pagarle a estos clientes.", 409);
-    await tx.treasuryMovement.createMany({ data: usdtPaid.map((child) => ({
-      id: randomUUID(), treasuryAccountId: usdtAccount.id, operationId: child.id, type: "EXPENSE", amount: child.destAmount,
-      concept: `Pago en USDT al cliente (Op: ${child.operationNumber})`,
-    })) });
-  }
 }
 
 export async function saveDistributedSale(tx: Tx, input: SaleInput, parentId?: string, canEditCompleted = true) {
@@ -189,7 +177,7 @@ export async function saveDistributedSale(tx: Tx, input: SaleInput, parentId?: s
       id: previous?.id || randomUUID(),
       operationNumber: previous?.operationNumber || `${parent.operationNumber}-${index + 1}`,
       type: "DISTRIBUTED_SALE_ITEM", parentOperationId: parent.id, clientId: item.clientId, providerIsPaid: null,
-      originCurrencyId: input.currencyId, destCurrencyId: item.destCurrencyId,
+      originCurrencyId: input.currencyId, destCurrencyId: item.destCurrencyId, clientCurrencyId: item.clientCurrencyId,
       originAmount: new Prisma.Decimal(item.amount),
       destAmount: new Prisma.Decimal(item.amount).dividedBy(item.exchangeRate).toDecimalPlaces(8),
       exchangeRate: new Prisma.Decimal(item.exchangeRate),
@@ -207,15 +195,16 @@ export async function saveDistributedSale(tx: Tx, input: SaleInput, parentId?: s
     // Una sentencia para todas las hijas existentes y nuevas; conservar IDs y adjuntos.
     await tx.$executeRaw`
       INSERT INTO "Operation" (id, "operationNumber", type, "parentOperationId", "clientId", "providerId",
-        "originCurrencyId", "destCurrencyId", "originAmount", "destAmount", "exchangeRate",
+        "originCurrencyId", "destCurrencyId", "clientCurrencyId", "originAmount", "destAmount", "exchangeRate",
         "providerExchangeRate", "providerDebtAmount", "realProfitRate", "operationDate",
         "isPaid", observations, state, "createdAt", "updatedAt", "deletedAt")
       SELECT id, "operationNumber", type, "parentOperationId", "clientId", "providerId", "originCurrencyId", "destCurrencyId",
-        "originAmount", "destAmount", "exchangeRate", "providerExchangeRate", "providerDebtAmount", "realProfitRate",
+        "clientCurrencyId", "originAmount", "destAmount", "exchangeRate", "providerExchangeRate", "providerDebtAmount", "realProfitRate",
         "operationDate", "isPaid", observations, state, "createdAt", "updatedAt", "deletedAt"
       FROM jsonb_populate_recordset(NULL::"Operation", ${JSON.stringify(children)}::jsonb)
       ON CONFLICT (id) DO UPDATE SET "clientId" = EXCLUDED."clientId", "providerId" = EXCLUDED."providerId",
         "originCurrencyId" = EXCLUDED."originCurrencyId", "destCurrencyId" = EXCLUDED."destCurrencyId",
+        "clientCurrencyId" = EXCLUDED."clientCurrencyId",
         "originAmount" = EXCLUDED."originAmount", "destAmount" = EXCLUDED."destAmount", "exchangeRate" = EXCLUDED."exchangeRate",
         "providerExchangeRate" = EXCLUDED."providerExchangeRate", "providerDebtAmount" = EXCLUDED."providerDebtAmount",
         "realProfitRate" = EXCLUDED."realProfitRate",
@@ -224,6 +213,6 @@ export async function saveDistributedSale(tx: Tx, input: SaleInput, parentId?: s
   } else {
     await tx.operation.createMany({ data: children });
   }
-  await applySaleLedger(tx, children, input, usdtCurrencyId);
+  await applySaleLedger(tx, children, input);
   return { parentOp: parent, childOperations: children };
 }

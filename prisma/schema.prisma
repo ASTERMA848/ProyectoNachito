@@ -136,6 +136,7 @@ model Currency {
   originOps   Operation[]  @relation("OriginCurrency")
   destOps     Operation[]  @relation("DestCurrency")
   providerPaymentOps Operation[] @relation("ProviderPaymentCurrency")
+  clientOps   Operation[]  @relation("ClientCurrency")
   accounts    Account[]
   treasuries  TreasuryAccount[]
 }
@@ -163,6 +164,10 @@ model Operation {
   destCurrencyId   String
   originCurrency   Currency     @relation("OriginCurrency", fields: [originCurrencyId], references: [id])
   destCurrency     Currency     @relation("DestCurrency", fields: [destCurrencyId], references: [id])
+  // Venta distribuida/1 a 1 por línea: moneda en la que el cliente queda debiendo (Haber), que puede
+  // diferir de destCurrencyId (la moneda en la que se le debe al proveedor, Debe). NULL en otros tipos.
+  clientCurrencyId String?
+  clientCurrency   Currency?    @relation("ClientCurrency", fields: [clientCurrencyId], references: [id])
 
   originAmount     Decimal @db.Decimal(30, 8)
   destAmount       Decimal @db.Decimal(30, 8)

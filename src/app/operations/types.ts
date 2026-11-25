@@ -10,13 +10,15 @@ export type OperationLine = {
   clientId: string | null;
   client: ContactRef | null;
   originAmount: number; // Monto TT, en la moneda de cabecera
-  destCurrencyId: string; // Moneda de esta línea
+  destCurrencyId: string; // Moneda del proveedor en esta línea (define el Debe)
   destCurrency: CurrencyRef;
-  destAmount: number; // Haber = originAmount / exchangeRate, en destCurrencyId
+  clientCurrencyId: string; // Moneda del cliente en esta línea (define el Haber); normalmente igual a destCurrencyId
+  clientCurrency: CurrencyRef;
+  destAmount: number; // Haber = originAmount / exchangeRate, en clientCurrencyId
   exchangeRate: number; // Cotización Cliente
   providerExchangeRate: number | null; // Cotización Proveedor de esta línea
   providerDebtAmount: number | null; // Debe = originAmount / providerExchangeRate, en destCurrencyId
-  realProfitRate: number | null; // Solo líneas en USDT ya pagadas: promedio de compra de USDT congelado al pagar
+  realProfitRate: number | null; // Solo líneas cuyo proveedor cobra en USDT y ya están pagadas: promedio de compra de USDT congelado al pagar
   isPaid: boolean;
   observations: string | null;
 };
