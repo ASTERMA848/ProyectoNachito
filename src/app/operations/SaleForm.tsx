@@ -464,24 +464,6 @@ export function SaleForm({ detail, initialType, contacts, onCreateContact, curre
       render: (line) => (Number.isFinite(lineHaber(line)) ? formatAmount(lineHaber(line), currencyOf(line.clientCurrencyId)?.code ?? "") : "—"),
     },
     {
-      key: "realProfit",
-      label: (
-        <>
-          Ganancia real{" "}
-          <HelpTip>
-            Solo para líneas en USDT: Monto TT menos el costo real de ese USDT según el promedio de compras del día. Antes
-            de pagar se actualiza en vivo; al tildar &quot;Pago&quot; queda fija con el promedio de ese momento.
-          </HelpTip>
-        </>
-      ),
-      align: "end",
-      width: "10%",
-      render: (line) => {
-        const real = lineRealProfit(line);
-        return real === null ? "—" : formatAmount(real, headerCurrency?.code ?? "");
-      },
-    },
-    {
       key: "paid",
       label: (
         <>
@@ -668,7 +650,7 @@ export function SaleForm({ detail, initialType, contacts, onCreateContact, curre
             }
           >
             {gananciaPorMoneda.length ? (
-              gananciaPorMoneda.map(({ currency, debe, haber, ganancia, real, realCount }) => (
+              gananciaPorMoneda.map(({ currency, debe, haber, ganancia }) => (
                 <Fragment key={currency?.id ?? "—"}>
                   {gananciaPorMoneda.length > 1 && <p className={styles.gananciaCurrency}>{currency?.code ?? "—"}</p>}
                   <ReadonlyField
@@ -708,23 +690,6 @@ export function SaleForm({ detail, initialType, contacts, onCreateContact, curre
                   >
                     {formatAmount(ganancia, currency?.code ?? "")}
                   </ReadonlyField>
-                  {realCount > 0 && (
-                    <ReadonlyField
-                      label={
-                        <>
-                          Ganancia real{" "}
-                          <HelpTip>
-                            Ganancia estimada (Haber − Debe) menos el ajuste por lo que en verdad cuesta comprar el USDT con
-                            el que se le paga al proveedor, contra la Cot. Proveedor asumida en cada línea. Para una línea ya
-                            pagada, usa el promedio de compra congelado en ese momento; para una sin pagar, el promedio de lo
-                            comprado hasta ahora.
-                          </HelpTip>
-                        </>
-                      }
-                    >
-                      {formatAmount(real, currency?.code ?? "")}
-                    </ReadonlyField>
-                  )}
                 </Fragment>
               ))
             ) : (
