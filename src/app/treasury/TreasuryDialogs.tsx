@@ -165,9 +165,16 @@ export function TransferDialog({ open, boxes, from, onClose, onSaved }: { open: 
   const rateValue = parseLocaleNumber(rate);
   const destValue = crossCurrency ? parseLocaleNumber(destAmount) : originValue;
 
+  // De ARS a otra moneda, la cotización se piensa como "ARS por cada <extranjera>" (la convención
+  // habitual acá) y el importe que entra sale de dividir; en cualquier otro par se pide "destino por
+  // cada origen" y se multiplica, como ya se hacía.
+  const quoteOriginPerDest = Boolean(origin && dest && origin.currency.code === "ARS" && dest.currency.code !== "ARS");
+
   const recompute = (nextAmount: string, nextRate: string) => {
-    const product = parseLocaleNumber(nextAmount) * parseLocaleNumber(nextRate);
-    if (validAmount(product) && dest) setDestAmount(product.toFixed(dest.currency.decimals).replace(".", ","));
+    const amountValue = parseLocaleNumber(nextAmount);
+    const rateNumber = parseLocaleNumber(nextRate);
+    const result = quoteOriginPerDest ? (rateNumber > 0 ? amountValue / rateNumber : NaN) : amountValue * rateNumber;
+    if (validAmount(result) && dest) setDestAmount(result.toFixed(dest.currency.decimals).replace(".", ","));
   };
 
   const errors = {
@@ -269,7 +276,11 @@ export function TransferDialog({ open, boxes, from, onClose, onSaved }: { open: 
         </Field>
         {crossCurrency && origin && dest && (
           <>
-            <Field label={`Cotización (${dest.currency.code} por cada ${origin.currency.code})`} required error={error("rate")}>
+            <Field
+              label={`Cotización (${quoteOriginPerDest ? origin.currency.code : dest.currency.code} por cada ${quoteOriginPerDest ? dest.currency.code : origin.currency.code})`}
+              required
+              error={error("rate")}
+            >
               <TextInput
                 inputMode="decimal"
                 autoComplete="off"
