@@ -5,35 +5,29 @@
 
 .ring {
   display: inline-block;
-  border-radius: 50%;
-  border-style: solid;
-  border-color: currentColor;
-  border-top-color: transparent;
-  animation: spin 0.7s linear infinite;
+  animation: spin 0.9s linear infinite;
+  transform-origin: 50% 50%;
+  will-change: transform;
 }
 
 .xs {
   width: 12px;
   height: 12px;
-  border-width: 2px;
 }
 
 .sm {
   width: 16px;
   height: 16px;
-  border-width: 2px;
 }
 
 .md {
   width: 20px;
   height: 20px;
-  border-width: 2.5px;
 }
 
 .lg {
   width: 40px;
   height: 40px;
-  border-width: 3px;
 }
 
 @keyframes spin {
