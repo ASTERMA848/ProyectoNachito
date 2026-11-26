@@ -13,7 +13,7 @@ export { Field, ReadonlyField } from "./Field";
 export { FilterPanel, type PanelOption, type PanelSection } from "./FilterPanel";
 export { FormGroup, FormGroups, FormHeader, Sheet, SheetTitle } from "./Form";
 export { HistoryComposer, HistoryPanel, type HistoryEntry, type HistoryGroup } from "./HistoryPanel";
-export { DateInput, MoneyInput, Select, TextArea, TextInput } from "./Input";
+export { DateInput, MoneyInput, NumberInput, Select, TextArea, TextInput } from "./Input";
 export { KanbanBoard, KanbanCard, KanbanColumn, type ProgressSegment } from "./Kanban";
 export { Menu, type MenuEntry } from "./Menu";
 export { Pager } from "./Pager";

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import useSWR from "swr";
-import { Button, Combobox, Dialog, Field, MoneyInput, Select, TextArea, TextInput } from "@/components/ui";
+import { Button, Combobox, Dialog, Field, MoneyInput, NumberInput, Select, TextArea } from "@/components/ui";
 import { HelpTip } from "@/components/shell/HelpTip";
 import { useUiFeedback } from "@/components/shell/UiFeedback";
 import { fetchList } from "@/components/shell/list-state";
@@ -281,9 +281,7 @@ export function TransferDialog({ open, boxes, from, onClose, onSaved }: { open: 
               required
               error={error("rate")}
             >
-              <TextInput
-                inputMode="decimal"
-                autoComplete="off"
+              <NumberInput
                 value={rate}
                 onChange={(event) => {
                   setRate(event.target.value);
@@ -405,9 +403,7 @@ export function UsdtPurchaseDialog({ open, boxes, onClose, onSaved }: { open: bo
           />
         </Field>
         <Field label={`Cotización (${origin?.currency.code ?? "moneda"} por cada USDT)`} required error={error("rate")}>
-          <TextInput
-            inputMode="decimal"
-            autoComplete="off"
+          <NumberInput
             value={rate}
             onChange={(event) => {
               setRate(event.target.value);
@@ -582,9 +578,7 @@ export function PagarProveedorDialog({
             ) : (
               <>
                 <Field label={`Cotización (USDT por cada ${debtAccount.currency.code})`} required error={error("rate")}>
-                  <TextInput
-                    inputMode="decimal"
-                    autoComplete="off"
+                  <NumberInput
                     value={rate}
                     onChange={(event) => {
                       setRate(event.target.value);

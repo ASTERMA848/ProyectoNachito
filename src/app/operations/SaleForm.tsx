@@ -16,6 +16,7 @@ import {
   IconButton,
   Combobox,
   MoneyInput,
+  NumberInput,
   ReadonlyField,
   Select,
   Sheet,
@@ -363,8 +364,7 @@ export function SaleForm({ detail, initialType, contacts, onCreateContact, curre
         const index = values.lines.indexOf(line) + 1;
         if (!editable) return decimalText(lineProviderRate(line));
         return (
-          <TextInput
-            inputMode="decimal"
+          <NumberInput
             aria-label={`Cotización del proveedor, línea ${index}`}
             invalid={Boolean(errors.lines) && !(lineProviderRate(line) > 0)}
             value={line.providerExchangeRate}
@@ -414,8 +414,7 @@ export function SaleForm({ detail, initialType, contacts, onCreateContact, curre
         const clientRate = lineClientRate(line);
         if (!editable) return decimalText(clientRate);
         return (
-          <TextInput
-            inputMode="decimal"
+          <NumberInput
             aria-label={`Cotización del cliente, línea ${index}`}
             invalid={Boolean(errors.lines) && (!(clientRate > 0) || (providerRate > 0 && clientRate >= providerRate))}
             value={line.exchangeRate}

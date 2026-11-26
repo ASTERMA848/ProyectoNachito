@@ -12,6 +12,7 @@ import {
   FormGroups,
   FormHeader,
   MoneyInput,
+  NumberInput,
   ReadonlyField,
   Select,
   Sheet,
@@ -22,7 +23,6 @@ import {
   Tag,
   TextArea,
   type HistoryGroup,
-  TextInput,
   iconSize,
 } from "@/components/ui";
 import { useShellUser } from "@/components/shell/AppShell";
@@ -273,7 +273,7 @@ export function StandardForm({ detail, contacts, onCreateContact, currencies, hi
                 <MoneyInput symbol={symbolOf(values.destCurrencyId)} value={values.destAmount} onChange={(event) => set("destAmount", event.target.value)} />
               </Field>
               <Field label="Cotización" layout="inline" help={rateChanged ? <FieldChangeNote groups={historyGroups} field="Cotización" /> : undefined}>
-                <TextInput inputMode="decimal" value={values.exchangeRate} onChange={(event) => set("exchangeRate", event.target.value)} />
+                <NumberInput value={values.exchangeRate} onChange={(event) => set("exchangeRate", event.target.value)} />
               </Field>
             </FormGroup>
           </FormGroups>
