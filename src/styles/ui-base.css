@@ -48,4 +48,13 @@
     transition-duration: 1ms !important;
     animation-duration: 1ms !important;
   }
+
+  /* Un spinner de carga no es el tipo de movimiento que esta preferencia busca evitar (no hay
+     parallax ni zoom). A 1ms no se ve girar: tiembla y da la sensación de que la pantalla se trabó,
+     justo lo contrario de lo que debería transmitir. Sigue girando, más lento que el default, para
+     no perder la única señal de que algo está cargando. */
+  .ui-app [role="status"] *,
+  .ui-app [aria-busy="true"] * {
+    animation-duration: 1.1s !important;
+  }
 }
