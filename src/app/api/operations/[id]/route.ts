@@ -21,8 +21,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       return NextResponse.json({ error: "No autenticado" }, { status: 401 });
     }
 
-    const operation = await prisma.operation.findFirst({
-      where: { id: (await params).id, deletedAt: null },
+    const operationId = (await params).id;
+    const findOperation = () => prisma.operation.findFirst({
+      where: { id: operationId, deletedAt: null },
       include: {
         client: { select: { id: true, name: true, lastname: true, document: true } },
         provider: { select: { id: true, name: true, lastname: true, document: true } },
@@ -40,6 +41,18 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
         },
       },
     });
+
+    let operation;
+    try {
+      operation = await findOperation();
+    } catch (error) {
+      // Datos viejos de un bug ya corregido: decimal.js consideraba "positivo" al 0, así que sin
+      // compras de USDT en el día se guardaba 0/0 = NaN en vez de null. Se autocorrige al toparse
+      // con eso y se reintenta, en vez de dejar la operación inaccesible.
+      if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== "P2023") throw error;
+      await prisma.$executeRaw`UPDATE "Operation" SET "realProfitRate" = NULL WHERE "realProfitRate"::text = 'NaN'`;
+      operation = await findOperation();
+    }
     if (!operation) {
       return NextResponse.json({ error: "Operación no encontrada" }, { status: 404 });
     }
