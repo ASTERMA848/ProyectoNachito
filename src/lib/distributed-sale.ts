@@ -57,7 +57,7 @@ export async function todayUsdtRate(tx: Tx, paidCurrencyId: string, usdtCurrency
     FROM "Operation" WHERE type = 'USDT_PURCHASE' AND "deletedAt" IS NULL
       AND "originCurrencyId" = ${paidCurrencyId} AND "destCurrencyId" = ${usdtCurrencyId}
       AND "operationDate" >= ${range.gte} AND "operationDate" < ${range.lt}`;
-  return row.usdt.isPositive() ? row.paid.dividedBy(row.usdt) : null;
+  return row.usdt.greaterThan(0) ? row.paid.dividedBy(row.usdt) : null;
 }
 
 // El cliente le manda el Monto TT directo al proveedor, y el proveedor le entrega el cambio

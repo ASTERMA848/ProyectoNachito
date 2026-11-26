@@ -32,7 +32,7 @@ export async function GET() {
 
     const rates: Record<string, number> = {};
     for (const [currencyId, { paid, usdt }] of totals) {
-      if (usdt.isPositive()) rates[currencyId] = paid.div(usdt).toNumber();
+      if (usdt.greaterThan(0)) rates[currencyId] = paid.div(usdt).toNumber();
     }
 
     return NextResponse.json({ usdtCurrencyId: usdtCurrency.id, rates });
